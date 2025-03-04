@@ -1,0 +1,2 @@
+# Yorkshire Crypto Exchange
+ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platform designed for secure and efficient fiat-to-crypto transactions, wallet management, and trade execution. Built using Flask, Vue.js, PostgreSQL, RabbitMQ, and Docker, it follows REST API best practices and utilizes message queues for asynchronous processing. This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability, modularity, and real-world financial transaction handling in a containerized environment. 🚀

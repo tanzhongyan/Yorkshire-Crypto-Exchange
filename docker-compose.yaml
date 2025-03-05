@@ -1,0 +1,99 @@
+services:
+  # fiat-service:
+  #   container_name: fiat-service
+  #   build:
+  #     context: ./api/fiat
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5001:5000"
+  #   depends_on:
+  #     - rabbitmq
+  #     postgres:
+  #       condition: service_healthy # wait until postgres healthy
+  #   environment:
+  #     - RABBITMQ_HOST=rabbitmq
+  #     - DATABASE_URL=postgresql://user:password@postgres:5432/fiat_db
+  #   volumes:
+  #     - fiat_data:/var/lib/fiat_service
+
+  # crypto-service:
+  #   container_name: crypto-service
+  #   build:
+  #     context: ./api/crypto
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5002:5000"
+  #   depends_on:
+  #     - rabbitmq
+  #     postgres:
+  #       condition: service_healthy # wait until postgres healthy
+  #   environment:
+  #     - RABBITMQ_HOST=rabbitmq
+  #     - DATABASE_URL=postgresql://user:password@postgres:5432/crypto_db
+  #   volumes:
+  #     - crypto_data:/var/lib/crypto_service
+
+  user-service:
+    container_name: user-service
+    build:
+      context: ./api/user
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=user_db
+      - DB_USER=user
+      - DB_PASS=password
+    volumes:
+      - user_data:/var/lib/user_service
+
+  # rabbitmq:
+  #   image: rabbitmq:management
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   volumes:
+  #     - rabbitmq_data:/var/lib/rabbitmq
+
+  postgres:
+    build: ./database
+    container_name: postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh
+    ports:
+      - "5433:5432" # Changed local to 5433 due to possible existing local postgresql dbs
+    healthcheck: # Needed to initialise all databases initially
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 5s
+      retries: 5
+      start_period: 10s
+
+  # website:
+  #   build:
+  #     context: ./website
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - fiat-service
+  #     - user-service
+  #     - crypto-service
+
+volumes:
+  # fiat_data:
+  user_data:
+  # crypto_data:
+  # rabbitmq_data:
+  postgres_data:

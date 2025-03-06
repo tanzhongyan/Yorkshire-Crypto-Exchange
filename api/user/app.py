@@ -98,9 +98,20 @@ class UserAddress(db.Model):
 
 ##### API Models - flask restx API autodoc #####
 # To use flask restx, you will have to define API models with their input types
-# Define API Models
-user_model = api.model('UserAccount', {
+# For all API models, add a comment to the top to signify its importance
+# E.g. (GET) (Input /& Output) One/Many user account
+
+# Output One/Many user account
+user_output_model = api.model('UserOutput', {
     'user_id': fields.String(readOnly=True, description='The unique identifier of a user'),
+    'username': fields.String(required=True, description='The username'),
+    'fullname': fields.String(required=True, description='The full name'),
+    'phone': fields.String(required=True, description='The phone number'),
+    'email': fields.String(required=True, description='The email address')
+})
+
+# Input One user account
+user_input_model = api.model('UserInput', {
     'username': fields.String(required=True, description='The username'),
     'fullname': fields.String(required=True, description='The full name'),
     'phone': fields.String(required=True, description='The phone number'),
@@ -131,13 +142,13 @@ address_model = api.model('UserAddress', {
 # CRUD for UserAccount
 @api.route(f'{API_ROOT}/user/account')
 class UserAccountListResource(Resource):
-    @api.marshal_list_with(user_model)
+    @api.marshal_list_with(user_output_model)
     def get(self):
         """Fetch all user accounts"""
         return UserAccount.query.all()
 
-    @api.expect(user_model)
-    @api.marshal_with(user_model, code=201)
+    @api.expect(user_input_model, validate=True)
+    @api.marshal_with(user_output_model, code=201)
     def post(self):
         """Create a new user account"""
         data = request.json
@@ -145,32 +156,26 @@ class UserAccountListResource(Resource):
             username=data.get('username'),
             fullname=data.get('fullname'),
             phone=data.get('phone'),
-            email=data.get('email'),
-            # In a real scenario, handle address_id properly or default
-            address_id=uuid.uuid4() # placeholder
+            email=data.get('email')
         )
         db.session.add(new_user)
         db.session.commit()
         return new_user, 201
 
 @api.route(f'{API_ROOT}/user/account/<uuid:user_id>')
-@api.param('user_id', 'The unique identifier of a user')
+@api.param('user_id', 'The unique identifier of a user') # Alternative code: @api.doc(params={'user_id':'The unique identifier of a user'}) 
 class UserAccountResource(Resource):
-    @api.marshal_with(user_model)
+    @api.marshal_with(user_output_model)
     def get(self, user_id):
         """Fetch a user account by ID"""
-        user = UserAccount.query.get(user_id)
-        if not user:
-            api.abort(404, 'User not found')
+        user = UserAccount.query.get_or_404(user_id, description='User not found')
         return user
 
-    @api.expect(user_model)
-    @api.marshal_with(user_model)
+    @api.expect(user_input_model, validate=True)
+    @api.marshal_with(user_output_model)
     def put(self, user_id):
         """Update an existing user account"""
-        user = UserAccount.query.get(user_id)
-        if not user:
-            api.abort(404, 'User not found')
+        user = UserAccount.query.get_or_404(user_id, description='User not found')
         data = request.json
         user.username = data.get('username', user.username)
         user.fullname = data.get('fullname', user.fullname)
@@ -181,9 +186,7 @@ class UserAccountResource(Resource):
 
     def delete(self, user_id):
         """Delete an existing user account"""
-        user = UserAccount.query.get(user_id)
-        if not user:
-            api.abort(404, 'User not found')
+        user = UserAccount.query.get_or_404(user_id, description='User not found')
         db.session.delete(user)
         db.session.commit()
         return {'message': 'User deleted successfully'}

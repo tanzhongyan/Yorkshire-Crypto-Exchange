@@ -9,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 import json
 import uuid
 import os
-import base64
 
 
 ##### Configuration #####
@@ -65,16 +64,13 @@ class UserAccount(db.Model):
 
 class UserAuthenticate(db.Model):
     __tablename__ = 'user_authenticate'
-    auth_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user_account.user_id', ondelete='CASCADE'), nullable=False)
-    password_hashed = db.Column(db.LargeBinary, nullable=False)
-    salt = db.Column(db.LargeBinary, nullable=False)
-    hashing_algorithm = db.Column(db.String(50), nullable=False)
-    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user_account.user_id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    password_hashed = db.Column(db.String, nullable=False)
+    salt = db.Column(db.String, nullable=False)
     updated = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    user = db.relationship('UserAccount', back_populates='authentication')
+    user = db.relationship('UserAccount', back_populates='authentication', uselist=False)
 
 class UserAddress(db.Model):
     __tablename__ = 'user_address'
@@ -99,7 +95,7 @@ class UserAddress(db.Model):
 ##### API Models - flask restx API autodoc #####
 # To use flask restx, you will have to define API models with their input types
 # For all API models, add a comment to the top to signify its importance
-# E.g. (GET) (Input /& Output) One/Many user account
+# E.g. Input/Output One/Many user account
 
 # Output One/Many user account
 user_output_model = api.model('UserOutput', {
@@ -118,10 +114,17 @@ user_input_model = api.model('UserInput', {
     'email': fields.String(required=True, description='The email address')
 })
 
-auth_model = api.model('UserAuthenticate', {
-    'auth_id': fields.String(readOnly=True, description='The authentication ID'),
+# output one user authenticate
+auth_output_model = api.model('AuthOutput', {
     'user_id': fields.String(required=True, description='The associated user ID'),
-    'hashing_algorithm': fields.String(required=True, description='The hashing algorithm used')
+    'password_hashed': fields.String(required=True, description='The hashed password'),
+    'salt': fields.String(required=True, description='The salt used for hashing')
+})
+
+# Input one user authenticate
+auth_input_model = api.model('AuthInput', {
+    'password_hashed': fields.String(required=True, description='The hashed password'),
+    'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
 address_model = api.model('UserAddress', {
@@ -191,62 +194,50 @@ class UserAccountResource(Resource):
         db.session.commit()
         return {'message': 'User deleted successfully'}
 
-# CRUD for UserAuthenticate
-@api.route(f'{API_ROOT}/user/authenticate')
-class UserAuthenticateListResource(Resource):
-    @api.marshal_list_with(auth_model)
-    def get(self):
-        """Fetch all authentication records"""
-        return UserAuthenticate.query.all()
+# CRU for UserAuthenticate. No delete as delete is cascaded from account table.
+@api.route(f'{API_ROOT}/user/authenticate/<uuid:user_id>')
+@api.param('user_id', 'The unique identifier of a user')
+class UserAuthenticateResource(Resource):
+    @api.marshal_with(auth_output_model)
+    def get(self, user_id):
+        """Fetch authentication details by user ID"""
+        auth = UserAuthenticate.query.get(user_id)
+        if not auth:
+            api.abort(404, 'Authentication record not found')
+        return auth
 
-    @api.expect(auth_model)
-    @api.marshal_with(auth_model, code=201)
-    def post(self):
-        """Create a new authentication record"""
+    @api.expect(auth_input_model, validate=True)
+    @api.marshal_with(auth_output_model, code=201)
+    def post(self, user_id):
+        """Create a new authentication record (password & salt are pre-hashed)"""
         data = request.json
+        existing_auth = UserAuthenticate.query.get(user_id)
+        if existing_auth:
+            api.abort(400, 'Authentication record already exists')
+
         new_auth = UserAuthenticate(
-            user_id=data.get('user_id'),
-            hashing_algorithm=data.get('hashing_algorithm'),
-            password_hashed=b'temp',  # placeholder
-            salt=b'temp'             # placeholder
+            user_id=user_id,
+            password_hashed=data.get('password_hashed'),
+            salt=data.get('salt')
         )
         db.session.add(new_auth)
         db.session.commit()
         return new_auth, 201
 
-@api.route(f'{API_ROOT}/user/authenticate/<uuid:auth_id>')
-@api.param('auth_id', 'The unique identifier of an authentication record')
-class UserAuthenticateResource(Resource):
-    @api.marshal_with(auth_model)
-    def get(self, auth_id):
-        """Fetch an authentication record by ID"""
-        auth = UserAuthenticate.query.get(auth_id)
+    @api.expect(auth_input_model, validate=True)
+    @api.marshal_with(auth_output_model)
+    def put(self, user_id):
+        """Update password and salt for a user"""
+        auth = UserAuthenticate.query.get(user_id)
         if not auth:
             api.abort(404, 'Authentication record not found')
-        return auth
 
-    @api.expect(auth_model)
-    @api.marshal_with(auth_model)
-    def put(self, auth_id):
-        """Update an existing authentication record"""
-        auth = UserAuthenticate.query.get(auth_id)
-        if not auth:
-            api.abort(404, 'Authentication record not found')
         data = request.json
-        auth.user_id = data.get('user_id', str(auth.user_id))
-        auth.hashing_algorithm = data.get('hashing_algorithm', auth.hashing_algorithm)
-        # In a real scenario, handle password hashing & salt properly
+        auth.password_hashed = data.get('password_hashed', auth.password_hashed)
+        auth.salt = data.get('salt', auth.salt)
+
         db.session.commit()
         return auth
-
-    def delete(self, auth_id):
-        """Delete an existing authentication record"""
-        auth = UserAuthenticate.query.get(auth_id)
-        if not auth:
-            api.abort(404, 'Authentication record not found')
-        db.session.delete(auth)
-        db.session.commit()
-        return {'message': 'Authentication record deleted successfully'}
 
 # CRUD for UserAddress
 @api.route(f'{API_ROOT}/user/address')
@@ -314,93 +305,93 @@ class UserAddressResource(Resource):
 
 ##### Seeding #####
 # Provide seed data for all tables
-def seed_data():
-    try:
-        with open("seeddata.json", "r") as file:
-            data = json.load(file)
+# def seed_data():
+#     try:
+#         with open("seeddata.json", "r") as file:
+#             data = json.load(file)
 
-        # -- 1) Insert UserAccount data (Check for existing users to prevent duplicates) --
-        accounts_data = data.get("accounts", [])
-        existing_usernames = {u.username for u in UserAccount.query.all()}  # Fetch existing usernames
+#         # -- 1) Insert UserAccount data (Check for existing users to prevent duplicates) --
+#         accounts_data = data.get("accounts", [])
+#         existing_usernames = {u.username for u in UserAccount.query.all()}  # Fetch existing usernames
 
-        for acc in accounts_data:
-            if acc["username"] in existing_usernames:
-                print(f"Skipping user '{acc['username']}' as it already exists.")
-                continue  # Skip existing users
+#         for acc in accounts_data:
+#             if acc["username"] in existing_usernames:
+#                 print(f"Skipping user '{acc['username']}' as it already exists.")
+#                 continue  # Skip existing users
             
-            new_user = UserAccount(
-                username=acc["username"],
-                fullname=acc["fullname"],
-                phone=acc["phone"],
-                email=acc["email"]
-            )
-            db.session.add(new_user)
-        db.session.commit()  # Commit so new users get their user_id
+#             new_user = UserAccount(
+#                 username=acc["username"],
+#                 fullname=acc["fullname"],
+#                 phone=acc["phone"],
+#                 email=acc["email"]
+#             )
+#             db.session.add(new_user)
+#         db.session.commit()  # Commit so new users get their user_id
 
-        # Create a lookup for user_id by username (for linking authentications and addresses)
-        user_lookup = {u.username: u.user_id for u in UserAccount.query.all()}
+#         # Create a lookup for user_id by username (for linking authentications and addresses)
+#         user_lookup = {u.username: u.user_id for u in UserAccount.query.all()}
 
-        # -- 2) Insert UserAuthenticate data (Check if user exists) --
-        auth_data = data.get("authentications", [])
-        for auth in auth_data:
-            username = auth["username"]
-            user_id = user_lookup.get(username)
-            if not user_id:
-                print(f"Skipping authentication for unknown user '{username}'")
-                continue  # Skip if the user does not exist
+#         # -- 2) Insert UserAuthenticate data (Check if user exists) --
+#         auth_data = data.get("authentications", [])
+#         for auth in auth_data:
+#             username = auth["username"]
+#             user_id = user_lookup.get(username)
+#             if not user_id:
+#                 print(f"Skipping authentication for unknown user '{username}'")
+#                 continue  # Skip if the user does not exist
 
-            existing_auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
-            if existing_auth:
-                print(f"Skipping authentication for user '{username}' as it already exists.")
-                continue  # Prevent duplicate authentication records
+#             existing_auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
+#             if existing_auth:
+#                 print(f"Skipping authentication for user '{username}' as it already exists.")
+#                 continue  # Prevent duplicate authentication records
 
-            new_auth = UserAuthenticate(
-                user_id=user_id,
-                password_hashed=base64.b64decode(auth.get("password_hashed", "c29tZWhhc2hlZHBhc3N3b3Jk")),  # Decode base64 to binary
-                salt=base64.b64decode(auth.get("salt", "c29tZXNhbHQ=")),  # Decode base64 to binary
-                hashing_algorithm=auth["hashing_algorithm"]
-            )
-            db.session.add(new_auth)
-        db.session.commit()
+#             new_auth = UserAuthenticate(
+#                 user_id=user_id,
+#                 password_hashed=base64.b64decode(auth.get("password_hashed", "c29tZWhhc2hlZHBhc3N3b3Jk")),  # Decode base64 to binary
+#                 salt=base64.b64decode(auth.get("salt", "c29tZXNhbHQ=")),  # Decode base64 to binary
+#                 hashing_algorithm=auth["hashing_algorithm"]
+#             )
+#             db.session.add(new_auth)
+#         db.session.commit()
 
-        # -- 3) Insert UserAddress data (Ensure user exists) --
-        addresses_data = data.get("addresses", [])
-        for addr in addresses_data:
-            username = addr["username"]
-            user_id = user_lookup.get(username)
-            if not user_id:
-                print(f"Skipping address for unknown user '{username}'")
-                continue  # Skip if user does not exist
+#         # -- 3) Insert UserAddress data (Ensure user exists) --
+#         addresses_data = data.get("addresses", [])
+#         for addr in addresses_data:
+#             username = addr["username"]
+#             user_id = user_lookup.get(username)
+#             if not user_id:
+#                 print(f"Skipping address for unknown user '{username}'")
+#                 continue  # Skip if user does not exist
 
-            existing_address = UserAddress.query.filter_by(user_id=user_id).first()
-            if existing_address:
-                print(f"Skipping address for user '{username}' as it already exists.")
-                continue  # Prevent duplicate addresses
+#             existing_address = UserAddress.query.filter_by(user_id=user_id).first()
+#             if existing_address:
+#                 print(f"Skipping address for user '{username}' as it already exists.")
+#                 continue  # Prevent duplicate addresses
 
-            new_address = UserAddress(
-                user_id=user_id,
-                street_number=addr["street_number"],
-                street_name=addr["street_name"],
-                unit_number=addr.get("unit_number"),
-                building_name=addr.get("building_name"),
-                district=addr.get("district"),
-                city=addr["city"],
-                state_province=addr["state_province"],
-                postal_code=addr["postal_code"],
-                country=addr["country"]
-            )
-            db.session.add(new_address)
-        db.session.commit()
+#             new_address = UserAddress(
+#                 user_id=user_id,
+#                 street_number=addr["street_number"],
+#                 street_name=addr["street_name"],
+#                 unit_number=addr.get("unit_number"),
+#                 building_name=addr.get("building_name"),
+#                 district=addr.get("district"),
+#                 city=addr["city"],
+#                 state_province=addr["state_province"],
+#                 postal_code=addr["postal_code"],
+#                 country=addr["country"]
+#             )
+#             db.session.add(new_address)
+#         db.session.commit()
 
-        print("Seed data successfully loaded from seeddata.json")
+#         print("Seed data successfully loaded from seeddata.json")
 
-    except IntegrityError as e:
-        db.session.rollback()
-        print(f"Data seeding failed due to integrity error: {e}")
-    except FileNotFoundError:
-        print("seeddata.json not found. Skipping seeding.")
+#     except IntegrityError as e:
+#         db.session.rollback()
+#         print(f"Data seeding failed due to integrity error: {e}")
+#     except FileNotFoundError:
+#         print("seeddata.json not found. Skipping seeding.")
 
 if __name__ == '__main__':
-    with app.app_context():
-        seed_data()
+    # with app.app_context():
+    #     seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

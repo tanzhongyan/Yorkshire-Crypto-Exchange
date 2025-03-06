@@ -22,13 +22,11 @@
     "authentications": [
       {
         "username": "johndoe",
-        "hashing_algorithm": "bcrypt",
         "password_hashed": "c29tZWhhc2hlZHBhc3N3b3Jk", 
         "salt": "c29tZXNhbHQ="
       },
       {
         "username": "janedoe",
-        "hashing_algorithm": "bcrypt",
         "password_hashed": "YXNkbGFzZGpwcGZ3", 
         "salt": "YXNkbGFzZA=="
       }

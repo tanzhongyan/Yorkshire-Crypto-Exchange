@@ -21,30 +21,35 @@ When submitting a pull request (PR), please adhere to the following guidelines:
 
 We follow a structured commit message convention to maintain a clean and understandable commit history.
 
-### Format:
+### Format
+
 ```
 <type>(<scope>): <subject>
 ```
+
 - `<type>` refers to the nature of the change (e.g., `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`).
 - `<scope>` is optional but helps clarify what part of the codebase is affected.
 - `<subject>` is a concise summary of the change.
 
-### Examples:
+### Examples
+
 ```txt
 feat: add user authentication
 fix: resolve database connection issue
 chore: update dependencies
 ```
 
-### References:
+### References
+
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [Semantic Commit Messages Guide](https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716)
 
 ## Reviewing Pull Requests
 
-Code reviews help maintain code quality and share knowledge among contributors. 
+Code reviews help maintain code quality and share knowledge among contributors.
 
-### Review Process:
+### Review Process
+
 - Everyone is encouraged to review PRs.
 - When reviewing, consider:
   - Code readability and maintainability
@@ -55,7 +60,8 @@ Code reviews help maintain code quality and share knowledge among contributors.
 - Leave actionable and constructive feedback.
 - If changes are required, request modifications before approving the PR.
 
-### How to Leave Effective Feedback:
+### How to Leave Effective Feedback
+
 - Be specific about what needs improvement.
 - Suggest alternatives when requesting changes.
 - Ask clarifying questions if something is unclear.

@@ -1,0 +1,24 @@
+{
+    "categories": [
+      {
+        "title": "🚀 Features",
+        "labels": ["feat", "feature"]
+      },
+      {
+        "title": "🐛 Bug Fixes",
+        "labels": ["fix", "bug"]
+      },
+      {
+        "title": "🛠️ Maintenance",
+        "labels": ["chore", "refactor"]
+      },
+      {
+        "title": "📝 Documentation",
+        "labels": ["docs", "documentation"]
+      }
+    ],
+    "sort": {
+      "order": "descending",
+      "on_property": "merged_at"
+    }
+  }  

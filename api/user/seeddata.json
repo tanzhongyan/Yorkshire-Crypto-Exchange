@@ -1,56 +1,56 @@
 {
-    "accounts": [
-      {
-        "username": "johndoe",
-        "fullname": "John Doe",
-        "phone": "1234567890",
-        "email": "johndoe@example.com"
-      },
-      {
-        "username": "janedoe",
-        "fullname": "Jane Doe",
-        "phone": "0987654321",
-        "email": "janedoe@example.com"
-      },
-      {
-        "username": "bobswift",
-        "fullname": "Bob Swift",
-        "phone": "1112223333",
-        "email": "bob.swift@example.com"
-      }
-    ],
-    "authentications": [
-      {
-        "username": "johndoe",
-        "password_hashed": "c29tZWhhc2hlZHBhc3N3b3Jk", 
-        "salt": "c29tZXNhbHQ="
-      },
-      {
-        "username": "janedoe",
-        "password_hashed": "YXNkbGFzZGpwcGZ3", 
-        "salt": "YXNkbGFzZA=="
-      }
-    ],
-    "addresses": [
-      {
-        "username": "johndoe",
-        "street_number": "123",
-        "street_name": "Main Street",
-        "city": "Singapore",
-        "state_province": "Singapore",
-        "postal_code": "123456",
-        "country": "Singapore"
-      },
-      {
-        "username": "janedoe",
-        "street_number": "456",
-        "street_name": "Orchard Road",
-        "unit_number": "12-34",
-        "district": "Central",
-        "city": "Singapore",
-        "state_province": "Singapore",
-        "postal_code": "654321",
-        "country": "Singapore"
-      }
-    ]
-  }  
+  "userAccounts": [
+    {
+      "userName": "johnDoe",
+      "fullName": "John Doe",
+      "phoneNumber": "1234567890",
+      "email": "johndoe@example.com"
+    },
+    {
+      "userName": "janeDoe",
+      "fullName": "Jane Doe",
+      "phoneNumber": "0987654321",
+      "email": "janedoe@example.com"
+    },
+    {
+      "userName": "bobSwift",
+      "fullName": "Bob Swift",
+      "phoneNumber": "1112223333",
+      "email": "bob.swift@example.com"
+    }
+  ],
+  "userAuthentications": [
+    {
+      "userName": "johnDoe",
+      "passwordHashed": "c29tZWhhc2hlZHBhc3N3b3Jk",
+      "salt": "c29tZXNhbHQ="
+    },
+    {
+      "userName": "janeDoe",
+      "passwordHashed": "YXNkbGFzZGpwcGZ3",
+      "salt": "YXNkbGFzZA=="
+    }
+  ],
+  "userAddresses": [
+    {
+      "userName": "johnDoe",
+      "streetNumber": "123",
+      "streetName": "Main Street",
+      "city": "Singapore",
+      "stateProvince": "Singapore",
+      "postalCode": "123456",
+      "country": "Singapore"
+    },
+    {
+      "userName": "janeDoe",
+      "streetNumber": "456",
+      "streetName": "Orchard Road",
+      "unitNumber": "12-34",
+      "district": "Central",
+      "city": "Singapore",
+      "stateProvince": "Singapore",
+      "postalCode": "654321",
+      "country": "Singapore"
+    }
+  ]
+}

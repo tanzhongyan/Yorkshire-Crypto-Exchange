@@ -309,91 +309,95 @@ class UserAddressResource(Resource):
 
 ##### Seeding #####
 # Provide seed data for all tables
-# def seed_data():
-#     try:
-#         with open("seeddata.json", "r") as file:
-#             data = json.load(file)
+def seed_data():
+    try:
+        with open("seeddata.json", "r") as file:
+            data = json.load(file)
 
-#         # -- 1) Insert UserAccount data (Check for existing users to prevent duplicates) --
-#         accounts_data = data.get("accounts", [])
-#         existing_usernames = {u.username for u in UserAccount.query.all()}  # Fetch existing usernames
+        # 1) Insert UserAccount data
+        user_accounts_data = data.get("userAccounts", [])
+        existing_usernames = {u.username for u in UserAccount.query.all()}
 
-#         for acc in accounts_data:
-#             if acc["username"] in existing_usernames:
-#                 print(f"Skipping user '{acc['username']}' as it already exists.")
-#                 continue  # Skip existing users
-            
-#             new_user = UserAccount(
-#                 username=acc["username"],
-#                 fullname=acc["fullname"],
-#                 phone=acc["phone"],
-#                 email=acc["email"]
-#             )
-#             db.session.add(new_user)
-#         db.session.commit()  # Commit so new users get their user_id
+        for acc in user_accounts_data:
+            # Skip if user already exists
+            if acc["userName"] in existing_usernames:
+                print(f"Skipping user '{acc['userName']}' as it already exists.")
+                continue
 
-#         # Create a lookup for user_id by username (for linking authentications and addresses)
-#         user_lookup = {u.username: u.user_id for u in UserAccount.query.all()}
+            new_user = UserAccount(
+                username=acc["userName"],
+                fullname=acc["fullName"],
+                phone=acc["phoneNumber"],
+                email=acc["email"]
+            )
+            db.session.add(new_user)
+        db.session.commit()
 
-#         # -- 2) Insert UserAuthenticate data (Check if user exists) --
-#         auth_data = data.get("authentications", [])
-#         for auth in auth_data:
-#             username = auth["username"]
-#             user_id = user_lookup.get(username)
-#             if not user_id:
-#                 print(f"Skipping authentication for unknown user '{username}'")
-#                 continue  # Skip if the user does not exist
+        # Create a lookup for user_id by username
+        user_lookup = {u.username: u.user_id for u in UserAccount.query.all()}
 
-#             existing_auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
-#             if existing_auth:
-#                 print(f"Skipping authentication for user '{username}' as it already exists.")
-#                 continue  # Prevent duplicate authentication records
+        # 2) Insert UserAuthenticate data
+        user_authentications_data = data.get("userAuthentications", [])
+        for auth in user_authentications_data:
+            username = auth["userName"]
+            user_id = user_lookup.get(username)
 
-#             new_auth = UserAuthenticate(
-#                 user_id=user_id,
-#                 password_hashed=base64.b64decode(auth.get("password_hashed", "c29tZWhhc2hlZHBhc3N3b3Jk")),  # Decode base64 to binary
-#                 salt=base64.b64decode(auth.get("salt", "c29tZXNhbHQ=")),  # Decode base64 to binary
-#                 hashing_algorithm=auth["hashing_algorithm"]
-#             )
-#             db.session.add(new_auth)
-#         db.session.commit()
+            # Skip if the user does not exist
+            if not user_id:
+                print(f"Skipping authentication for unknown user '{username}'")
+                continue
 
-#         # -- 3) Insert UserAddress data (Ensure user exists) --
-#         addresses_data = data.get("addresses", [])
-#         for addr in addresses_data:
-#             username = addr["username"]
-#             user_id = user_lookup.get(username)
-#             if not user_id:
-#                 print(f"Skipping address for unknown user '{username}'")
-#                 continue  # Skip if user does not exist
+            existing_auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
+            if existing_auth:
+                print(f"Skipping authentication for user '{username}' as it already exists.")
+                continue
 
-#             existing_address = UserAddress.query.filter_by(user_id=user_id).first()
-#             if existing_address:
-#                 print(f"Skipping address for user '{username}' as it already exists.")
-#                 continue  # Prevent duplicate addresses
+            new_auth = UserAuthenticate(
+                user_id=user_id,
+                password_hashed=auth.get("passwordHashed", "c29tZWhhc2hlZHBhc3N3b3Jk"),
+                salt=auth.get("salt", "c29tZXNhbHQ="),
+            )
+            db.session.add(new_auth)
+        db.session.commit()
 
-#             new_address = UserAddress(
-#                 user_id=user_id,
-#                 street_number=addr["street_number"],
-#                 street_name=addr["street_name"],
-#                 unit_number=addr.get("unit_number"),
-#                 building_name=addr.get("building_name"),
-#                 district=addr.get("district"),
-#                 city=addr["city"],
-#                 state_province=addr["state_province"],
-#                 postal_code=addr["postal_code"],
-#                 country=addr["country"]
-#             )
-#             db.session.add(new_address)
-#         db.session.commit()
+        # 3) Insert UserAddress data
+        user_addresses_data = data.get("userAddresses", [])
+        for addr in user_addresses_data:
+            username = addr["userName"]
+            user_id = user_lookup.get(username)
 
-#         print("Seed data successfully loaded from seeddata.json")
+            # Skip if user does not exist
+            if not user_id:
+                print(f"Skipping address for unknown user '{username}'")
+                continue
 
-#     except IntegrityError as e:
-#         db.session.rollback()
-#         print(f"Data seeding failed due to integrity error: {e}")
-#     except FileNotFoundError:
-#         print("seeddata.json not found. Skipping seeding.")
+            existing_address = UserAddress.query.filter_by(user_id=user_id).first()
+            if existing_address:
+                print(f"Skipping address for user '{username}' as it already exists.")
+                continue
+
+            new_address = UserAddress(
+                user_id=user_id,
+                street_number=addr["streetNumber"],
+                street_name=addr["streetName"],
+                unit_number=addr.get("unitNumber"),
+                building_name=addr.get("buildingName"),
+                district=addr.get("district"),
+                city=addr["city"],
+                state_province=addr["stateProvince"],
+                postal_code=addr["postalCode"],
+                country=addr["country"]
+            )
+            db.session.add(new_address)
+        db.session.commit()
+
+        print("Seed data successfully loaded from seeddata.json.")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"Data seeding failed due to integrity error: {e}")
+    except FileNotFoundError:
+        print("seeddata.json not found. Skipping seeding.")
 
 # Add name spaces into api
 api.add_namespace(account_ns)
@@ -401,6 +405,6 @@ api.add_namespace(authenticate_ns)
 api.add_namespace(address_ns)
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     seed_data()
+    with app.app_context():
+        seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

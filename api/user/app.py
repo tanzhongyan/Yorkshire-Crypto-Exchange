@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_restx import Api, Resource, fields
+from flask_restx import Api, Resource, fields, Namespace
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
@@ -44,6 +44,13 @@ migrate = Migrate(app, db)
 # Creates API documentation automatically
 api = Api(app, version=API_VERSION, title='User API', description='User API for Yorkshire Crypto Exchange')
 
+# Define namespaces to group api calls together
+# Namespaces are essentially folders that group all APIs calls related to a table
+# You can treat it as table_ns
+# Its essential that you use this at your routes
+account_ns = Namespace('account', description='Account related operations')
+authenticate_ns = Namespace('authenticate', description='Authenticate related operations')
+address_ns = Namespace('address', description='Address related operations')
 
 ##### DB table classes declaration - flask migrate #####
 # To use flask migrate, you have to create classes for the table of the entity
@@ -98,7 +105,7 @@ class UserAddress(db.Model):
 # E.g. Input/Output One/Many user account
 
 # Output One/Many user account
-user_output_model = api.model('UserOutput', {
+user_output_model = account_ns.model('UserOutput', {
     'user_id': fields.String(readOnly=True, description='The unique identifier of a user'),
     'username': fields.String(required=True, description='The username'),
     'fullname': fields.String(required=True, description='The full name'),
@@ -107,7 +114,7 @@ user_output_model = api.model('UserOutput', {
 })
 
 # Input One user account
-user_input_model = api.model('UserInput', {
+user_input_model = account_ns.model('UserInput', {
     'username': fields.String(required=True, description='The username'),
     'fullname': fields.String(required=True, description='The full name'),
     'phone': fields.String(required=True, description='The phone number'),
@@ -115,19 +122,19 @@ user_input_model = api.model('UserInput', {
 })
 
 # output one user authenticate
-auth_output_model = api.model('AuthOutput', {
+auth_output_model = authenticate_ns.model('AuthOutput', {
     'user_id': fields.String(required=True, description='The associated user ID'),
     'password_hashed': fields.String(required=True, description='The hashed password'),
     'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
 # Input one user authenticate
-auth_input_model = api.model('AuthInput', {
+auth_input_model = authenticate_ns.model('AuthInput', {
     'password_hashed': fields.String(required=True, description='The hashed password'),
     'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
-address_model = api.model('UserAddress', {
+address_model = address_ns.model('UserAddress', {
     'address_id': fields.String(readOnly=True, description='The unique identifier of an address'),
     'user_id': fields.String(required=True, description='The associated user ID'),
     'street_number': fields.String(required=True, description='The street number'),
@@ -143,15 +150,15 @@ address_model = api.model('UserAddress', {
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
 # CRUD for UserAccount
-@api.route(f'{API_ROOT}/user/account')
+@account_ns.route(f'{API_ROOT}/user/account')
 class UserAccountListResource(Resource):
-    @api.marshal_list_with(user_output_model)
+    @account_ns.marshal_list_with(user_output_model)
     def get(self):
         """Fetch all user accounts"""
         return UserAccount.query.all()
 
-    @api.expect(user_input_model, validate=True)
-    @api.marshal_with(user_output_model, code=201)
+    @account_ns.expect(user_input_model, validate=True)
+    @account_ns.marshal_with(user_output_model, code=201)
     def post(self):
         """Create a new user account"""
         data = request.json
@@ -165,17 +172,17 @@ class UserAccountListResource(Resource):
         db.session.commit()
         return new_user, 201
 
-@api.route(f'{API_ROOT}/user/account/<uuid:user_id>')
-@api.param('user_id', 'The unique identifier of a user') # Alternative code: @api.doc(params={'user_id':'The unique identifier of a user'}) 
+@account_ns.route(f'{API_ROOT}/user/account/<uuid:user_id>')
+@account_ns.param('user_id', 'The unique identifier of a user') # Alternative code: @account_ns.doc(params={'user_id':'The unique identifier of a user'}) 
 class UserAccountResource(Resource):
-    @api.marshal_with(user_output_model)
+    @account_ns.marshal_with(user_output_model)
     def get(self, user_id):
         """Fetch a user account by ID"""
         user = UserAccount.query.get_or_404(user_id, description='User not found')
         return user
 
-    @api.expect(user_input_model, validate=True)
-    @api.marshal_with(user_output_model)
+    @account_ns.expect(user_input_model, validate=True)
+    @account_ns.marshal_with(user_output_model)
     def put(self, user_id):
         """Update an existing user account"""
         user = UserAccount.query.get_or_404(user_id, description='User not found')
@@ -195,25 +202,25 @@ class UserAccountResource(Resource):
         return {'message': 'User deleted successfully'}
 
 # CRU for UserAuthenticate. No delete as delete is cascaded from account table.
-@api.route(f'{API_ROOT}/user/authenticate/<uuid:user_id>')
-@api.param('user_id', 'The unique identifier of a user')
+@authenticate_ns.route(f'{API_ROOT}/user/authenticate/<uuid:user_id>')
+@authenticate_ns.param('user_id', 'The unique identifier of a user')
 class UserAuthenticateResource(Resource):
-    @api.marshal_with(auth_output_model)
+    @authenticate_ns.marshal_with(auth_output_model)
     def get(self, user_id):
         """Fetch authentication details by user ID"""
         auth = UserAuthenticate.query.get(user_id)
         if not auth:
-            api.abort(404, 'Authentication record not found')
+            authenticate_ns.abort(404, 'Authentication record not found')
         return auth
 
-    @api.expect(auth_input_model, validate=True)
-    @api.marshal_with(auth_output_model, code=201)
+    @authenticate_ns.expect(auth_input_model, validate=True)
+    @authenticate_ns.marshal_with(auth_output_model, code=201)
     def post(self, user_id):
         """Create a new authentication record (password & salt are pre-hashed)"""
         data = request.json
         existing_auth = UserAuthenticate.query.get(user_id)
         if existing_auth:
-            api.abort(400, 'Authentication record already exists')
+            authenticate_ns.abort(400, 'Authentication record already exists')
 
         new_auth = UserAuthenticate(
             user_id=user_id,
@@ -224,13 +231,13 @@ class UserAuthenticateResource(Resource):
         db.session.commit()
         return new_auth, 201
 
-    @api.expect(auth_input_model, validate=True)
-    @api.marshal_with(auth_output_model)
+    @authenticate_ns.expect(auth_input_model, validate=True)
+    @authenticate_ns.marshal_with(auth_output_model)
     def put(self, user_id):
         """Update password and salt for a user"""
         auth = UserAuthenticate.query.get(user_id)
         if not auth:
-            api.abort(404, 'Authentication record not found')
+            authenticate_ns.abort(404, 'Authentication record not found')
 
         data = request.json
         auth.password_hashed = data.get('password_hashed', auth.password_hashed)
@@ -240,15 +247,15 @@ class UserAuthenticateResource(Resource):
         return auth
 
 # CRUD for UserAddress
-@api.route(f'{API_ROOT}/user/address')
+@address_ns.route(f'{API_ROOT}/user/address')
 class UserAddressListResource(Resource):
-    @api.marshal_list_with(address_model)
+    @address_ns.marshal_list_with(address_model)
     def get(self):
         """Fetch all user addresses"""
         return UserAddress.query.all()
 
-    @api.expect(address_model)
-    @api.marshal_with(address_model, code=201)
+    @address_ns.expect(address_model)
+    @address_ns.marshal_with(address_model, code=201)
     def post(self):
         """Create a new user address"""
         data = request.json
@@ -265,24 +272,24 @@ class UserAddressListResource(Resource):
         db.session.commit()
         return new_address, 201
 
-@api.route(f'{API_ROOT}/user/address/<uuid:address_id>')
-@api.param('address_id', 'The unique identifier of a user address')
+@address_ns.route(f'{API_ROOT}/user/address/<uuid:address_id>')
+@address_ns.param('address_id', 'The unique identifier of a user address')
 class UserAddressResource(Resource):
-    @api.marshal_with(address_model)
+    @address_ns.marshal_with(address_model)
     def get(self, address_id):
         """Fetch a user address by ID"""
         address = UserAddress.query.get(address_id)
         if not address:
-            api.abort(404, 'Address not found')
+            address_ns.abort(404, 'Address not found')
         return address
 
-    @api.expect(address_model)
-    @api.marshal_with(address_model)
+    @address_ns.expect(address_model)
+    @address_ns.marshal_with(address_model)
     def put(self, address_id):
         """Update an existing user address"""
         address = UserAddress.query.get(address_id)
         if not address:
-            api.abort(404, 'Address not found')
+            address_ns.abort(404, 'Address not found')
         data = request.json
         address.street_number = data.get('street_number', address.street_number)
         address.street_name = data.get('street_name', address.street_name)
@@ -297,7 +304,7 @@ class UserAddressResource(Resource):
         """Delete an existing user address"""
         address = UserAddress.query.get(address_id)
         if not address:
-            api.abort(404, 'Address not found')
+            address_ns.abort(404, 'Address not found')
         db.session.delete(address)
         db.session.commit()
         return {'message': 'Address deleted successfully'}
@@ -390,6 +397,11 @@ class UserAddressResource(Resource):
 #         print(f"Data seeding failed due to integrity error: {e}")
 #     except FileNotFoundError:
 #         print("seeddata.json not found. Skipping seeding.")
+
+# Add name spaces into api
+api.add_namespace(account_ns)
+api.add_namespace(authenticate_ns)
+api.add_namespace(address_ns)
 
 if __name__ == '__main__':
     # with app.app_context():

@@ -12,6 +12,11 @@ Before running the project, ensure you have Python installed and install depende
    ```
    Ensure Python version **3.9 or earlier** is installed.
 
+   Do this inside VSCode terminal. If the output is an error, check the following:
+   - In search bar, search "add or remove programs". Search "python" within "add or remove programs". It should show the version of python you have installed.
+   - If there's nothing there, install it at [python.org](https://www.python.org/downloads/). The latest stable version is version 3.13.
+   - After installing it, in VSCode, press `ctrl` + `shift` + `p` and search "python: create environment". Click on "Venv". Click on the latest version of python you have. Tick "requirements.txt" checkbox and press "OK". Your repository should now have a ".venv" file.
+
 2. **Install Required Dependencies**
    Navigate to the project's root directory and install dependencies:
    ```sh

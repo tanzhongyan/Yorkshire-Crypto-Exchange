@@ -81,8 +81,7 @@ class UserAuthenticate(db.Model):
 
 class UserAddress(db.Model):
     __tablename__ = 'user_address'
-    address_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user_account.user_id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user_account.user_id', ondelete='CASCADE'), nullable=False, primary_key=True)
     street_number = db.Column(db.String(10), nullable=False)
     street_name = db.Column(db.String(100), nullable=False)
     unit_number = db.Column(db.String(20))
@@ -92,11 +91,10 @@ class UserAddress(db.Model):
     state_province = db.Column(db.String(100), nullable=False)
     postal_code = db.Column(db.String(20), nullable=False)
     country = db.Column(db.String(100), nullable=False)
-    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    user = db.relationship('UserAccount', back_populates='addresses')
+    user = db.relationship('UserAccount', back_populates='addresses', uselist=False)
 
 
 ##### API Models - flask restx API autodoc #####
@@ -134,9 +132,19 @@ auth_input_model = authenticate_ns.model('AuthInput', {
     'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
-address_model = address_ns.model('UserAddress', {
-    'address_id': fields.String(readOnly=True, description='The unique identifier of an address'),
+# output one user address
+address_output_model = address_ns.model('AddressOutput', {
     'user_id': fields.String(required=True, description='The associated user ID'),
+    'street_number': fields.String(required=True, description='The street number'),
+    'street_name': fields.String(required=True, description='The street name'),
+    'city': fields.String(required=True, description='The city'),
+    'state_province': fields.String(required=True, description='The state or province'),
+    'postal_code': fields.String(required=True, description='The postal code'),
+    'country': fields.String(required=True, description='The country')
+})
+
+# input one user address
+address_input_model = address_ns.model('AddressInput', {
     'street_number': fields.String(required=True, description='The street number'),
     'street_name': fields.String(required=True, description='The street name'),
     'city': fields.String(required=True, description='The city'),
@@ -246,21 +254,29 @@ class UserAuthenticateResource(Resource):
         db.session.commit()
         return auth
 
-# CRUD for UserAddress
-@address_ns.route(f'{API_ROOT}/user/address')
-class UserAddressListResource(Resource):
-    @address_ns.marshal_list_with(address_model)
-    def get(self):
-        """Fetch all user addresses"""
-        return UserAddress.query.all()
+# CRU for UserAddress. No delete as delete is cascaded from account table.
+@address_ns.route(f'{API_ROOT}/user/address/<uuid:user_id>')
+@address_ns.param('user_id', 'The unique identifier of a user') 
+class UserAddressResource(Resource):
+    @address_ns.marshal_with(address_output_model)
+    def get(self, user_id):
+        """Fetch a user address by User ID (One-to-One Relationship)"""
+        address = UserAddress.query.filter_by(user_id=user_id).first()
+        if not address:
+            address_ns.abort(404, 'Address not found')
+        return address
 
-    @address_ns.expect(address_model)
-    @address_ns.marshal_with(address_model, code=201)
-    def post(self):
-        """Create a new user address"""
+    @address_ns.expect(address_input_model, validate=True)
+    @address_ns.marshal_with(address_output_model, code=201)
+    def post(self, user_id):
+        """Create a new user address (User ID is taken from the path, not body)"""
+        existing_address = UserAddress.query.filter_by(user_id=user_id).first()
+        if existing_address:
+            address_ns.abort(400, 'Address already exists for this user')
+
         data = request.json
         new_address = UserAddress(
-            user_id=data.get('user_id'),
+            user_id=user_id,  # ✅ user_id from the path, not from request body
             street_number=data.get('street_number'),
             street_name=data.get('street_name'),
             city=data.get('city'),
@@ -272,24 +288,14 @@ class UserAddressListResource(Resource):
         db.session.commit()
         return new_address, 201
 
-@address_ns.route(f'{API_ROOT}/user/address/<uuid:address_id>')
-@address_ns.param('address_id', 'The unique identifier of a user address')
-class UserAddressResource(Resource):
-    @address_ns.marshal_with(address_model)
-    def get(self, address_id):
-        """Fetch a user address by ID"""
-        address = UserAddress.query.get(address_id)
+    @address_ns.expect(address_input_model, validate=True)
+    @address_ns.marshal_with(address_output_model)
+    def put(self, user_id):
+        """Update an existing user address (using user_id in path)"""
+        address = UserAddress.query.filter_by(user_id=user_id).first()
         if not address:
             address_ns.abort(404, 'Address not found')
-        return address
 
-    @address_ns.expect(address_model)
-    @address_ns.marshal_with(address_model)
-    def put(self, address_id):
-        """Update an existing user address"""
-        address = UserAddress.query.get(address_id)
-        if not address:
-            address_ns.abort(404, 'Address not found')
         data = request.json
         address.street_number = data.get('street_number', address.street_number)
         address.street_name = data.get('street_name', address.street_name)
@@ -297,18 +303,9 @@ class UserAddressResource(Resource):
         address.state_province = data.get('state_province', address.state_province)
         address.postal_code = data.get('postal_code', address.postal_code)
         address.country = data.get('country', address.country)
+
         db.session.commit()
         return address
-
-    def delete(self, address_id):
-        """Delete an existing user address"""
-        address = UserAddress.query.get(address_id)
-        if not address:
-            address_ns.abort(404, 'Address not found')
-        db.session.delete(address)
-        db.session.commit()
-        return {'message': 'Address deleted successfully'}
-
 
 ##### Seeding #####
 # Provide seed data for all tables

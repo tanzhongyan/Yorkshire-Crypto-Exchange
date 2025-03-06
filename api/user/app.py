@@ -104,7 +104,7 @@ class UserAddress(db.Model):
 
 # Output One/Many user account
 user_output_model = account_ns.model('UserOutput', {
-    'user_id': fields.String(readOnly=True, description='The unique identifier of a user'),
+    'userId': fields.String(attribute='user_id', readOnly=True, description='The unique identifier of a user'),
     'username': fields.String(required=True, description='The username'),
     'fullname': fields.String(required=True, description='The full name'),
     'phone': fields.String(required=True, description='The phone number'),
@@ -121,35 +121,35 @@ user_input_model = account_ns.model('UserInput', {
 
 # output one user authenticate
 auth_output_model = authenticate_ns.model('AuthOutput', {
-    'user_id': fields.String(required=True, description='The associated user ID'),
-    'password_hashed': fields.String(required=True, description='The hashed password'),
+    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
+    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password'),
     'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
 # Input one user authenticate
 auth_input_model = authenticate_ns.model('AuthInput', {
-    'password_hashed': fields.String(required=True, description='The hashed password'),
+    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password'),
     'salt': fields.String(required=True, description='The salt used for hashing')
 })
 
 # output one user address
 address_output_model = address_ns.model('AddressOutput', {
-    'user_id': fields.String(required=True, description='The associated user ID'),
-    'street_number': fields.String(required=True, description='The street number'),
-    'street_name': fields.String(required=True, description='The street name'),
+    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
+    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
+    'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
     'city': fields.String(required=True, description='The city'),
-    'state_province': fields.String(required=True, description='The state or province'),
-    'postal_code': fields.String(required=True, description='The postal code'),
+    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
+    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
     'country': fields.String(required=True, description='The country')
 })
 
 # input one user address
 address_input_model = address_ns.model('AddressInput', {
-    'street_number': fields.String(required=True, description='The street number'),
-    'street_name': fields.String(required=True, description='The street name'),
+    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
+    'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
     'city': fields.String(required=True, description='The city'),
-    'state_province': fields.String(required=True, description='The state or province'),
-    'postal_code': fields.String(required=True, description='The postal code'),
+    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
+    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
     'country': fields.String(required=True, description='The country')
 })
 
@@ -180,20 +180,20 @@ class UserAccountListResource(Resource):
         db.session.commit()
         return new_user, 201
 
-@account_ns.route(f'{API_ROOT}/user/account/<uuid:user_id>')
-@account_ns.param('user_id', 'The unique identifier of a user') # Alternative code: @account_ns.doc(params={'user_id':'The unique identifier of a user'}) 
+@account_ns.route(f'{API_ROOT}/user/account/<uuid:userId>')
+@account_ns.param('userId', 'The unique identifier of a user') # Alternative code: @account_ns.doc(params={'userId':'The unique identifier of a user'}) 
 class UserAccountResource(Resource):
     @account_ns.marshal_with(user_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Fetch a user account by ID"""
-        user = UserAccount.query.get_or_404(user_id, description='User not found')
+        user = UserAccount.query.get_or_404(userId, description='User not found')
         return user
 
     @account_ns.expect(user_input_model, validate=True)
     @account_ns.marshal_with(user_output_model)
-    def put(self, user_id):
+    def put(self, userId):
         """Update an existing user account"""
-        user = UserAccount.query.get_or_404(user_id, description='User not found')
+        user = UserAccount.query.get_or_404(userId, description='User not found')
         data = request.json
         user.username = data.get('username', user.username)
         user.fullname = data.get('fullname', user.fullname)
@@ -202,37 +202,37 @@ class UserAccountResource(Resource):
         db.session.commit()
         return user
 
-    def delete(self, user_id):
+    def delete(self, userId):
         """Delete an existing user account"""
-        user = UserAccount.query.get_or_404(user_id, description='User not found')
+        user = UserAccount.query.get_or_404(userId, description='User not found')
         db.session.delete(user)
         db.session.commit()
         return {'message': 'User deleted successfully'}
 
 # CRU for UserAuthenticate. No delete as delete is cascaded from account table.
-@authenticate_ns.route(f'{API_ROOT}/user/authenticate/<uuid:user_id>')
-@authenticate_ns.param('user_id', 'The unique identifier of a user')
+@authenticate_ns.route(f'{API_ROOT}/user/authenticate/<uuid:userId>')
+@authenticate_ns.param('userId', 'The unique identifier of a user')
 class UserAuthenticateResource(Resource):
     @authenticate_ns.marshal_with(auth_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Fetch authentication details by user ID"""
-        auth = UserAuthenticate.query.get(user_id)
+        auth = UserAuthenticate.query.get(userId)
         if not auth:
             authenticate_ns.abort(404, 'Authentication record not found')
         return auth
 
     @authenticate_ns.expect(auth_input_model, validate=True)
     @authenticate_ns.marshal_with(auth_output_model, code=201)
-    def post(self, user_id):
+    def post(self, userId):
         """Create a new authentication record (password & salt are pre-hashed)"""
         data = request.json
-        existing_auth = UserAuthenticate.query.get(user_id)
+        existing_auth = UserAuthenticate.query.get(userId)
         if existing_auth:
             authenticate_ns.abort(400, 'Authentication record already exists')
 
         new_auth = UserAuthenticate(
-            user_id=user_id,
-            password_hashed=data.get('password_hashed'),
+            user_id=userId,
+            password_hashed=data.get('passwordHashed'),
             salt=data.get('salt')
         )
         db.session.add(new_auth)
@@ -241,9 +241,9 @@ class UserAuthenticateResource(Resource):
 
     @authenticate_ns.expect(auth_input_model, validate=True)
     @authenticate_ns.marshal_with(auth_output_model)
-    def put(self, user_id):
+    def put(self, userId):
         """Update password and salt for a user"""
-        auth = UserAuthenticate.query.get(user_id)
+        auth = UserAuthenticate.query.get(userId)
         if not auth:
             authenticate_ns.abort(404, 'Authentication record not found')
 
@@ -255,33 +255,33 @@ class UserAuthenticateResource(Resource):
         return auth
 
 # CRU for UserAddress. No delete as delete is cascaded from account table.
-@address_ns.route(f'{API_ROOT}/user/address/<uuid:user_id>')
-@address_ns.param('user_id', 'The unique identifier of a user') 
+@address_ns.route(f'{API_ROOT}/user/address/<uuid:userId>')
+@address_ns.param('userId', 'The unique identifier of a user') 
 class UserAddressResource(Resource):
     @address_ns.marshal_with(address_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Fetch a user address by User ID (One-to-One Relationship)"""
-        address = UserAddress.query.filter_by(user_id=user_id).first()
+        address = UserAddress.query.filter_by(user_id=userId).first()
         if not address:
             address_ns.abort(404, 'Address not found')
         return address
 
     @address_ns.expect(address_input_model, validate=True)
     @address_ns.marshal_with(address_output_model, code=201)
-    def post(self, user_id):
+    def post(self, userId):
         """Create a new user address (User ID is taken from the path, not body)"""
-        existing_address = UserAddress.query.filter_by(user_id=user_id).first()
+        existing_address = UserAddress.query.filter_by(user_id=userId).first()
         if existing_address:
             address_ns.abort(400, 'Address already exists for this user')
 
         data = request.json
         new_address = UserAddress(
-            user_id=user_id,  # ✅ user_id from the path, not from request body
-            street_number=data.get('street_number'),
-            street_name=data.get('street_name'),
+            user_id=userId,  # ✅ user_id from the path, not from request body
+            street_number=data.get('streetNumber'),
+            street_name=data.get('streetName'),
             city=data.get('city'),
-            state_province=data.get('state_province'),
-            postal_code=data.get('postal_code'),
+            state_province=data.get('stateProvince'),
+            postal_code=data.get('postalCode'),
             country=data.get('country')
         )
         db.session.add(new_address)
@@ -290,18 +290,18 @@ class UserAddressResource(Resource):
 
     @address_ns.expect(address_input_model, validate=True)
     @address_ns.marshal_with(address_output_model)
-    def put(self, user_id):
+    def put(self, userId):
         """Update an existing user address (using user_id in path)"""
-        address = UserAddress.query.filter_by(user_id=user_id).first()
+        address = UserAddress.query.filter_by(user_id=userId).first()
         if not address:
             address_ns.abort(404, 'Address not found')
 
         data = request.json
-        address.street_number = data.get('street_number', address.street_number)
-        address.street_name = data.get('street_name', address.street_name)
+        address.street_number = data.get('streetNumber', address.street_number)
+        address.street_name = data.get('streetName', address.street_name)
         address.city = data.get('city', address.city)
-        address.state_province = data.get('state_province', address.state_province)
-        address.postal_code = data.get('postal_code', address.postal_code)
+        address.state_province = data.get('stateProvince', address.state_province)
+        address.postal_code = data.get('postalCode', address.postal_code)
         address.country = data.get('country', address.country)
 
         db.session.commit()

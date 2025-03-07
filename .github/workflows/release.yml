@@ -34,7 +34,7 @@ jobs:
 
       - name: Build Changelog
         id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v6 # ✅ Upgraded to v6
+        uses: mikepenz/release-changelog-builder-action@v5  # ✅ Revert to v5
         with:
           configuration: .github/release-changelog-builder-config.json
         env:
@@ -62,4 +62,4 @@ jobs:
         with:
           tag_name: ${{ steps.increment_version.outputs.version }}
           release_name: "Release ${{ steps.increment_version.outputs.version }}"
-          body_path: CHANGELOG.txt # ✅ Uses generated changelog file instead of set-output
+          body_path: CHANGELOG.txt  # ✅ Uses generated changelog file

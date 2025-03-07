@@ -77,7 +77,6 @@ class UserAuthenticate(db.Model):
     __tablename__ = 'user_authenticate'
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user_account.user_id', ondelete='CASCADE'), nullable=False, primary_key=True)
     password_hashed = db.Column(db.String, nullable=False)
-    salt = db.Column(db.String, nullable=False)
     updated = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
@@ -126,14 +125,12 @@ user_input_model = account_ns.model('UserInput', {
 # output one user authenticate
 auth_output_model = authenticate_ns.model('AuthOutput', {
     'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
-    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password'),
-    'salt': fields.String(required=True, description='The salt used for hashing')
+    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password')
 })
 
 # Input one user authenticate
 auth_input_model = authenticate_ns.model('AuthInput', {
-    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password'),
-    'salt': fields.String(required=True, description='The salt used for hashing')
+    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password')
 })
 
 # output one user address
@@ -141,6 +138,9 @@ address_output_model = address_ns.model('AddressOutput', {
     'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
     'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
     'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
+    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
+    'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
+    'district': fields.String(attribute='district',required=False, description='The district'),
     'city': fields.String(required=True, description='The city'),
     'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
     'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
@@ -151,6 +151,9 @@ address_output_model = address_ns.model('AddressOutput', {
 address_input_model = address_ns.model('AddressInput', {
     'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
     'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
+    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
+    'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
+    'district': fields.String(attribute='district',required=False, description='The district'),
     'city': fields.String(required=True, description='The city'),
     'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
     'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
@@ -171,7 +174,7 @@ class UserAccountListResource(Resource):
 
     @account_ns.expect(user_input_model, validate=True)
     @account_ns.marshal_with(user_output_model, code=201)
-    def post(self):
+    def post(self): 
         """Create a new user account"""
         data = request.json
         new_user = UserAccount(
@@ -180,9 +183,12 @@ class UserAccountListResource(Resource):
             phone=data.get('phone'),
             email=data.get('email')
         )
-        db.session.add(new_user)
-        db.session.commit()
-        return new_user, 201
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            return new_user, 201
+        except:
+            account_ns.abort(400, 'Username or email already exists')
 
 @account_ns.route('/<uuid:userId>')
 @account_ns.param('userId', 'The unique identifier of a user') # Alternative code: @account_ns.doc(params={'userId':'The unique identifier of a user'}) 
@@ -203,8 +209,11 @@ class UserAccountResource(Resource):
         user.fullname = data.get('fullname', user.fullname)
         user.phone = data.get('phone', user.phone)
         user.email = data.get('email', user.email)
-        db.session.commit()
-        return user
+        try:
+            db.session.commit()
+            return user
+        except:
+            account_ns.abort(400, 'Username or email already exists')
 
     def delete(self, userId):
         """Delete an existing user account"""
@@ -228,7 +237,7 @@ class UserAuthenticateResource(Resource):
     @authenticate_ns.expect(auth_input_model, validate=True)
     @authenticate_ns.marshal_with(auth_output_model, code=201)
     def post(self, userId):
-        """Create a new authentication record (password & salt are pre-hashed)"""
+        """Create a new authentication record (password pre-hashed)"""
         data = request.json
         existing_auth = UserAuthenticate.query.get(userId)
         if existing_auth:
@@ -236,8 +245,7 @@ class UserAuthenticateResource(Resource):
 
         new_auth = UserAuthenticate(
             user_id=userId,
-            password_hashed=data.get('passwordHashed'),
-            salt=data.get('salt')
+            password_hashed=data.get('passwordHashed')
         )
         db.session.add(new_auth)
         db.session.commit()
@@ -246,18 +254,16 @@ class UserAuthenticateResource(Resource):
     @authenticate_ns.expect(auth_input_model, validate=True)
     @authenticate_ns.marshal_with(auth_output_model)
     def put(self, userId):
-        """Update password and salt for a user"""
-        auth = UserAuthenticate.query.get(userId)
-        if not auth:
-            authenticate_ns.abort(404, 'Authentication record not found')
-
+        """Update password for a user"""
+        auth = UserAuthenticate.query.get_or_404(userId, description="Authentication record not found")
         data = request.json
-        auth.password_hashed = data.get('password_hashed', auth.password_hashed)
-        auth.salt = data.get('salt', auth.salt)
-
-        db.session.commit()
-        return auth
-
+        auth.password_hashed = data.get("passwordHashed", auth.password_hashed)
+        try:
+            db.session.commit()
+            return auth
+        except:
+            account_ns.abort(500, 'Something went wrong')
+        
 # CRU for UserAddress. No delete as delete is cascaded from account table.
 @address_ns.route('/<uuid:userId>')
 @address_ns.param('userId', 'The unique identifier of a user') 
@@ -283,6 +289,9 @@ class UserAddressResource(Resource):
             user_id=userId,  # ✅ user_id from the path, not from request body
             street_number=data.get('streetNumber'),
             street_name=data.get('streetName'),
+            unit_number=data.get('unitNumber'),
+            building_name=data.get('buildingName'),
+            district=data.get('district'),
             city=data.get('city'),
             state_province=data.get('stateProvince'),
             postal_code=data.get('postalCode'),
@@ -303,6 +312,9 @@ class UserAddressResource(Resource):
         data = request.json
         address.street_number = data.get('streetNumber', address.street_number)
         address.street_name = data.get('streetName', address.street_name)
+        address.unit_number=data.get('unitNumber', address.unit_number),
+        address.building_name=data.get('buildingName', address.building_name),
+        address.district=data.get('district', address.district),
         address.city = data.get('city', address.city)
         address.state_province = data.get('stateProvince', address.state_province)
         address.postal_code = data.get('postalCode', address.postal_code)
@@ -358,8 +370,7 @@ def seed_data():
 
             new_auth = UserAuthenticate(
                 user_id=user_id,
-                password_hashed=auth.get("passwordHashed", "c29tZWhhc2hlZHBhc3N3b3Jk"),
-                salt=auth.get("salt", "c29tZXNhbHQ="),
+                password_hashed=auth.get("passwordHashed", "c29tZWhhc2hlZHBhc3N3b3Jk")
             )
             db.session.add(new_auth)
         db.session.commit()

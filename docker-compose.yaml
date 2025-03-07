@@ -54,6 +54,18 @@ services:
     volumes:
       - user_data:/var/lib/user_service
 
+  identity-service:
+    container_name: identity-service
+    build:
+      context: ./api/composite/identity
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+
   # rabbitmq:
   #   image: rabbitmq:management
   #   ports:

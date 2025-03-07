@@ -22,11 +22,13 @@
   "userAuthentications": [
     {
       "userName": "johnDoe",
-      "passwordHashed": "c29tZWhhc2hlZHBhc3N3b3Jk"
+      "passwordHashed": "c29tZWhhc2hlZHBhc3N3b3Jk",
+      "salt": "c29tZXNhbHQ="
     },
     {
       "userName": "janeDoe",
-      "passwordHashed": "YXNkbGFzZGpwcGZ3"
+      "passwordHashed": "YXNkbGFzZGpwcGZ3",
+      "salt": "YXNkbGFzZA=="
     }
   ],
   "userAddresses": [

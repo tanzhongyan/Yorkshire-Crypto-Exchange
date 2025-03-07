@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Ensure migrations run before starting the service
-CMD ["sh", "-c", "flask db upgrade && python app.py"]
+CMD ["python","app.py"]

@@ -145,15 +145,15 @@ class CreateAccount(Resource):
         postal_code = data.get("postalCode")
         country = data.get("country")
 
-        # ✅ Fix 1: Validate required fields properly
+        # Validate required fields properly
         required_fields = [username, password, fullname, phone, email, country, street_number, street_name, city, state_province, postal_code]
         if None in required_fields or "" in required_fields:
             return {"error": "Missing required fields"}, 400  # Bad request response
 
-        # ✅ Fix 2: Hash the password before storing it
+        # Hash the password before storing it
         password_hashed = hash_password(password)
 
-        # ✅ Fix 3: Create the user in account under user microservice
+        # Create the user in account under user microservice
         user_account_payload = {
             "username": username,
             "fullname": fullname,
@@ -174,11 +174,11 @@ class CreateAccount(Resource):
 
         user_id = user_data.get("userId")
 
-        # ✅ Fix 4: Ensure user_id is retrieved correctly
+        # Ensure user_id is retrieved correctly
         if not user_id:
             return {"error": "User ID missing from response"}, 500
 
-        # ✅ Fix 5: Store authentication details in authenticate under users microservice
+        # Store authentication details in authenticate under users microservice
         user_auth_payload = {
             "passwordHashed": password_hashed
         }
@@ -193,7 +193,7 @@ class CreateAccount(Resource):
         except requests.RequestException as e:
             return {"error": "Failed to connect to authentication service", "details": str(e)}, 500
 
-        # ✅ Fix 6: Store address details in address under user microservice
+        # Store address details in address under user microservice
         user_address_payload = {
             "streetNumber": street_number,
             "streetName": street_name,
@@ -217,6 +217,8 @@ class CreateAccount(Resource):
             return {"error": "Failed to connect to address service", "details": str(e)}, 500
 
         return {"message": "User account successfully created", "user_id": user_id}, 201
+    
+        # Create fiat wallet using fiat microservice
 
 # Add name spaces into api
 api.add_namespace(identity_ns)

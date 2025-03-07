@@ -2,7 +2,7 @@ services:
   # fiat-service:
   #   container_name: fiat-service
   #   build:
-  #     context: ./api/fiat
+  #     context: ./api/atomic/fiat
   #     dockerfile: Dockerfile
   #   ports:
   #     - "5001:5000"
@@ -19,7 +19,7 @@ services:
   # crypto-service:
   #   container_name: crypto-service
   #   build:
-  #     context: ./api/crypto
+  #     context: ./api/atomic/crypto
   #     dockerfile: Dockerfile
   #   ports:
   #     - "5002:5000"
@@ -36,7 +36,7 @@ services:
   user-service:
     container_name: user-service
     build:
-      context: ./api/user
+      context: ./api/atomic/user
       dockerfile: Dockerfile
     ports:
       - "5003:5000"

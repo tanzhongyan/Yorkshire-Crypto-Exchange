@@ -67,7 +67,7 @@ If you face issues when deploying the postgres container like "user_db" not foun
    - Navigate into the respective microservice directory before running migrations:
 
      ```sh
-     cd ./api/user  # or ./api/fiat, ./api/crypto
+     cd ./api/atomic/user  # or ./api/atomic/fiat, ./api/atomic/crypto
      ```
 
    - The migration file is executed to initialise database tables.
@@ -90,7 +90,7 @@ If you face issues when deploying the postgres container like "user_db" not foun
 Navigate to the microservice folder first:
 
 ```sh
-cd ./api/user  # or ./api/fiat, ./api/crypto
+cd ./api/atomic/user  # or ./api/atomic/fiat, ./api/atomic/crypto
 ```
 
 Run the following commands to create the migration files and apply them:

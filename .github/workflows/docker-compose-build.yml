@@ -1,0 +1,53 @@
+name: CI - Docker Compose Build & Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Test Containers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎 Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: 🏗️ Install Docker Compose (Fix for "command not found")
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+          
+      - name: 🏗️ Build and Start Services with Docker Compose
+        run: |
+          docker-compose up -d --build
+
+      - name: ⏳ Wait for Containers to Initialize
+        run: sleep 10  # Adjust based on startup time
+
+      - name: ✅ Check Running Containers
+        run: |
+          if [ "$(docker ps -q | wc -l)" -eq 0 ]; then
+            echo "🚨 No containers are running! Build failed."
+            exit 1
+          fi
+
+      - name: 🔍 Detect Failed Containers
+        run: |
+          EXITED_CONTAINERS=$(docker ps -a --filter "status=exited" --format "{{.Names}}")
+          if [ ! -z "$EXITED_CONTAINERS" ]; then
+            echo "🚨 The following containers failed:"
+            echo "$EXITED_CONTAINERS"
+            exit 1
+          fi
+
+      - name: 🧹 Cleanup (Optional)
+        if: always()
+        run: docker-compose down

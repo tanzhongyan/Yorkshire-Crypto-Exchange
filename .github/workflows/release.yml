@@ -34,11 +34,26 @@ jobs:
 
       - name: Build Changelog
         id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v6 # ✅ Upgraded to v6
         with:
           configuration: .github/release-changelog-builder-config.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug Changelog Output
+        run: |
+          echo "Changelog Output:"
+          echo "${{ steps.build_changelog.outputs.changelog }}"
+          echo "${{ steps.build_changelog.outputs.changelog }}" > CHANGELOG.txt
+
+      - name: Verify Changelog File Exists
+        run: |
+          if [ ! -s CHANGELOG.txt ]; then
+            echo "❌ No changelog generated. Failing the build."
+            exit 1
+          else
+            echo "✅ Changelog successfully generated."
+          fi
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -46,5 +61,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.increment_version.outputs.version }}
-          release_name: Release ${{ steps.increment_version.outputs.version }}
-          body: ${{ steps.build_changelog.outputs.changelog }}
+          release_name: "Release ${{ steps.increment_version.outputs.version }}"
+          body_path: CHANGELOG.txt # ✅ Uses generated changelog file instead of set-output

@@ -222,6 +222,27 @@ class UserAccountResource(Resource):
         db.session.commit()
         return {'message': 'User deleted successfully'}
 
+# Search function for user id
+@account_ns.route('/search')
+class UserSearchResource(Resource):
+    @account_ns.doc(params={"identifier": "The username or email of the user"})
+    def get(self):
+        """Fetch user details by username or email"""
+        identifier = request.args.get("identifier")
+        if not identifier:
+            account_ns.abort(400, "Username or email is required")
+
+        # Query the User table for either username or email
+        user = UserAccount.query.filter(
+            (UserAccount.username == identifier) | (UserAccount.email == identifier)
+        ).first()
+
+        if not user:
+            account_ns.abort(404, "User not found")
+
+        return {"userId": str(user.user_id)}, 200 
+
+
 # CRU for UserAuthenticate. No delete as delete is cascaded from account table.
 @authenticate_ns.route('/<uuid:userId>')
 @authenticate_ns.param('userId', 'The unique identifier of a user')

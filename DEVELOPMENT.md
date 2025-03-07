@@ -221,9 +221,13 @@ class UserAccountListResource(Resource):
 
 Each microservice hosts its documentation at:
 
+Atomic Microservices:
 - **Fiat Service:** `http://localhost:5001/v1/api/fiat`
 - **Crypto Service:** `http://localhost:5002/v1/api/crypto`
 - **User Service:** `http://localhost:5003/v1/api/user`
+
+Composite Microservices:
+- **identity** `http://localhost:5004/v1/api`
 
 ## Accessing Database Data (Visualisation)
 

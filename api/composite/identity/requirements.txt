@@ -1,0 +1,6 @@
+Bcrypt
+Flask
+Flask-restx
+pika
+Flask-Cors
+Requests

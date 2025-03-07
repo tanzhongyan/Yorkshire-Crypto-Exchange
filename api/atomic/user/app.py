@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Blueprint
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields, Namespace
 from flask_sqlalchemy import SQLAlchemy
@@ -14,7 +14,7 @@ import os
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api'
+API_ROOT = f'/{API_VERSION}/api/user'
 
 app = Flask(__name__)
 CORS(app)
@@ -42,7 +42,11 @@ migrate = Migrate(app, db)
 
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
-api = Api(app, version=API_VERSION, title='User API', description='User API for Yorkshire Crypto Exchange')
+blueprint = Blueprint('api',__name__,url_prefix=API_ROOT)
+api = Api(blueprint, version=API_VERSION, title='User API', description='User API for Yorkshire Crypto Exchange')
+
+# Register Blueprint with Flask app
+app.register_blueprint(blueprint)
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all APIs calls related to a table
@@ -158,7 +162,7 @@ address_input_model = address_ns.model('AddressInput', {
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
 # CRUD for UserAccount
-@account_ns.route(f'{API_ROOT}/user/account')
+@account_ns.route('')
 class UserAccountListResource(Resource):
     @account_ns.marshal_list_with(user_output_model)
     def get(self):
@@ -180,7 +184,7 @@ class UserAccountListResource(Resource):
         db.session.commit()
         return new_user, 201
 
-@account_ns.route(f'{API_ROOT}/user/account/<uuid:userId>')
+@account_ns.route('/<uuid:userId>')
 @account_ns.param('userId', 'The unique identifier of a user') # Alternative code: @account_ns.doc(params={'userId':'The unique identifier of a user'}) 
 class UserAccountResource(Resource):
     @account_ns.marshal_with(user_output_model)
@@ -210,7 +214,7 @@ class UserAccountResource(Resource):
         return {'message': 'User deleted successfully'}
 
 # CRU for UserAuthenticate. No delete as delete is cascaded from account table.
-@authenticate_ns.route(f'{API_ROOT}/user/authenticate/<uuid:userId>')
+@authenticate_ns.route('/<uuid:userId>')
 @authenticate_ns.param('userId', 'The unique identifier of a user')
 class UserAuthenticateResource(Resource):
     @authenticate_ns.marshal_with(auth_output_model)
@@ -255,7 +259,7 @@ class UserAuthenticateResource(Resource):
         return auth
 
 # CRU for UserAddress. No delete as delete is cascaded from account table.
-@address_ns.route(f'{API_ROOT}/user/address/<uuid:userId>')
+@address_ns.route('/<uuid:userId>')
 @address_ns.param('userId', 'The unique identifier of a user') 
 class UserAddressResource(Resource):
     @address_ns.marshal_with(address_output_model)

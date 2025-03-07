@@ -123,30 +123,86 @@ class UserAccount(db.Model):
 
 [Flask-RESTx](https://flask-restx.readthedocs.io/) is used to automatically generate API documentation.
 
+### Example of Flask-RESTx Initialisation
+
+To define your API root, ensure to declare the variable within your code:
+```
+API_VERSION = 'v1'
+API_ROOT = f'/{API_VERSION}/api/user'
+```
+
+To start all route prefixes with your `API_ROOT`, you will have to create Blueprint and add it to your Api object:
+```
+blueprint = Blueprint('api',__name__,url_prefix=API_ROOT)
+api = Api(blueprint, version=API_VERSION, title='User API', description='User API for Yorkshire Crypto Exchange')
+```
+
+Thereafter, you'll need to add register the Blueprint with Flask app:
+```
+app.register_blueprint(blueprint)
+```
+
+### Example of Flask-RESTx Namespace Setup
+
+Namespaces are used to group related CRUD operations for atomic microservices.
+
+The example below shows a namespace created just for the account table that the user entity owns:
+```
+account_ns = Namespace('account', description='Account related operations')
+```
+
 ### Example of Flask-RESTx Model Setup
 
+Models are used to define the input and output variables required":
+
+```
+user_input_model = account_ns.model(
+    "UserInput",
+    {
+        "username": fields.String(required=True, description="The username"),
+        "fullname": fields.String(required=True, description="The full name"),
+        "phone": fields.String(required=True, description="The phone number"),
+        "email": fields.String(required=True, description="The email address"),
+    },
+)
+```
+
 ```python
-user_model = api.model('UserAccount', {
-    'user_id': fields.String(readOnly=True, description='The unique identifier of a user'),
-    'username': fields.String(required=True, description='The username'),
-    'fullname': fields.String(required=True, description='The full name'),
-    'phone': fields.String(required=True, description='The phone number'),
-    'email': fields.String(required=True, description='The email address')
-})
+user_output_model = account_ns.model(
+    "UserOutput",
+    {
+        "userId": fields.String(attribute="user_id", readOnly=True, description="The unique identifier of a user"),
+        "username": fields.String(required=True, description="The username"),
+        "fullname": fields.String(required=True, description="The full name"),
+        "phone": fields.String(required=True, description="The phone number"),
+        "email": fields.String(required=True, description="The email address"),
+    },
+)
 ```
 
 ### CRUD Example
 
+- Use your created Namespace variable as the flask app and pass in the routes. The API naming convention will follow the `API_ROOT` followed by `/{namespace}` and `/{specified-route}`. An example would be:
+  - `API_ROOT`: "/v1/api/user"
+  - `namespace`: "account"
+  - `specified-route`: ""
+```
+localhost:5003/v1/api/user/account
+```
+- Use `expect` to specify the input parameters. Pass in the **input model** as the parameter.
+- Use `marshal_list_with` when you want to get all records. Pass in the **output model** as the parameter.
+- Use `marshal_with` when you want to get one record. Pass in the **output model** as the parameter.
+
 ```python
-@api.route(f'{API_ROOT}/user/account')
+@account_ns.route("")
 class UserAccountListResource(Resource):
-    @api.marshal_list_with(user_model)
+    @account_ns.marshal_list_with(user_output_model)
     def get(self):
         """Fetch all user accounts"""
         return UserAccount.query.all()
 
-    @api.expect(user_model)
-    @api.marshal_with(user_model, code=201)
+    @account_ns.expect(user_input_model, validate=True)
+    @account_ns.marshal_with(user_output_model, code=201)
     def post(self):
         """Create a new user account"""
         data = request.json
@@ -165,9 +221,9 @@ class UserAccountListResource(Resource):
 
 Each microservice hosts its documentation at:
 
-- **Fiat Service:** `http://localhost:5001/docs`
-- **Crypto Service:** `http://localhost:5002/docs`
-- **User Service:** `http://localhost:5003/docs`
+- **Fiat Service:** `http://localhost:5001/v1/api/fiat`
+- **Crypto Service:** `http://localhost:5002/v1/api/crypto`
+- **User Service:** `http://localhost:5003/v1/api/user`
 
 ## Accessing Database Data (Visualisation)
 

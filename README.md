@@ -1,11 +1,11 @@
 # Yorkshire Crypto Exchange 🚀
 
-Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platform designed for secure and efficient fiat-to-crypto transactions, wallet management, and trade execution. Built using Flask, Vue.js, PostgreSQL, RabbitMQ, and Docker, it follows REST API best practices and utilizes message queues for asynchronous processing. This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability, modularity, and real-world financial transaction handling in a containerized environment.
+Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platform designed for secure and efficient fiat-to-crypto transactions, wallet management, and trade execution. Built using Flask, Next.js, Node.js, Typescript, PostgreSQL, RabbitMQ, and Docker, it follows REST API best practices and utilizes message queues for asynchronous processing. This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability, modularity, and real-world financial transaction handling in a containerized environment.
 
 ## 🛠 Tech Stack
 
 - **Database:** PostgreSQL
-- **Website:** Vue.js + Bootstrap
+- **Website:** Next.js, Node.js, Typescript (Vercel V0)
 - **API:** Flask + Pika (RabbitMQ)
 - **ORM:** Flask-Migrate + SQLAlchemy
 - **CI/CD:** GitHub Actions
@@ -34,9 +34,12 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
    ```
 
 3. Access API documentation:
-   - **Fiat Service:** `http://localhost:5001/docs`
-   - **Crypto Service:** `http://localhost:5002/docs`
-   - **User Service:** `http://localhost:5003/docs`
+   - **Atomic microservices**
+      - **Fiat Service:** `http://localhost:5001/docs`
+      - **Crypto Service:** `http://localhost:5002/docs`
+      - **User Service:** `http://localhost:5003/docs`
+   - **Composite microservices**
+      - **identity** `http://localhost:5004/v1/api`
 
 ## 📌 Features
 - **Secure transactions** between fiat and crypto

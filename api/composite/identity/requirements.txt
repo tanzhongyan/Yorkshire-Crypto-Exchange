@@ -1,4 +1,3 @@
-Bcrypt
 Flask
 Flask-restx
 pika

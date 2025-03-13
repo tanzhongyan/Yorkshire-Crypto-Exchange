@@ -6,6 +6,7 @@ from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
+import bcrypt
 import json
 import uuid
 import os
@@ -130,8 +131,35 @@ auth_output_model = authenticate_ns.model('AuthOutput', {
 
 # Input one user authenticate
 auth_input_model = authenticate_ns.model('AuthInput', {
-    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password')
+    'password': fields.String(attribute='password', required=True, description='The password')
 })
+
+# Input model for authentication
+auth_model = authenticate_ns.model(
+    "AuthenticateUser",
+    {
+        "identifier": fields.String(required=True, description="Username or Email"),
+        "password": fields.String(required=True, description="User password"),
+    },
+)
+
+# Success response model
+auth_success_response = authenticate_ns.model(
+    "AuthSuccessResponse",
+    {
+        "message": fields.String(description="Authentication successful"),
+        "user_id": fields.String(description="Authenticated User ID"),
+    },
+)
+
+# Error response model
+auth_error_response = authenticate_ns.model(
+    "AuthErrorResponse",
+    {
+        "error": fields.String(description="Error message"),
+        "details": fields.String(description="Additional error details"),
+    },
+)
 
 # output one user address
 address_output_model = address_ns.model('AddressOutput', {
@@ -159,6 +187,36 @@ address_input_model = address_ns.model('AddressInput', {
     'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
     'country': fields.String(required=True, description='The country')
 })
+
+
+##### Functions #####
+# Add functions to this section to support API actions
+
+# Password Functions
+# Copied from https://www.geeksforgeeks.org/hashing-passwords-in-python-with-bcrypt/
+def hash_password(password):
+    """Hashes and salts the password"""
+    # Convert password to bytes
+    password_bytes = password.encode('utf-8')
+
+    # Generate salt
+    salt = bcrypt.gensalt()
+
+    # Hash password
+    hashed_password_bytes = bcrypt.hashpw(password_bytes,salt)
+    return hashed_password_bytes.decode() #Decode to store as a string
+
+def check_password(input_password,hashed_password):
+    """Checks input password against stored password"""
+    # Convert input passwords to bytes
+    input_password_bytes = input_password.encode('utf-8')
+
+    # Convert hashed password to bytes
+    hashed_password_bytes = hashed_password.encode('utf-8')
+    
+    # Check password
+    result = bcrypt.checkpw(input_password_bytes,hashed_password_bytes)
+    return result
 
 
 ##### API actions - flask restx API autodoc #####
@@ -266,7 +324,7 @@ class UserAuthenticateResource(Resource):
 
         new_auth = UserAuthenticate(
             user_id=userId,
-            password_hashed=data.get('passwordHashed')
+            password_hashed=hash_password(data.get('password'))
         )
         db.session.add(new_auth)
         db.session.commit()
@@ -278,13 +336,60 @@ class UserAuthenticateResource(Resource):
         """Update password for a user"""
         auth = UserAuthenticate.query.get_or_404(userId, description="Authentication record not found")
         data = request.json
-        auth.password_hashed = data.get("passwordHashed", auth.password_hashed)
+        auth.password_hashed = hash_password(data.get("password", auth.password_hashed))
         try:
             db.session.commit()
             return auth
         except:
             account_ns.abort(500, 'Something went wrong')
-        
+
+@authenticate_ns.route("/login")
+class AuthenticateUser(Resource):
+    @authenticate_ns.expect(auth_model)
+    @authenticate_ns.response(200, "Authentication successful", auth_success_response)
+    @authenticate_ns.response(400, "Invalid credentials", auth_error_response)
+    @authenticate_ns.response(500, "Internal Server Error", auth_error_response)
+    def post(self):
+        """Authenticate user using username/email and password"""
+        data = request.json
+        identifier = data.get("identifier")
+        input_password = data.get("password")
+
+        if not identifier or not input_password:
+            return {"error": "Missing required fields", "details": "Username/email and password are required"}, 400
+
+        try:
+            # Step 1: Fetch user details from UserAccount table
+            user = UserAccount.query.filter(
+                (UserAccount.username == identifier) | (UserAccount.email == identifier)
+            ).first()
+
+            if not user:
+                return {"error": "User not found", "details": "Invalid username or email"}, 400
+
+            user_id = str(user.user_id)
+
+            # Step 2: Fetch authentication record from UserAuthenticate table
+            auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
+
+            if not auth:
+                return {"error": "Authentication record not found", "details": "No authentication data for this user"}, 400
+
+            stored_hashed_password = auth.password_hashed
+
+            if not stored_hashed_password:
+                return {"error": "Invalid authentication response", "details": "Missing stored password"}, 500
+
+            # Step 3: Verify password
+            if not check_password(input_password, stored_hashed_password):
+                return {"error": "Invalid credentials", "details": "Incorrect username/email or password"}, 400
+
+            return {"message": "Authentication successful", "user_id": user_id}, 200
+
+        except Exception as e:
+            return {"error": "Internal Server Error", "details": str(e)}, 500
+
+
 # CRU for UserAddress. No delete as delete is cascaded from account table.
 @address_ns.route('/<uuid:userId>')
 @address_ns.param('userId', 'The unique identifier of a user') 

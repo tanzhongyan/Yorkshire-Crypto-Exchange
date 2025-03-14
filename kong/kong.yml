@@ -1,0 +1,18 @@
+_format_version: "3.0"
+
+services:
+  - name: user-service
+    url: http://user-service:5000  # Internal URL of the user service
+    routes:
+      - name: user-route
+        paths:
+          - /v1/api/user
+        strip_path: false
+
+  - name: identity-service
+    url: http://identity-service:5000  # Internal URL of the identity service
+    routes:
+      - name: identity-route
+        paths:
+          - /v1/api/identity
+        strip_path: false

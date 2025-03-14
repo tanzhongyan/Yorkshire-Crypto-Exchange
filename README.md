@@ -6,7 +6,7 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 
 - **Database:** PostgreSQL
 - **Website:** Next.js, Node.js, Typescript (Vercel V0)
-- **API:** Flask + Pika (RabbitMQ)
+- **API:** Flask + Pika (RabbitMQ) + Kong API gateway
 - **ORM:** Flask-Migrate + SQLAlchemy
 - **CI/CD:** GitHub Actions
 - **Python Formatting:** Black (PEP8 style guide)
@@ -35,9 +35,9 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 
 3. Access API documentation:
    - **Atomic microservices**
-      - **Fiat Service:** `http://localhost:5001/docs`
-      - **Crypto Service:** `http://localhost:5002/docs`
-      - **User Service:** `http://localhost:5003/docs`
+      - **Fiat Service:** `http://localhost:5001/v1/api/fiat`
+      - **Crypto Service:** `http://localhost:5002/v1/api/crypto`
+      - **User Service:** `http://localhost:5003/v1/api/user`
    - **Composite microservices**
       - **identity** `http://localhost:5004/v1/api`
 

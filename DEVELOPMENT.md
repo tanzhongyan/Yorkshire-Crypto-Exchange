@@ -17,7 +17,13 @@ Before running the project, ensure you have Python installed and install depende
    Do this inside VSCode terminal. If the output is an error, check the following:
    - In search bar, search "add or remove programs". Search "python" within "add or remove programs". It should show the version of python you have installed.
    - If there's nothing there, install it at [python.org](https://www.python.org/downloads/). The latest stable version is version 3.13.
-   - After installing it, in VSCode, press `ctrl` + `shift` + `p` and search "python: create environment". Click on "Venv". Click on the latest version of python you have. Tick "requirements.txt" checkbox and press "OK". Your repository should now have a ".venv" file.
+   - After installing it, in VSCode,
+      - press `ctrl` + `shift` + `p`
+      - search "python: create environment"
+      - Click on "Venv"
+      - Click on the latest version of python you have
+      - Tick "requirements.txt" checkbox and press "OK"
+      - Your repository should now have a ".venv" file.
 
 2. **Install Required Dependencies**
    Navigate to the project's root directory and install dependencies:
@@ -43,7 +49,7 @@ docker-compose up -d --build
    - Traditionally, `depends_on` runs services immediately after the container is up.
    - A **healthcheck** is added to ensure the database is fully set up before other services start.
 
-If you face issues when deploying the postgres container like "user_db" not found, it is likely caused by an incompatibility issue between windows and linux line endings.
+**KNOWN ERROR:** If you face issues when deploying the postgres container like "user_db" not found, it is likely caused by an incompatibility issue between windows and linux line endings.
 
 - Run:
 
@@ -51,10 +57,40 @@ If you face issues when deploying the postgres container like "user_db" not foun
    docker-compose down -v
    ```
 
+**Windows user**
 - In your VSCode local terminal, run:
+   ```
+   sudo apt update && sudo apt install dos2unix -y
+   ```
 
    ```sh
    wsl dos2unix ./database/create-multiple-postgresql-databases.sh
+   ```
+
+   ```
+   file ./database/create-multiple-postgresql-databases.sh
+   ```
+
+   If it says "ASCII text" or "Bourne-Again shell script", it's now Unix-compatible.
+
+**mac user**
+- In your VSCode local terminal, run:
+   ```
+   brew install dos2unix
+   ```
+
+   ```
+   dos2unix ./database/create-multiple-postgresql-databases.sh
+   ```
+
+   ```
+   file ./database/create-multiple-postgresql-databases.sh
+   ```
+   If it says "ASCII text" or "Bourne-Again shell script", it's now Unix-compatible.
+
+- Run:
+   ```
+   chmod +x ./database/create-multiple-postgresql-databases.sh
    ```
 
 - Run:
@@ -228,6 +264,54 @@ Atomic Microservices:
 
 Composite Microservices:
 - **identity** `http://localhost:5004/v1/api`
+
+
+## Running the Website Locally
+This documentation provides instructions for setting up and running the **Yorkshire Crypto Exchange Website** stored under `/website/yorkshire-crypto-exchange`.
+
+### Step 1: Install Dependencies
+
+Before running the website, navigate to the project directory and install the necessary dependencies:
+
+```sh
+cd website/yorkshire-crypto-exchange
+npm install
+```
+
+Alternatively, if using Yarn:
+
+```sh
+cd website/yorkshire-crypto-exchange
+yarn install
+```
+
+### Step 2: Run the Development Server
+
+To start the Next.js development server, run:
+
+```sh
+npm run dev
+```
+
+Or, if using Yarn:
+
+```sh
+yarn dev
+```
+
+Once the server starts, the website will be available at:
+
+```
+http://localhost:3000
+```
+
+### Module Not Found Error
+
+Ensure dependencies are installed:
+
+```sh
+npm install
+```
 
 ## Accessing Database Data (Visualisation)
 

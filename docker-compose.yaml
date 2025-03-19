@@ -32,26 +32,26 @@ services:
     security_opt:
       - no-new-privileges
   
-  # fiat-service:
-  #   container_name: fiat-service
-  #   build:
-  #     context: ./api/atomic/fiat
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5001:5000"
-  #   depends_on:
-  #     - rabbitmq
-  #     postgres:
-  #       condition: service_healthy # wait until postgres healthy
-  #   environment:
-  #     - RABBITMQ_HOST=rabbitmq
-  #     - DATABASE_URL=postgresql://user:password@postgres:5432/fiat_db
-  #   volumes:
-  #     - fiat_data:/var/lib/fiat_service
-  #   networks:
-  #     - kong-net
-  #   expose:
-  #     - "5000"
+  fiat-service:
+    container_name: fiat-service
+    build:
+      context: ./api/atomic/fiat
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - DATABASE_URL=postgresql://user:password@postgres:5432/fiat_db
+    volumes:
+      - fiat_data:/var/lib/fiat_service
+    networks:
+      - kong-net
+    expose:
+      - "5000"
   
   # crypto-service:
   #   container_name: crypto-service
@@ -156,7 +156,7 @@ services:
   #     - crypto-service
 
 volumes:
-  # fiat_data:
+  fiat_data:
   user_data:
   # crypto_data:
   # rabbitmq_data:

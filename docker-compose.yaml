@@ -115,6 +115,33 @@ services:
     expose:
       - "5000"
 
+  transaction-service:
+    container_name: transaction-service
+    build:
+      context: ./api/atomic/transaction
+      dockerfile: Dockerfile
+    ports:
+      - "5005:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      # - DATABASE_URL=postgresql://user:password@postgres:5432/transaction_db # delete if needed
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=transaction_db
+      - DB_USER=user
+      - DB_PASS=password
+    volumes:
+      - transaction_data:/var/lib/transaction_service
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+
   # rabbitmq:
   #   image: rabbitmq:management
   #   ports:
@@ -129,7 +156,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db
+      POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db, transaction_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh
@@ -161,3 +188,4 @@ volumes:
   # crypto_data:
   # rabbitmq_data:
   postgres_data:
+  transaction_data:

@@ -1,5 +1,0 @@
-Flask
-Flask-restx
-pika
-Flask-Cors
-Requests

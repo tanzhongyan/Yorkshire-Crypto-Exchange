@@ -16,3 +16,11 @@ services:
         paths:
           - /v1/api/identity
         strip_path: false
+
+  - name: transaction-service
+    url: http://transaction-service:5000  # Internal URL of the transaction service
+    routes:
+      - name: transaction-route
+        paths:
+          - /v1/api/transaction
+        strip_path: false

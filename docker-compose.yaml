@@ -44,8 +44,12 @@ services:
       postgres:
         condition: service_healthy # wait until postgres healthy
     environment:
-      - RABBITMQ_HOST=rabbitmq
-      - DATABASE_URL=postgresql://user:password@postgres:5432/fiat_db
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=user_db
+      - DB_USER=user
+      - DB_PASS=password
     volumes:
       - fiat_data:/var/lib/fiat_service
     networks:
@@ -65,8 +69,12 @@ services:
   #     postgres:
   #       condition: service_healthy # wait until postgres healthy
   #   environment:
-  #     - RABBITMQ_HOST=rabbitmq
-  #     - DATABASE_URL=postgresql://user:password@postgres:5432/crypto_db
+  #     - RUNNING_IN_DOCKER=true  # Detects Docker mode
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_NAME=user_db
+  #     - DB_USER=user
+  #     - DB_PASS=password
   #   volumes:
   #     - crypto_data:/var/lib/crypto_service
   #   networks:

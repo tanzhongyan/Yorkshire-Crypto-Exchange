@@ -1,12 +1,21 @@
 _format_version: "3.0"
 
 services:
+
   - name: user-service
     url: http://user-service:5000  # Internal URL of the user service
     routes:
       - name: user-route
         paths:
           - /v1/api/user
+        strip_path: false
+
+  - name: fiat-service
+    url: http://fiat-service:5000  # Internal URL of the fiat service
+    routes:
+      - name: fiat-route
+        paths:
+          - /v1/api/fiat
         strip_path: false
 
   - name: identity-service

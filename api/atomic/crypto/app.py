@@ -95,6 +95,22 @@ class CryptoHolding(db.Model):
     wallet = db.relationship('CryptoWallet', back_populates='holdings')
     token = db.relationship('CryptoToken', back_populates='holdings')
 
+#(4) stores all crypto trade data (many wallets can have many trades)
+class CryptoTrade(db.Model):
+    __tablename__ = 'crypto_trade'
+    trade_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    wallet_id = db.Column(UUID(as_uuid=True), db.ForeignKey('crypto_wallet.wallet_id', ondelete='CASCADE'), nullable=False)
+    token_ticker = db.Column(db.String(50), db.ForeignKey('crypto_token.token_ticker', ondelete='CASCADE'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, default=func.now(), nullable=False)
+    trade_type = db.Column(db.String(10), nullable=False)  # 'buy', 'sell'
+    status = db.Column(db.String(20), nullable=False, default='completed')  # 'pending', 'completed', 'cancelled'
+
+    # Relationships
+    wallet = db.relationship('CryptoWallet', backref='trades')
+    token = db.relationship('CryptoToken', backref='trades')
+
 # end of edit ------------------------------------------------------------------
 
 
@@ -184,6 +200,39 @@ address_input_model = address_ns.model('AddressInput', {
     'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
     'country': fields.String(required=True, description='The country')
 })
+
+# Output One/Many crypto tokens
+token_output_model = token_ns.model('TokenOutput', {
+    'tokenTicker': fields.String(attribute='token_ticker', required=True, description='The ticker symbol of the token')
+})
+
+# Input One crypto token
+token_input_model = token_ns.model('TokenInput', {
+    'tokenTicker': fields.String(required=True, description='The ticker symbol of the token')
+})
+
+# Output One/Many crypto trades
+trade_output_model = trade_ns.model('TradeOutput', {
+    'tradeId': fields.String(attribute='trade_id', readOnly=True, description='The unique identifier of a trade'),
+    'walletId': fields.String(attribute='wallet_id', required=True, description='The wallet ID involved in the trade'),
+    'tokenTicker': fields.String(attribute='token_ticker', required=True, description='The token ticker involved in the trade'),
+    'amount': fields.Float(required=True, description='The amount of tokens traded'),
+    'price': fields.Float(required=True, description='The price per token'),
+    'timestamp': fields.DateTime(required=True, description='The timestamp of the trade'),
+    'tradeType': fields.String(attribute='trade_type', required=True, description='The type of trade (buy/sell)'),
+    'status': fields.String(required=True, description='The status of the trade')
+})
+
+# Input One crypto trade
+trade_input_model = trade_ns.model('TradeInput', {
+    'walletId': fields.String(attribute='wallet_id', required=True, description='The wallet ID involved in the trade'),
+    'tokenTicker': fields.String(attribute='token_ticker', required=True, description='The token ticker involved in the trade'),
+    'amount': fields.Float(required=True, description='The amount of tokens traded'),
+    'price': fields.Float(required=True, description='The price per token'),
+    'tradeType': fields.String(attribute='trade_type', required=True, description='The type of trade (buy/sell)'),
+    'status': fields.String(required=False, description='The status of the trade')
+})
+
 
 
 ##### Functions #####
@@ -445,6 +494,180 @@ class UserAddressResource(Resource):
 
         db.session.commit()
         return address
+    
+@token_ns.route('')
+class CryptoTokenListResource(Resource):
+    @token_ns.marshal_list_with(token_output_model)
+    def get(self):
+        """Fetch all crypto tokens"""
+        return CryptoToken.query.all()
+
+@token_ns.route('/<string:tokenTicker>')
+@token_ns.param('tokenTicker', 'The ticker symbol of a token')
+class CryptoTokenResource(Resource):
+    @token_ns.marshal_with(token_output_model)
+    def get(self, tokenTicker):
+        """Fetch a specific crypto token using tokenTicker as a path parameter"""
+        token = CryptoToken.query.get_or_404(tokenTicker, description='Token not found')
+        return token
+
+    @token_ns.expect(token_input_model, validate=True)
+    @token_ns.marshal_with(token_output_model, code=201)
+    def post(self, tokenTicker):
+        """Create a new crypto token"""
+        data = request.json
+        
+        # Check if token with this ticker already exists
+        existing_token = CryptoToken.query.get(tokenTicker)
+        if existing_token:
+            token_ns.abort(400, 'Token with this ticker already exists')
+            
+        new_token = CryptoToken(
+            token_ticker=tokenTicker
+        )
+        
+        try:
+            db.session.add(new_token)
+            db.session.commit()
+            return new_token, 201
+        except IntegrityError:
+            db.session.rollback()
+            token_ns.abort(400, 'Token could not be created due to integrity error')
+
+    @token_ns.expect(token_input_model, validate=True)
+    @token_ns.marshal_with(token_output_model)
+    def put(self, tokenTicker):
+        """Update an existing crypto token"""
+        token = CryptoToken.query.get_or_404(tokenTicker, description='Token not found')
+        data = request.json
+        
+        # Since token_ticker is the primary key, updating it would mean creating a new token
+        # and deleting the old one, which would affect all relationships.
+        # This is a complex operation that should be handled with care.
+        if data.get('tokenTicker') != tokenTicker:
+            token_ns.abort(400, 'Cannot modify token ticker as it is the primary key. Create a new token instead.')
+        
+        try:
+            db.session.commit()
+            return token
+        except IntegrityError:
+            db.session.rollback()
+            token_ns.abort(400, 'Token could not be updated due to integrity error')
+
+    def delete(self, tokenTicker):
+        """Delete a crypto token"""
+        token = CryptoToken.query.get_or_404(tokenTicker, description='Token not found')
+        
+        try:
+            db.session.delete(token)
+            db.session.commit()
+            return {'message': 'Token deleted successfully'}
+        except IntegrityError:
+            db.session.rollback()
+            token_ns.abort(400, 'Token could not be deleted due to integrity constraints')
+
+# CRUD for CryptoTrade
+@trade_ns.route('')
+class CryptoTradeListResource(Resource):
+    @trade_ns.marshal_list_with(trade_output_model)
+    def get(self):
+        """Fetch all crypto trades"""
+        return CryptoTrade.query.all()
+
+@trade_ns.route('/<uuid:walletId>')
+@trade_ns.param('walletId', 'The wallet ID to fetch trades for')
+class CryptoTradeUserResource(Resource):
+    @trade_ns.marshal_list_with(trade_output_model)
+    def get(self, walletId):
+        """Fetch all trades of a specific wallet using walletId as a path parameter"""
+        # Check if wallet exists
+        wallet = CryptoWallet.query.get_or_404(walletId, description='Wallet not found')
+        
+        # Fetch all trades for the wallet
+        trades = CryptoTrade.query.filter_by(wallet_id=walletId).all()
+        return trades
+
+@trade_ns.route('/<uuid:tradeId>')
+@trade_ns.param('tradeId', 'The unique identifier of a trade')
+class CryptoTradeResource(Resource):
+    @trade_ns.marshal_with(trade_output_model)
+    def get(self, tradeId):
+        """Fetch a specific trade using tradeId as a path parameter"""
+        trade = CryptoTrade.query.get_or_404(tradeId, description='Trade not found')
+        return trade
+
+    @trade_ns.expect(trade_input_model, validate=True)
+    @trade_ns.marshal_with(trade_output_model, code=201)
+    def post(self, tradeId):
+        """Create a new trade"""
+        data = request.json
+        
+        # Validate that wallet and token exist
+        wallet = CryptoWallet.query.get_or_404(data.get('walletId'), description='Wallet not found')
+        token = CryptoToken.query.get_or_404(data.get('tokenTicker'), description='Token not found')
+        
+        new_trade = CryptoTrade(
+            trade_id=tradeId,
+            wallet_id=data.get('walletId'),
+            token_ticker=data.get('tokenTicker'),
+            amount=data.get('amount'),
+            price=data.get('price'),
+            trade_type=data.get('tradeType'),
+            status=data.get('status', 'completed')
+        )
+        
+        try:
+            db.session.add(new_trade)
+            db.session.commit()
+            
+            # Optionally update holdings after trade
+            # This would be implemented as a transaction
+            
+            return new_trade, 201
+        except IntegrityError:
+            db.session.rollback()
+            trade_ns.abort(400, 'Trade could not be created due to integrity error')
+
+    @trade_ns.expect(trade_input_model, validate=True)
+    @trade_ns.marshal_with(trade_output_model)
+    def put(self, tradeId):
+        """Update an existing trade"""
+        trade = CryptoTrade.query.get_or_404(tradeId, description='Trade not found')
+        data = request.json
+        
+        # Allow updating any field, but verify that referenced entities exist
+        if 'walletId' in data:
+            wallet = CryptoWallet.query.get_or_404(data.get('walletId'), description='Wallet not found')
+            trade.wallet_id = data.get('walletId')
+            
+        if 'tokenTicker' in data:
+            token = CryptoToken.query.get_or_404(data.get('tokenTicker'), description='Token not found')
+            trade.token_ticker = data.get('tokenTicker')
+        
+        trade.amount = data.get('amount', trade.amount)
+        trade.price = data.get('price', trade.price)
+        trade.trade_type = data.get('tradeType', trade.trade_type)
+        trade.status = data.get('status', trade.status)
+        
+        try:
+            db.session.commit()
+            return trade
+        except IntegrityError:
+            db.session.rollback()
+            trade_ns.abort(400, 'Trade could not be updated due to integrity error')
+
+    def delete(self, tradeId):
+        """Delete a trade"""
+        trade = CryptoTrade.query.get_or_404(tradeId, description='Trade not found')
+        
+        try:
+            db.session.delete(trade)
+            db.session.commit()
+            return {'message': 'Trade deleted successfully'}
+        except IntegrityError:
+            db.session.rollback()
+            trade_ns.abort(400, 'Trade could not be deleted due to integrity constraints')
+
 
 ##### Seeding #####
 # Provide seed data for all tables
@@ -541,6 +764,9 @@ def seed_data():
 api.add_namespace(account_ns)
 api.add_namespace(authenticate_ns)
 api.add_namespace(address_ns)
+api.add_namespace(token_ns)
+api.add_namespace(wallet_ns)
+api.add_namespace(trade_ns)
 
 if __name__ == '__main__':
     with app.app_context():

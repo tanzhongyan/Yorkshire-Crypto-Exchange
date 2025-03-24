@@ -47,7 +47,7 @@ services:
       - RUNNING_IN_DOCKER=true  # Detects Docker mode
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=user_db
+      - DB_NAME=fiat_db
       - DB_USER=user
       - DB_PASS=password
     volumes:

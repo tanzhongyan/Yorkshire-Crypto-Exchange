@@ -1,0 +1,67 @@
+{
+  "cryptoWallets": [
+    {
+      "userId": "f5d7b933-dc52-4c87-9a45-eeb0a091f6cf",
+      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d"
+    },
+    {
+      "userId": "3d1a9c5a-bc97-4d78-b1b4-1bc72d649b3d",
+      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb"
+    },
+    {
+      "userId": "7ff35b62-5d6a-47cd-b4f6-c1d6c621fe5d",
+      "walletId": "724e3519-9db0-4c02-b627-d0b2fe8e56d0"
+    }
+  ],
+  "cryptoTokens": [
+    {
+      "token_id": "BTC",
+      "token_name": "Bitcoin"
+    },
+    {
+      "token_id": "XRP",
+      "token_name": "Ripple"
+    },
+    {
+      "token_id": "SOL",
+      "token_name": "Solana"
+    }
+  ],
+  "cryptoHoldings": [
+    {
+      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
+      "tokenId": "BTC",
+      "actualBalance": 2.5,
+      "heldBalance": 1.0,
+      "updatedOn": "2025-03-25T12:30:00Z"
+    },
+    {
+      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
+      "tokenId": "XRP",
+      "actualBalance": 1000,
+      "heldBalance": 500,
+      "updatedOn": "2025-03-25T12:30:00Z"
+    },
+    {
+      "walletId": "724e3519-9db0-4c02-b627-d0b2fe8e56d0",
+      "tokenId": "SOL",
+      "actualBalance": 10,
+      "heldBalance": 2,
+      "updatedOn": "2025-03-25T12:30:00Z"
+    },
+    {
+      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
+      "tokenId": "XRP",
+      "actualBalance": 500,
+      "heldBalance": 100,
+      "updatedOn": "2025-03-25T12:30:00Z"
+    },
+    {
+      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
+      "tokenId": "SOL",
+      "actualBalance": 50,
+      "heldBalance": 5,
+      "updatedOn": "2025-03-25T12:30:00Z"
+    }
+  ]
+}

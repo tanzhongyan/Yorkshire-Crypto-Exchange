@@ -75,6 +75,7 @@ class FiatAccount(db.Model):
     currency_code = db.Column(
         db.String(3),
         db.ForeignKey('fiat_currency.currency_code'),
+        primary_key=True,
         nullable=False
     )
     last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
@@ -154,19 +155,28 @@ class FiatCurrencyResource(Resource):
         """Get a fiat currency by code"""
         return FiatCurrency.query.get_or_404(currency_code)
 
-    @currency_ns.expect(fiat_currency_update_model, validate=True)
-    @currency_ns.marshal_with(fiat_currency_output_model)
-    def put(self, currency_code):
-        """Update a fiat currency"""
+    @account_ns.expect(fiat_account_update_model, validate=True)
+    @account_ns.marshal_with(fiat_account_output_model)
+    def put(self, user_id):
+        """
+        Update the balance of a fiat account by adding or deducting a specified amount.
+        
+        The input `amount_change` represents the amount to be added or deducted from the account balance.
+        """
         try:
-            currency = FiatCurrency.query.get_or_404(currency_code)
+            account = FiatAccount.query.get_or_404(user_id)
             data = request.json
-            currency.rate = data.get('rate', currency.rate)
+            amount_change = data.get('amount_change', 0)
+            
+            # Update balance
+            account.balance += amount_change
+            account.last_updated = func.now()
             db.session.commit()
-            return currency
+            
+            return account
         except Exception as e:
-            currency_ns.abort(400, f'Failed to update fiat currency: {str(e)}')
-
+            account_ns.abort(400, f'Failed to update fiat account balance: {str(e)}')
+            
     def delete(self, currency_code):
         """Delete a fiat currency"""
         try:

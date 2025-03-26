@@ -6,6 +6,7 @@ from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from werkzeug.exceptions import HTTPException
+from decimal import Decimal
 import json
 import uuid
 import os
@@ -218,10 +219,13 @@ class FiatAccountResource(Resource):
             data = request.json
             amount_changed = data.get('amount_changed', 0)
             
-            if account.balance + amount_changed < 0:
+            # Convert float to Decimal via string to maintain precision
+            decimal_amount = Decimal(str(amount_changed))
+            
+            if account.balance + decimal_amount < 0:
                 account_ns.abort(400, 'Insufficient balance')
             
-            account.balance += amount_changed
+            account.balance += decimal_amount
             account.updated = func.now()
             db.session.commit()
             return account

@@ -74,6 +74,7 @@ class TransactionFiat(db.Model):
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Numeric(18, 8), nullable=False)
+    currency_code = db.Column(db.String(3), nullable=False)
     type = db.Column(db.String(10), nullable=False)
     status = db.Column(db.String(15), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
@@ -83,7 +84,6 @@ class TransactionFiatToCrypto(db.Model):
     __tablename__ = 'transaction_fiat_to_crypto'
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)  # No ForeignKey due to separate containers
-    wallet_id = db.Column(db.String(100), nullable=False)  # No ForeignKey due to separate containers
     from_amount = db.Column(db.Numeric(18, 8), nullable=False)
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
     direction = db.Column(db.String(15), nullable=False)
@@ -96,8 +96,6 @@ class TransactionCrypto(db.Model):
     __tablename__ = 'transaction_crypto'
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
-    wallet_id = db.Column(db.String(100), nullable=False)
-    receiving_wallet_id = db.Column(db.String(100), nullable=False)
     receiving_user_id = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), nullable=False)
     from_token_id = db.Column(db.Integer, nullable=False)
@@ -128,6 +126,7 @@ fiat_output_model = fiat_ns.model('FiatTransactionOutput', {
     'transaction_id': fields.String(attribute='transaction_id', readonly=True),
     'user_id': fields.String(required=True),
     'amount': fields.Float(required=True),
+    'currency_code': fields.String(required=True),
     'type': fields.String(required=True),
     'status': fields.String(required=True),
     'creation': fields.DateTime,
@@ -137,6 +136,7 @@ fiat_output_model = fiat_ns.model('FiatTransactionOutput', {
 fiat_input_model = fiat_ns.model('FiatTransactionInput', {
     'user_id': fields.String(required=True),
     'amount': fields.Float(required=True),
+    'currency_code': fields.String(required=True),
     'type': fields.String(required=True),
     'status': fields.String(required=True)
 })
@@ -145,7 +145,6 @@ fiat_input_model = fiat_ns.model('FiatTransactionInput', {
 fiattocrypto_output_model = fiat_to_crypto_ns.model('FiatToCryptoOutput', {
     'transaction_id': fields.String(attribute='transaction_id', readonly=True),
     'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
     'from_amount': fields.Float(required=True),
     'to_amount': fields.Float(required=True),
     'direction': fields.String(required=True),
@@ -157,7 +156,6 @@ fiattocrypto_output_model = fiat_to_crypto_ns.model('FiatToCryptoOutput', {
 
 fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
     'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
     'from_amount': fields.Float(required=True),
     'to_amount': fields.Float(required=True),
     'direction': fields.String(required=True),
@@ -169,8 +167,6 @@ fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
 crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
     'transaction_id': fields.String(readonly=True),
     'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'receiving_wallet_id': fields.String(required=True),
     'receiving_user_id': fields.String,
     'status': fields.String(required=True),
     'from_token_id': fields.Integer(required=True),
@@ -186,8 +182,6 @@ crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
 
 crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
     'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'receiving_wallet_id': fields.String(required=True),
     'receiving_user_id': fields.String,
     'status': fields.String(required=True),
     'from_token_id': fields.Integer(required=True),
@@ -218,6 +212,7 @@ class FiatTransactionList(Resource):
         new_transaction = TransactionFiat(
             user_id=data.get('user_id'),
             amount=data.get('amount'),
+            currency_code=data.get('currency_code'),
             type=data.get('type'),
             status=data.get('status')
         )
@@ -246,6 +241,7 @@ class FiatTransactionResource(Resource):
         transaction.amount = data.get('amount', transaction.amount)
         transaction.type = data.get('type', transaction.type)
         transaction.status = data.get('status', transaction.status)
+        transaction.currency_code = data.get('currency_code', transaction.currency_code)
         try:
             db.session.commit()
             return transaction
@@ -284,7 +280,6 @@ class FiatToCryptoTransactionList(Resource):
         data = request.json
         new_transaction = TransactionFiatToCrypto(
             user_id=data.get('user_id'),
-            wallet_id=data.get('wallet_id'),
             from_amount=data.get('from_amount'),
             to_amount=data.get('to_amount'),
             direction=data.get('direction'),
@@ -313,7 +308,7 @@ class FiatToCryptoTransactionResource(Resource):
         transaction = TransactionFiatToCrypto.query.get_or_404(transaction_id)
         data = request.json
         try:
-            for key in ['user_id', 'wallet_id', 'from_amount', 'to_amount', 'direction', 'limit_price', 'status']:
+            for key in ['user_id', 'from_amount', 'to_amount', 'direction', 'limit_price', 'status']:
                 setattr(transaction, key, data.get(key, getattr(transaction, key)))
             db.session.commit()
             return transaction
@@ -352,8 +347,6 @@ class CryptoTransactionList(Resource):
         data = request.json
         new_transaction = TransactionCrypto(
             user_id=data.get('user_id'),
-            wallet_id=data.get('wallet_id'),
-            receiving_wallet_id=data.get('receiving_wallet_id'),
             receiving_user_id=data.get('receiving_user_id'),
             status=data.get('status'),
             from_token_id=data.get('from_token_id'),
@@ -386,7 +379,7 @@ class CryptoTransactionResource(Resource):
         transaction = TransactionCrypto.query.get_or_404(transaction_id)
         data = request.json
         try:
-            for key in ['user_id', 'wallet_id', 'receiving_wallet_id', 'receiving_user_id', 'status',
+            for key in ['user_id', 'receiving_user_id', 'status',
                         'from_token_id', 'from_amount', 'to_token_id', 'to_amount', 'limit_price', 'usdt_fee', 'order_type']:
                 setattr(transaction, key, data.get(key, getattr(transaction, key)))
             db.session.commit()

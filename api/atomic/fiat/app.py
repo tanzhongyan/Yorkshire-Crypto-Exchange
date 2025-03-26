@@ -78,7 +78,7 @@ class FiatAccount(db.Model):
         primary_key=True,
         nullable=False
     )
-    last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
 ##### API Models - flask restx API autodoc #####
 # To use flask restx, you will have to define API models with their input types
@@ -106,7 +106,7 @@ fiat_account_output_model = account_ns.model('FiatAccountOutput', {
     'user_id': fields.String(required=True),
     'balance': fields.Float(required=True),
     'currency_code': fields.String(required=True),
-    'last_updated': fields.DateTime
+    'updated': fields.DateTime
 })
 
 fiat_account_input_model = account_ns.model('FiatAccountInput', {
@@ -116,9 +116,8 @@ fiat_account_input_model = account_ns.model('FiatAccountInput', {
 })
 
 fiat_account_update_model = account_ns.model('FiatAccountUpdate', {
-    'balance': fields.Float(required=True),
-    'currency_code': fields.String(required=True)
-})
+    'amount_changed': fields.Float(required=True),
+    })
 
 ##### CRUD Resource Definitions #####
 
@@ -155,27 +154,18 @@ class FiatCurrencyResource(Resource):
         """Get a fiat currency by code"""
         return FiatCurrency.query.get_or_404(currency_code)
 
-    @account_ns.expect(fiat_account_update_model, validate=True)
-    @account_ns.marshal_with(fiat_account_output_model)
-    def put(self, user_id):
-        """
-        Update the balance of a fiat account by adding or deducting a specified amount.
-        
-        The input `amount_change` represents the amount to be added or deducted from the account balance.
-        """
+    @currency_ns.expect(fiat_currency_update_model, validate=True)
+    @currency_ns.marshal_with(fiat_currency_output_model)
+    def put(self, currency_code):
+        """Update a fiat currency"""
         try:
-            account = FiatAccount.query.get_or_404(user_id)
+            currency = FiatCurrency.query.get_or_404(currency_code)
             data = request.json
-            amount_change = data.get('amount_change', 0)
-            
-            # Update balance
-            account.balance += amount_change
-            account.last_updated = func.now()
+            currency.rate = data.get('rate')
             db.session.commit()
-            
-            return account
+            return currency
         except Exception as e:
-            account_ns.abort(400, f'Failed to update fiat account balance: {str(e)}')
+            currency_ns.abort(400, f'Failed to update fiat currency: {str(e)}')
             
     def delete(self, currency_code):
         """Delete a fiat currency"""
@@ -212,31 +202,36 @@ class FiatAccountList(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to create fiat account: {str(e)}')
 
-@account_ns.route('/<string:user_id>')
+@account_ns.route('/<string:user_id>/<string:currency_code>')
 class FiatAccountResource(Resource):
     @account_ns.marshal_with(fiat_account_output_model)
-    def get(self, user_id):
-        """Get a fiat account by user ID"""
-        return FiatAccount.query.get_or_404(user_id)
+    def get(self, user_id, currency_code):
+        """Get a fiat account by user ID and currency code"""
+        return FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
 
     @account_ns.expect(fiat_account_update_model, validate=True)
     @account_ns.marshal_with(fiat_account_output_model)
-    def put(self, user_id):
-        """Update a fiat account"""
+    def put(self, user_id, currency_code):
+        """Update a fiat account balance"""
         try:
-            account = FiatAccount.query.get_or_404(user_id)
+            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
             data = request.json
-            account.balance = data.get('balance', account.balance)
-            account.currency_code = data.get('currency_code', account.currency_code)
+            amount_changed = data.get('amount_changed', 0)
+            
+            if account.balance + amount_changed < 0:
+                account_ns.abort(400, 'Insufficient balance')
+            
+            account.balance += amount_changed
+            account.updated = func.now()
             db.session.commit()
             return account
         except Exception as e:
             account_ns.abort(400, f'Failed to update fiat account: {str(e)}')
 
-    def delete(self, user_id):
+    def delete(self, user_id, currency_code):
         """Delete a fiat account"""
         try:
-            account = FiatAccount.query.get_or_404(user_id)
+            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
             db.session.delete(account)
             db.session.commit()
             return {'message': 'Fiat account deleted successfully'}

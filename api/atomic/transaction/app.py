@@ -236,7 +236,7 @@ class FiatTransactionResource(Resource):
         """Get a fiat transaction by ID"""
         return TransactionFiat.query.get_or_404(transaction_id)
 
-    @fiat_ns.expect(fiat_input_model, validate=True)
+    @fiat_ns.expect(fiat_input_model)
     @fiat_ns.marshal_with(fiat_output_model)
     def put(self, transaction_id):
         """Update a fiat transaction"""

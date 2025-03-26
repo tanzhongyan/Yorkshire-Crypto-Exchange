@@ -150,6 +150,34 @@ services:
     expose:
       - "5000"
 
+  deposit-service:
+    container_name: deposit-service
+    build:
+      context: ./api/composite/deposit
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+      
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: stripe-cli
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to deposit-service:5000/v1/api/deposit/webhook
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_DEVICE_NAME=local_dev
+    networks:
+      - kong-net
+    depends_on:
+      - deposit-service 
+
   # rabbitmq:
   #   image: rabbitmq:management
   #   ports:

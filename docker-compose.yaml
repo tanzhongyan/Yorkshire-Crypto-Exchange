@@ -177,6 +177,22 @@ services:
       - kong-net
     depends_on:
       - deposit-service 
+  
+  swap-service:
+    container_name: swap-service
+    build:
+      context: ./api/composite/swap
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+    expose:
+      - "5000"
 
   # rabbitmq:
   #   image: rabbitmq:management

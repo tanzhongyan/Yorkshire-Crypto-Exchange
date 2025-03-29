@@ -266,6 +266,8 @@ Atomic Microservices:
 Composite Microservices:
 - **identity** `http://localhost:5004/v1/api`
 - **deposit** `http://localhost:5006/v1/api`
+- **swap** `http://localhost:5007/v1/api`
+
 
 
 ## Running the Website Locally

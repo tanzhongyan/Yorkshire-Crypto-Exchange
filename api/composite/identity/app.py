@@ -7,7 +7,7 @@ import requests
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api'
+API_ROOT = f'/api/{API_VERSION}'
 
 app = Flask(__name__)
 CORS(app)
@@ -23,9 +23,9 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
-USERS_SERVICE_URL = "http://user-service:5000/v1/api/user"
-FIAT_SERVICE_URL = "http://fiat-service:5000/v1/api/fiat"
-CRYPTO_SERVICE_URL = "http://crypto-service:5000/v1/api/crypto"
+USERS_SERVICE_URL = "http://user-service:5000/api/v1/user"
+FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
+CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls

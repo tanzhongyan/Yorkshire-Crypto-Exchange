@@ -219,11 +219,11 @@ user_output_model = account_ns.model(
 ### CRUD Example
 
 - Use your created Namespace variable as the flask app and pass in the routes. The API naming convention will follow the `API_ROOT` followed by `/{namespace}` and `/{specified-route}`. An example would be:
-  - `API_ROOT`: "/v1/api/user"
+  - `API_ROOT`: "/api/v1/user"
   - `namespace`: "account"
   - `specified-route`: ""
 ```
-localhost:5003/v1/api/user/account
+localhost:5003/api/v1/user/account
 ```
 - Use `expect` to specify the input parameters. Pass in the **input model** as the parameter.
 - Use `marshal_list_with` when you want to get all records. Pass in the **output model** as the parameter.
@@ -258,14 +258,14 @@ class UserAccountListResource(Resource):
 Each microservice hosts its documentation at:
 
 Atomic Microservices:
-- **Fiat Service:** `http://localhost:5001/v1/api/fiat`
-- **Crypto Service:** `http://localhost:5002/v1/api/crypto`
-- **User Service:** `http://localhost:5003/v1/api/user`
-- **transaction Service:** `http://localhost:5005/v1/api/transaction`
+- **Fiat Service:** `http://localhost:5001/api/v1/fiat`
+- **Crypto Service:** `http://localhost:5002/api/v1/crypto`
+- **User Service:** `http://localhost:5003/api/v1/user`
+- **transaction Service:** `http://localhost:5005/api/v1/transaction`
 
 Composite Microservices:
-- **identity** `http://localhost:5004/v1/api`
-- **deposit** `http://localhost:5006/v1/api`
+- **identity** `http://localhost:5004/api/v1`
+- **deposit** `http://localhost:5006/api/v1`
 
 
 ## Running the Website Locally

@@ -15,7 +15,7 @@ import os
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api/user'
+API_ROOT = f'/api/{API_VERSION}/user'
 
 app = Flask(__name__)
 CORS(app)

@@ -13,7 +13,7 @@ import os
 
 ##### Configuration #####
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api/fiat'
+API_ROOT = f'/api/{API_VERSION}/fiat'
 
 app = Flask(__name__)
 CORS(app)

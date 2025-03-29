@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api'
+API_ROOT = f'/api/{API_VERSION}'
 
 app = Flask(__name__)
 CORS(
@@ -47,8 +47,8 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
-TRANSACTION_SERVICE_URL = "http://transaction-service:5000/v1/api/transaction"
-FIAT_SERVICE_URL = "http://fiat-service:5000/v1/api/fiat"
+TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
+FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
@@ -122,8 +122,8 @@ class CreateDeposit(Resource):
 
         # Construct success and cancel URLs
         base_url = request.host_url.rstrip('/')
-        success_url = f"{base_url}/v1/api/deposit/success/{transaction_id}"
-        cancel_url = f"{base_url}/v1/api/deposit/cancel/{transaction_id}"
+        success_url = f"{base_url}/api/v1/deposit/success/{transaction_id}"
+        cancel_url = f"{base_url}/api/v1/deposit/cancel/{transaction_id}"
 
         try:
             # Create Stripe checkout session

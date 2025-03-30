@@ -50,19 +50,19 @@ create_account_model = identity_ns.model(
         # Authenticate fields
         "password": fields.String(required=True, description="User Password"),
 
-        # Address fields
-        'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
-        'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
+        # # Address fields
+        # 'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
+        # 'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
 
-        # # Nullable fields inside address
-        'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
-        'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
-        'district': fields.String(attribute='district',required=False, description='The district'),
+        # # # Nullable fields inside address
+        # 'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
+        # 'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
+        # 'district': fields.String(attribute='district',required=False, description='The district'),
 
-        'city': fields.String(required=True, description='The city'),
-        'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
-        'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
-        'country': fields.String(required=True, description='The country')
+        # 'city': fields.String(required=True, description='The city'),
+        # 'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
+        # 'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
+        # 'country': fields.String(required=True, description='The country')
     },
 )
 
@@ -71,7 +71,7 @@ success_response = identity_ns.model(
     "SuccessResponse",
     {
         "message": fields.String(description="Success message"),
-        "user_id": fields.String(description="Created User ID"),
+        "userId": fields.String(attribute='user_id', description="Created User ID"),
     },
 )
 
@@ -104,19 +104,20 @@ class CreateAccount(Resource):
         phone = data.get("phone")
         email = data.get("email")
 
-        # Address Fields
-        street_number = data.get("streetNumber")
-        street_name = data.get("streetName")
-        unit_number = data.get("unitNumber")
-        building_name = data.get("buildingName")
-        district = data.get("district")
-        city = data.get("city")
-        state_province = data.get("stateProvince")
-        postal_code = data.get("postalCode")
-        country = data.get("country")
+        # # Address Fields
+        # street_number = data.get("streetNumber")
+        # street_name = data.get("streetName")
+        # unit_number = data.get("unitNumber")
+        # building_name = data.get("buildingName")
+        # district = data.get("district")
+        # city = data.get("city")
+        # state_province = data.get("stateProvince")
+        # postal_code = data.get("postalCode")
+        # country = data.get("country")
 
         # Validate required fields properly
-        required_fields = [username, password, fullname, phone, email, country, street_number, street_name, city, state_province, postal_code]
+        # required_fields = [username, password, fullname, phone, email, country, street_number, street_name, city, state_province, postal_code]
+        required_fields = [username, password, fullname, phone, email]
         if None in required_fields or "" in required_fields:
             return {"error": "Missing required fields"}, 400  # Bad request response
 
@@ -160,35 +161,34 @@ class CreateAccount(Resource):
         except requests.RequestException as e:
             return {"error": "Failed to connect to authentication service", "details": str(e)}, 500
 
-        # Store address details in address under user microservice
-        user_address_payload = {
-            "streetNumber": street_number,
-            "streetName": street_name,
-            "unitNumber": unit_number,
-            "buildingName": building_name,
-            "district": district,
-            "city": city,
-            "stateProvince": state_province,
-            "postalCode": postal_code,
-            "country": country
-        }
+        # # Store address details in address under user microservice
+        # user_address_payload = {
+        #     "streetNumber": street_number,
+        #     "streetName": street_name,
+        #     "unitNumber": unit_number,
+        #     "buildingName": building_name,
+        #     "district": district,
+        #     "city": city,
+        #     "stateProvince": state_province,
+        #     "postalCode": postal_code,
+        #     "country": country
+        # }
 
-        try:
-            address_response = requests.post(f"{USERS_SERVICE_URL}/address/{user_id}", json=user_address_payload)
-            if address_response.status_code != 201:
-                return {
-                    "error": "Failed to store user address",
-                    "details": address_response.json() if address_response.content else "No response content"
-                }, address_response.status_code
-        except requests.RequestException as e:
-            return {"error": "Failed to connect to address service", "details": str(e)}, 500
+        # try:
+        #     address_response = requests.post(f"{USERS_SERVICE_URL}/address/{user_id}", json=user_address_payload)
+        #     if address_response.status_code != 201:
+        #         return {
+        #             "error": "Failed to store user address",
+        #             "details": address_response.json() if address_response.content else "No response content"
+        #         }, address_response.status_code
+        # except requests.RequestException as e:
+        #     return {"error": "Failed to connect to address service", "details": str(e)}, 500
 
-        return {"message": "User account successfully created", "user_id": user_id}, 201
-    
         # Create fiat wallet using fiat microservice
 
         # Create crypto wallet using crypto microservice
 
+        return {"message": "User account successfully created", "user_id": user_id}, 201
 
 # Add name spaces into api
 api.add_namespace(identity_ns)

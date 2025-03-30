@@ -244,83 +244,66 @@ class FiatAccountResource(Resource):
 
 ##### Seeding #####
 # Provide seed data for all tables
-# def seed_data():
-#     try:
-#         with open("seeddata.json", "r") as file:
-#             data = json.load(file)
+def seed_data():
+    try:
+        with open("seeddata.json", "r") as file:
+            data = json.load(file)
 
-#         # 1) Insert FiatCurrency data
-#         fiat_currencies_data = data.get("fiatCurrencies", [])
-#         for currency in fiat_currencies_data:
-#             # Skip if currency already exists
-#             if FiatCurrency.query.get(currency["currency_code"]):
-#                 print(f"Skipping currency '{currency['currency_code']}' as it already exists.")
-#                 continue
+        # 1) Insert FiatCurrency data
+        fiat_currencies_data = data.get("fiatCurrencies", [])
+        for currency in fiat_currencies_data:
+            # Convert currency code to lowercase for Stripe compatibility
+            currency_code = currency["currencyCode"].lower()
+            
+            # Skip if currency already exists
+            if FiatCurrency.query.get(currency_code):
+                print(f"Skipping currency '{currency_code}' as it already exists.")
+                continue
 
-#             new_currency = FiatCurrency(
-#                 currency_code=currency["currency_code"],
-#                 rate=currency["rate"]
-#             )
-#             db.session.add(new_currency)
-#         db.session.commit()
+            new_currency = FiatCurrency(
+                currency_code=currency_code,
+                rate=currency["rate"]
+            )
+            db.session.add(new_currency)
+        db.session.commit()
 
-#         # 2) Insert FiatAccount data
-#         fiat_accounts_data = data.get("fiatAccounts", [])
-#         for acct in fiat_accounts_data:
-#             # Skip if account already exists (using user_id as primary key)
-#             if FiatAccount.query.get(acct["user_id"]):
-#                 print(f"Skipping fiat account for user_id '{acct['user_id']}' as it already exists.")
-#                 continue
+        # 2) Insert FiatAccount data
+        fiat_accounts_data = data.get("fiatAccounts", [])
+        for acct in fiat_accounts_data:
+            # Convert currency code to lowercase for Stripe compatibility
+            currency_code = acct["currencyCode"].lower()
+            
+            # Skip if account already exists (using composite primary key)
+            existing_account = FiatAccount.query.filter_by(
+                user_id=acct["userId"], 
+                currency_code=currency_code
+            ).first()
+            
+            if existing_account:
+                print(f"Skipping fiat account for user_id '{acct['userId']}' with currency '{currency_code}' as it already exists.")
+                continue
 
-#             new_acct = FiatAccount(
-#                 user_id=acct["user_id"],
-#                 balance=acct["balance"],
-#                 currency_code=acct["currency_code"]
-#             )
-#             db.session.add(new_acct)
-#         db.session.commit()
+            new_acct = FiatAccount(
+                user_id=acct["userId"],
+                balance=acct["balance"],
+                currency_code=currency_code
+            )
+            db.session.add(new_acct)
+        db.session.commit()
 
-#         # 3) Insert FiatTransaction data
-#         fiat_transactions_data = data.get("fiatTransactions", [])
-#         for txn in fiat_transactions_data:
-#             # Create a new transaction. transaction_id is auto-generated.
-#             new_txn = FiatTransaction(
-#                 user_id=txn["user_id"],
-#                 amount=txn["amount"],
-#                 type=txn["type"],
-#                 status=txn["status"]
-#             )
-#             db.session.add(new_txn)
-#         db.session.commit()
+        print("Seed data successfully loaded from seeddata.json.")
 
-#         # 4) Insert FiatCryptoTrade data
-#         fiat_crypto_trades_data = data.get("fiatCryptoTrades", [])
-#         for trade in fiat_crypto_trades_data:
-#             # Create a new crypto trade. transaction_id is auto-generated.
-#             new_trade = FiatCryptoTrade(
-#                 user_id=trade["user_id"],
-#                 wallet_id=trade["wallet_id"],
-#                 from_amount=trade["from_amount"],
-#                 to_amount=trade["to_amount"],
-#                 direction=trade["direction"],
-#                 status=trade["status"]
-#             )
-#             db.session.add(new_trade)
-#         db.session.commit()
-
-#         print("Seed data successfully loaded from seeddata.json.")
-
-#     except IntegrityError as e:
-#         db.session.rollback()
-#         print(f"Data seeding failed due to integrity error: {e}")
-#     except FileNotFoundError:
-#         print("seeddata.json not found. Skipping seeding.")
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"Data seeding failed due to integrity error: {e}")
+    except FileNotFoundError:
+        print("seeddata.json not found. Skipping seeding.")
 
 # Add name spaces into api
 api.add_namespace(currency_ns)
 api.add_namespace(account_ns)
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     seed_data()
+    with app.app_context():
+        seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

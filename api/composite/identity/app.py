@@ -71,7 +71,7 @@ success_response = identity_ns.model(
     "SuccessResponse",
     {
         "message": fields.String(description="Success message"),
-        "user_id": fields.String(description="Created User ID"),
+        "userId": fields.String(attribute='user_id', description="Created User ID"),
     },
 )
 

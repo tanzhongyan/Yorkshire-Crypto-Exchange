@@ -1,22 +1,16 @@
 {
     "fiatCurrencies": [
-        {"currency_code": "USD", "rate": 1.0},
-        {"currency_code": "EUR", "rate": 0.85},
-        {"currency_code": "SGD", "rate": 1.35}
+        {"currencyCode": "usd", "rate": 1.0},
+        {"currencyCode": "sgd", "rate": 1.35},
+        {"currencyCode": "eur", "rate": 0.85},
+        {"currencyCode": "myr", "rate": 4.2},
+        {"currencyCode": "aud", "rate": 1.5},
+        {"currencyCode": "gbp", "rate": 0.75},
+        {"currencyCode": "jpy", "rate": 110.0},
+        {"currencyCode": "cny", "rate": 6.5},
+        {"currencyCode": "inr", "rate": 74.0}
     ],
     "fiatAccounts": [
-        {"user_id": "550e8400-e29b-41d4-a716-446655440000", "balance": 1000.50, "currency_code": "USD"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440001", "balance": 2500.75, "currency_code": "EUR"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440002", "balance": 800.00, "currency_code": "SGD"}
-    ],
-    "fiatTransactions": [
-        {"user_id": "550e8400-e29b-41d4-a716-446655440000", "amount": 500.00, "type": "deposit", "status": "confirmed"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440001", "amount": 200.00, "type": "withdrawal", "status": "processing"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440002", "amount": 1500.00, "type": "deposit", "status": "cancelled"}
-    ],
-    "fiatCryptoTrades": [
-        {"user_id": "550e8400-e29b-41d4-a716-446655440000", "wallet_id": "550e8400-e29b-41d4-a716-446655440010", "from_amount": 500.00, "to_amount": 0.01, "direction": "fiat_to_crypto", "status": "confirmed"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440001", "wallet_id": "550e8400-e29b-41d4-a716-446655440011", "from_amount": 1000.00, "to_amount": 0.02, "direction": "crypto_to_fiat", "status": "processing"},
-        {"user_id": "550e8400-e29b-41d4-a716-446655440002", "wallet_id": "550e8400-e29b-41d4-a716-446655440012", "from_amount": 750.00, "to_amount": 0.015, "direction": "fiat_to_crypto", "status": "cancelled"}
+        {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "usd"}
     ]
 }

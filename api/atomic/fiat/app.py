@@ -88,13 +88,13 @@ class FiatAccount(db.Model):
 
 # Currency Models
 fiat_currency_output_model = currency_ns.model('FiatCurrencyOutput', {
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'rate': fields.Float(required=True),
     'updated': fields.DateTime
 })
 
 fiat_currency_input_model = currency_ns.model('FiatCurrencyInput', {
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'rate': fields.Float(required=True)
 })
 
@@ -104,20 +104,20 @@ fiat_currency_update_model = currency_ns.model('FiatCurrencyUpdate', {
 
 # Account Models
 fiat_account_output_model = account_ns.model('FiatAccountOutput', {
-    'user_id': fields.String(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'balance': fields.Float(required=True),
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'updated': fields.DateTime
 })
 
 fiat_account_input_model = account_ns.model('FiatAccountInput', {
-    'user_id': fields.String(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'balance': fields.Float(required=True),
-    'currency_code': fields.String(required=True)
+    'currencyCode': fields.String(attribute='currency_code',required=True)
 })
 
 fiat_account_update_model = account_ns.model('FiatAccountUpdate', {
-    'amount_changed': fields.Float(required=True),
+    'amountChanged': fields.Float(required=True),
     })
 
 ##### CRUD Resource Definitions #####
@@ -139,7 +139,7 @@ class FiatCurrencyList(Resource):
         try:
             data = request.json
             new_currency = FiatCurrency(
-                currency_code=data.get('currency_code'),
+                currency_code=data.get('currencyCode'),
                 rate=data.get('rate')
             )
             db.session.add(new_currency)
@@ -148,19 +148,19 @@ class FiatCurrencyList(Resource):
         except Exception as e:
             currency_ns.abort(400, f'Failed to create fiat currency: {str(e)}')
 
-@currency_ns.route('/<string:currency_code>')
+@currency_ns.route('/<string:currencyCode>')
 class FiatCurrencyResource(Resource):
     @currency_ns.marshal_with(fiat_currency_output_model)
-    def get(self, currency_code):
+    def get(self, currencyCode):
         """Get a fiat currency by code"""
-        return FiatCurrency.query.get_or_404(currency_code)
+        return FiatCurrency.query.get_or_404(currencyCode)
 
     @currency_ns.expect(fiat_currency_update_model, validate=True)
     @currency_ns.marshal_with(fiat_currency_output_model)
-    def put(self, currency_code):
+    def put(self, currencyCode):
         """Update a fiat currency"""
         try:
-            currency = FiatCurrency.query.get_or_404(currency_code)
+            currency = FiatCurrency.query.get_or_404(currencyCode)
             data = request.json
             currency.rate = data.get('rate')
             db.session.commit()
@@ -168,10 +168,10 @@ class FiatCurrencyResource(Resource):
         except Exception as e:
             currency_ns.abort(400, f'Failed to update fiat currency: {str(e)}')
             
-    def delete(self, currency_code):
+    def delete(self, currencyCode):
         """Delete a fiat currency"""
         try:
-            currency = FiatCurrency.query.get_or_404(currency_code)
+            currency = FiatCurrency.query.get_or_404(currencyCode)
             db.session.delete(currency)
             db.session.commit()
             return {'message': 'Fiat currency deleted successfully'}
@@ -193,9 +193,9 @@ class FiatAccountList(Resource):
         try:
             data = request.json
             new_account = FiatAccount(
-                user_id=data.get('user_id'),
+                user_id=data.get('userId'),
                 balance=data.get('balance'),
-                currency_code=data.get('currency_code')
+                currency_code=data.get('currencyCode')
             )
             db.session.add(new_account)
             db.session.commit()
@@ -203,21 +203,21 @@ class FiatAccountList(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to create fiat account: {str(e)}')
 
-@account_ns.route('/<string:user_id>/<string:currency_code>')
+@account_ns.route('/<string:userId>/<string:currencyCode>')
 class FiatAccountResource(Resource):
     @account_ns.marshal_with(fiat_account_output_model)
-    def get(self, user_id, currency_code):
+    def get(self, userId, currencyCode):
         """Get a fiat account by user ID and currency code"""
-        return FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+        return FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
 
     @account_ns.expect(fiat_account_update_model, validate=True)
     @account_ns.marshal_with(fiat_account_output_model)
-    def put(self, user_id, currency_code):
+    def put(self, userId, currencyCode):
         """Update a fiat account balance"""
         try:
-            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+            account = FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
             data = request.json
-            amount_changed = data.get('amount_changed', 0)
+            amount_changed = data.get('amountChanged', 0)
             
             # Convert float to Decimal via string to maintain precision
             decimal_amount = Decimal(str(amount_changed))
@@ -232,10 +232,10 @@ class FiatAccountResource(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to update fiat account: {str(e)}')
 
-    def delete(self, user_id, currency_code):
+    def delete(self, userId, currencyCode):
         """Delete a fiat account"""
         try:
-            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+            account = FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
             db.session.delete(account)
             db.session.commit()
             return {'message': 'Fiat account deleted successfully'}
@@ -244,83 +244,66 @@ class FiatAccountResource(Resource):
 
 ##### Seeding #####
 # Provide seed data for all tables
-# def seed_data():
-#     try:
-#         with open("seeddata.json", "r") as file:
-#             data = json.load(file)
+def seed_data():
+    try:
+        with open("seeddata.json", "r") as file:
+            data = json.load(file)
 
-#         # 1) Insert FiatCurrency data
-#         fiat_currencies_data = data.get("fiatCurrencies", [])
-#         for currency in fiat_currencies_data:
-#             # Skip if currency already exists
-#             if FiatCurrency.query.get(currency["currency_code"]):
-#                 print(f"Skipping currency '{currency['currency_code']}' as it already exists.")
-#                 continue
+        # 1) Insert FiatCurrency data
+        fiat_currencies_data = data.get("fiatCurrencies", [])
+        for currency in fiat_currencies_data:
+            # Convert currency code to lowercase for Stripe compatibility
+            currency_code = currency["currencyCode"].lower()
+            
+            # Skip if currency already exists
+            if FiatCurrency.query.get(currency_code):
+                print(f"Skipping currency '{currency_code}' as it already exists.")
+                continue
 
-#             new_currency = FiatCurrency(
-#                 currency_code=currency["currency_code"],
-#                 rate=currency["rate"]
-#             )
-#             db.session.add(new_currency)
-#         db.session.commit()
+            new_currency = FiatCurrency(
+                currency_code=currency_code,
+                rate=currency["rate"]
+            )
+            db.session.add(new_currency)
+        db.session.commit()
 
-#         # 2) Insert FiatAccount data
-#         fiat_accounts_data = data.get("fiatAccounts", [])
-#         for acct in fiat_accounts_data:
-#             # Skip if account already exists (using user_id as primary key)
-#             if FiatAccount.query.get(acct["user_id"]):
-#                 print(f"Skipping fiat account for user_id '{acct['user_id']}' as it already exists.")
-#                 continue
+        # 2) Insert FiatAccount data
+        fiat_accounts_data = data.get("fiatAccounts", [])
+        for acct in fiat_accounts_data:
+            # Convert currency code to lowercase for Stripe compatibility
+            currency_code = acct["currencyCode"].lower()
+            
+            # Skip if account already exists (using composite primary key)
+            existing_account = FiatAccount.query.filter_by(
+                user_id=acct["userId"], 
+                currency_code=currency_code
+            ).first()
+            
+            if existing_account:
+                print(f"Skipping fiat account for user_id '{acct['userId']}' with currency '{currency_code}' as it already exists.")
+                continue
 
-#             new_acct = FiatAccount(
-#                 user_id=acct["user_id"],
-#                 balance=acct["balance"],
-#                 currency_code=acct["currency_code"]
-#             )
-#             db.session.add(new_acct)
-#         db.session.commit()
+            new_acct = FiatAccount(
+                user_id=acct["userId"],
+                balance=acct["balance"],
+                currency_code=currency_code
+            )
+            db.session.add(new_acct)
+        db.session.commit()
 
-#         # 3) Insert FiatTransaction data
-#         fiat_transactions_data = data.get("fiatTransactions", [])
-#         for txn in fiat_transactions_data:
-#             # Create a new transaction. transaction_id is auto-generated.
-#             new_txn = FiatTransaction(
-#                 user_id=txn["user_id"],
-#                 amount=txn["amount"],
-#                 type=txn["type"],
-#                 status=txn["status"]
-#             )
-#             db.session.add(new_txn)
-#         db.session.commit()
+        print("Seed data successfully loaded from seeddata.json.")
 
-#         # 4) Insert FiatCryptoTrade data
-#         fiat_crypto_trades_data = data.get("fiatCryptoTrades", [])
-#         for trade in fiat_crypto_trades_data:
-#             # Create a new crypto trade. transaction_id is auto-generated.
-#             new_trade = FiatCryptoTrade(
-#                 user_id=trade["user_id"],
-#                 wallet_id=trade["wallet_id"],
-#                 from_amount=trade["from_amount"],
-#                 to_amount=trade["to_amount"],
-#                 direction=trade["direction"],
-#                 status=trade["status"]
-#             )
-#             db.session.add(new_trade)
-#         db.session.commit()
-
-#         print("Seed data successfully loaded from seeddata.json.")
-
-#     except IntegrityError as e:
-#         db.session.rollback()
-#         print(f"Data seeding failed due to integrity error: {e}")
-#     except FileNotFoundError:
-#         print("seeddata.json not found. Skipping seeding.")
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"Data seeding failed due to integrity error: {e}")
+    except FileNotFoundError:
+        print("seeddata.json not found. Skipping seeding.")
 
 # Add name spaces into api
 api.add_namespace(currency_ns)
 api.add_namespace(account_ns)
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     seed_data()
+    with app.app_context():
+        seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

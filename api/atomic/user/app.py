@@ -450,31 +450,37 @@ class UserAddressResource(Resource):
         return address
 
 ##### Seeding #####
-# Provide seed data for test account
+# Provide seed data for test account with fixed values for replicability
 def seed_data():
     try:
+        # Fixed values for test account to ensure consistent testing
+        TEST_USER_ID = uuid.UUID('a7c396e2-8370-4975-820e-c5ee8e3875c0')
+        TEST_PASSWORD_HASH = '$2b$12$qHXz/XGhT57M.vltsTzoNOKVBDL2BHN0q0EEgXsNQ3lKD6rn3Y1eG'  # Corresponds to "test12345"
+        
         # Check if test user already exists
-        if UserAccount.query.filter_by(username="test").first() is None:
-            # Add test account directly in the code
+        if UserAccount.query.filter_by(user_id=TEST_USER_ID).first() is None:
+            # Add test account with fixed user_id
             test_user = UserAccount(
+                user_id=TEST_USER_ID,  # Using fixed ID for consistent testing
                 username="test",
                 fullname="Test User",
-                phone="12345678",  # Updated as specified
+                phone="12345678",
                 email="test@test.com"
             )
             db.session.add(test_user)
             db.session.commit()
             
-            # Create authentication for test user with proper password hashing
+            # Create authentication with fixed password hash
+            # Note: This hash corresponds to "test12345" and allows login with that password
             test_auth = UserAuthenticate(
-                user_id=test_user.user_id,
-                password_hashed=hash_password("test12345")  # This properly hashes the password
+                user_id=TEST_USER_ID,
+                password_hashed=TEST_PASSWORD_HASH
             )
             db.session.add(test_auth)
             
             # Create address for test user
             test_address = UserAddress(
-                user_id=test_user.user_id,
+                user_id=TEST_USER_ID,
                 street_number="Test",
                 street_name="Test Street",
                 unit_number="Test",
@@ -487,7 +493,7 @@ def seed_data():
             )
             db.session.add(test_address)
             db.session.commit()
-            print("Test account created successfully.")
+            print("Test account created successfully with fixed user_id and password hash.")
         else:
             print("Test account already exists.")
 
@@ -497,6 +503,7 @@ def seed_data():
     except Exception as e:
         db.session.rollback()
         print(f"Data seeding failed: {e}")
+
 
 # Add name spaces into api
 api.add_namespace(account_ns)

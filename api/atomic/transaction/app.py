@@ -97,10 +97,10 @@ class TransactionCrypto(db.Model):
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(20), nullable=False)
-    from_token_id = db.Column(db.Integer, nullable=False)
+    from_token_id = db.Column(db.String(15), nullable=False)
     from_amount = db.Column(db.Numeric(18, 8), nullable=False)
     from_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
-    to_token_id = db.Column(db.Integer, nullable=False)
+    to_token_id = db.Column(db.String(15), nullable=False)
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
     to_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
     limit_price = db.Column(db.Numeric(18, 8), nullable=True)
@@ -169,10 +169,10 @@ crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
     'transactionId': fields.String(attribute='transaction_id', readonly=True),
     'userId': fields.String(attribute='user_id',required=True),
     'status': fields.String(required=True),
-    'fromTokenId': fields.Integer(attribute='from_token_id', required=True),
+    'fromTokenId': fields.String(attribute='from_token_id', required=True),
     'fromAmount': fields.Float(attribute='from_amount', required=True),
     'fromAmountActual': fields.Float(attribute='from_amount_actual'),
-    'toTokenId': fields.Integer(attribute='to_token_id', required=True),
+    'toTokenId': fields.String(attribute='to_token_id', required=True),
     'toAmount': fields.Float(attribute='to_amount', required=True),
     'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
@@ -185,10 +185,10 @@ crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
 crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
     'userId': fields.String(attribute='user_id',required=True),
     'status': fields.String(required=True),
-    'fromTokenId': fields.Integer(attribute='from_token_id', required=True),
+    'fromTokenId': fields.String(attribute='from_token_id', required=True),
     'fromAmount': fields.Float(attribute='from_amount', required=True),
     'fromAmountActual': fields.Float(attribute='from_amount_actual'),
-    'toTokenId': fields.Integer(attribute='to_token_id', required=True),
+    'toTokenId': fields.String(attribute='to_token_id', required=True),
     'toAmount': fields.Float(attribute='to_amount', required=True),
     'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),

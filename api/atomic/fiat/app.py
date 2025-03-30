@@ -75,7 +75,6 @@ class FiatAccount(db.Model):
     balance = db.Column(db.Numeric(18, 8), nullable=False, default=0.0)
     currency_code = db.Column(
         db.String(3),
-        db.ForeignKey('fiat_currency.currency_code'),
         primary_key=True,
         nullable=False
     )

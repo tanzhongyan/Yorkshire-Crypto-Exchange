@@ -29,7 +29,6 @@ def upgrade():
     sa.Column('balance', sa.Numeric(precision=18, scale=8), nullable=False),
     sa.Column('currency_code', sa.String(length=3), nullable=False),
     sa.Column('updated', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['currency_code'], ['fiat_currency.currency_code'], ),
     sa.PrimaryKeyConstraint('user_id', 'currency_code')
     )
     # ### end Alembic commands ###

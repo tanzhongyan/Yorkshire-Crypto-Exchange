@@ -88,13 +88,13 @@ class FiatAccount(db.Model):
 
 # Currency Models
 fiat_currency_output_model = currency_ns.model('FiatCurrencyOutput', {
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'rate': fields.Float(required=True),
     'updated': fields.DateTime
 })
 
 fiat_currency_input_model = currency_ns.model('FiatCurrencyInput', {
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'rate': fields.Float(required=True)
 })
 
@@ -104,20 +104,20 @@ fiat_currency_update_model = currency_ns.model('FiatCurrencyUpdate', {
 
 # Account Models
 fiat_account_output_model = account_ns.model('FiatAccountOutput', {
-    'user_id': fields.String(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'balance': fields.Float(required=True),
-    'currency_code': fields.String(required=True),
+    'currencyCode': fields.String(attribute='currency_code',required=True),
     'updated': fields.DateTime
 })
 
 fiat_account_input_model = account_ns.model('FiatAccountInput', {
-    'user_id': fields.String(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'balance': fields.Float(required=True),
-    'currency_code': fields.String(required=True)
+    'currencyCode': fields.String(attribute='currency_code',required=True)
 })
 
 fiat_account_update_model = account_ns.model('FiatAccountUpdate', {
-    'amount_changed': fields.Float(required=True),
+    'amountChanged': fields.Float(required=True),
     })
 
 ##### CRUD Resource Definitions #####
@@ -139,7 +139,7 @@ class FiatCurrencyList(Resource):
         try:
             data = request.json
             new_currency = FiatCurrency(
-                currency_code=data.get('currency_code'),
+                currency_code=data.get('currencyCode'),
                 rate=data.get('rate')
             )
             db.session.add(new_currency)
@@ -148,19 +148,19 @@ class FiatCurrencyList(Resource):
         except Exception as e:
             currency_ns.abort(400, f'Failed to create fiat currency: {str(e)}')
 
-@currency_ns.route('/<string:currency_code>')
+@currency_ns.route('/<string:currencyCode>')
 class FiatCurrencyResource(Resource):
     @currency_ns.marshal_with(fiat_currency_output_model)
-    def get(self, currency_code):
+    def get(self, currencyCode):
         """Get a fiat currency by code"""
-        return FiatCurrency.query.get_or_404(currency_code)
+        return FiatCurrency.query.get_or_404(currencyCode)
 
     @currency_ns.expect(fiat_currency_update_model, validate=True)
     @currency_ns.marshal_with(fiat_currency_output_model)
-    def put(self, currency_code):
+    def put(self, currencyCode):
         """Update a fiat currency"""
         try:
-            currency = FiatCurrency.query.get_or_404(currency_code)
+            currency = FiatCurrency.query.get_or_404(currencyCode)
             data = request.json
             currency.rate = data.get('rate')
             db.session.commit()
@@ -168,10 +168,10 @@ class FiatCurrencyResource(Resource):
         except Exception as e:
             currency_ns.abort(400, f'Failed to update fiat currency: {str(e)}')
             
-    def delete(self, currency_code):
+    def delete(self, currencyCode):
         """Delete a fiat currency"""
         try:
-            currency = FiatCurrency.query.get_or_404(currency_code)
+            currency = FiatCurrency.query.get_or_404(currencyCode)
             db.session.delete(currency)
             db.session.commit()
             return {'message': 'Fiat currency deleted successfully'}
@@ -193,9 +193,9 @@ class FiatAccountList(Resource):
         try:
             data = request.json
             new_account = FiatAccount(
-                user_id=data.get('user_id'),
+                user_id=data.get('userId'),
                 balance=data.get('balance'),
-                currency_code=data.get('currency_code')
+                currency_code=data.get('currencyCode')
             )
             db.session.add(new_account)
             db.session.commit()
@@ -203,21 +203,21 @@ class FiatAccountList(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to create fiat account: {str(e)}')
 
-@account_ns.route('/<string:user_id>/<string:currency_code>')
+@account_ns.route('/<string:userId>/<string:currencyCode>')
 class FiatAccountResource(Resource):
     @account_ns.marshal_with(fiat_account_output_model)
-    def get(self, user_id, currency_code):
+    def get(self, userId, currencyCode):
         """Get a fiat account by user ID and currency code"""
-        return FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+        return FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
 
     @account_ns.expect(fiat_account_update_model, validate=True)
     @account_ns.marshal_with(fiat_account_output_model)
-    def put(self, user_id, currency_code):
+    def put(self, userId, currencyCode):
         """Update a fiat account balance"""
         try:
-            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+            account = FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
             data = request.json
-            amount_changed = data.get('amount_changed', 0)
+            amount_changed = data.get('amountChanged', 0)
             
             # Convert float to Decimal via string to maintain precision
             decimal_amount = Decimal(str(amount_changed))
@@ -232,10 +232,10 @@ class FiatAccountResource(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to update fiat account: {str(e)}')
 
-    def delete(self, user_id, currency_code):
+    def delete(self, userId, currencyCode):
         """Delete a fiat account"""
         try:
-            account = FiatAccount.query.filter_by(user_id=user_id, currency_code=currency_code).first_or_404()
+            account = FiatAccount.query.filter_by(user_id=userId, currency_code=currencyCode).first_or_404()
             db.session.delete(account)
             db.session.commit()
             return {'message': 'Fiat account deleted successfully'}

@@ -148,7 +148,7 @@ auth_success_response = authenticate_ns.model(
     "AuthSuccessResponse",
     {
         "message": fields.String(description="Authentication successful"),
-        "user_id": fields.String(description="Authenticated User ID"),
+        "userId": fields.String(attribute='user_id', description="Authenticated User ID"),
     },
 )
 
@@ -384,7 +384,7 @@ class AuthenticateUser(Resource):
             if not check_password(input_password, stored_hashed_password):
                 return {"error": "Invalid credentials", "details": "Incorrect username/email or password"}, 400
 
-            return {"message": "Authentication successful", "user_id": user_id}, 200
+            return {"message": "Authentication successful", "userId": user_id}, 200
 
         except Exception as e:
             return {"error": "Internal Server Error", "details": str(e)}, 500
@@ -438,9 +438,9 @@ class UserAddressResource(Resource):
         data = request.json
         address.street_number = data.get('streetNumber', address.street_number)
         address.street_name = data.get('streetName', address.street_name)
-        address.unit_number=data.get('unitNumber', address.unit_number),
-        address.building_name=data.get('buildingName', address.building_name),
-        address.district=data.get('district', address.district),
+        address.unit_number=data.get('unitNumber', address.unit_number)
+        address.building_name=data.get('buildingName', address.building_name)
+        address.district=data.get('district', address.district)
         address.city = data.get('city', address.city)
         address.state_province = data.get('stateProvince', address.state_province)
         address.postal_code = data.get('postalCode', address.postal_code)
@@ -450,95 +450,53 @@ class UserAddressResource(Resource):
         return address
 
 ##### Seeding #####
-# Provide seed data for all tables
+# Provide seed data for test account
 def seed_data():
     try:
-        with open("seeddata.json", "r") as file:
-            data = json.load(file)
-
-        # 1) Insert UserAccount data
-        user_accounts_data = data.get("userAccounts", [])
-        existing_usernames = {u.username for u in UserAccount.query.all()}
-
-        for acc in user_accounts_data:
-            # Skip if user already exists
-            if acc["userName"] in existing_usernames:
-                print(f"Skipping user '{acc['userName']}' as it already exists.")
-                continue
-
-            new_user = UserAccount(
-                username=acc["userName"],
-                fullname=acc["fullName"],
-                phone=acc["phoneNumber"],
-                email=acc["email"]
+        # Check if test user already exists
+        if UserAccount.query.filter_by(username="test").first() is None:
+            # Add test account directly in the code
+            test_user = UserAccount(
+                username="test",
+                fullname="Test User",
+                phone="12345678",  # Updated as specified
+                email="test@test.com"
             )
-            db.session.add(new_user)
-        db.session.commit()
-
-        # Create a lookup for user_id by username
-        user_lookup = {u.username: u.user_id for u in UserAccount.query.all()}
-
-        # 2) Insert UserAuthenticate data
-        user_authentications_data = data.get("userAuthentications", [])
-        for auth in user_authentications_data:
-            username = auth["userName"]
-            user_id = user_lookup.get(username)
-
-            # Skip if the user does not exist
-            if not user_id:
-                print(f"Skipping authentication for unknown user '{username}'")
-                continue
-
-            existing_auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
-            if existing_auth:
-                print(f"Skipping authentication for user '{username}' as it already exists.")
-                continue
-
-            new_auth = UserAuthenticate(
-                user_id=user_id,
-                password_hashed=auth.get("passwordHashed", "c29tZWhhc2hlZHBhc3N3b3Jk")
+            db.session.add(test_user)
+            db.session.commit()
+            
+            # Create authentication for test user with proper password hashing
+            test_auth = UserAuthenticate(
+                user_id=test_user.user_id,
+                password_hashed=hash_password("test12345")  # This properly hashes the password
             )
-            db.session.add(new_auth)
-        db.session.commit()
-
-        # 3) Insert UserAddress data
-        user_addresses_data = data.get("userAddresses", [])
-        for addr in user_addresses_data:
-            username = addr["userName"]
-            user_id = user_lookup.get(username)
-
-            # Skip if user does not exist
-            if not user_id:
-                print(f"Skipping address for unknown user '{username}'")
-                continue
-
-            existing_address = UserAddress.query.filter_by(user_id=user_id).first()
-            if existing_address:
-                print(f"Skipping address for user '{username}' as it already exists.")
-                continue
-
-            new_address = UserAddress(
-                user_id=user_id,
-                street_number=addr["streetNumber"],
-                street_name=addr["streetName"],
-                unit_number=addr.get("unitNumber"),
-                building_name=addr.get("buildingName"),
-                district=addr.get("district"),
-                city=addr["city"],
-                state_province=addr["stateProvince"],
-                postal_code=addr["postalCode"],
-                country=addr["country"]
+            db.session.add(test_auth)
+            
+            # Create address for test user
+            test_address = UserAddress(
+                user_id=test_user.user_id,
+                street_number="Test",
+                street_name="Test Street",
+                unit_number="Test",
+                building_name="Test Building",
+                district="Test District",
+                city="Test City",
+                state_province="Test State",
+                postal_code="Test123",
+                country="Test Country"
             )
-            db.session.add(new_address)
-        db.session.commit()
-
-        print("Seed data successfully loaded from seeddata.json.")
+            db.session.add(test_address)
+            db.session.commit()
+            print("Test account created successfully.")
+        else:
+            print("Test account already exists.")
 
     except IntegrityError as e:
         db.session.rollback()
         print(f"Data seeding failed due to integrity error: {e}")
-    except FileNotFoundError:
-        print("seeddata.json not found. Skipping seeding.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Data seeding failed: {e}")
 
 # Add name spaces into api
 api.add_namespace(account_ns)

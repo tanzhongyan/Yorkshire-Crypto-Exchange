@@ -63,9 +63,9 @@ deposit_ns = Namespace('deposit', description='Deposit-related operations')
 transaction_input_model = deposit_ns.model(
     "TransactionInput", 
     {
-        "user_id": fields.String(required=True, description="User ID"),
+        "userId": fields.String(attribute="user_id", required=True, description="User ID"),
         "amount": fields.Float(required=True, description="Amount to deposit"),
-        "currency_code": fields.String(required=True, description="Currency code (default: USD)")
+        "currencyCode": fields.String(attribute="currency_code", required=True, description="Currency code (default: USD)")
     }
 )
 
@@ -73,8 +73,8 @@ transaction_input_model = deposit_ns.model(
 transaction_output_model = deposit_ns.model(
     "TransactionOutput", 
     {
-        "transaction_id": fields.String(description="Transaction ID"),
-        "checkout_url": fields.String(description="Stripe Checkout URL"),
+        "transactionId": fields.String(attribute="transaction_id", description="Transaction ID"),
+        "checkoutUrl": fields.String(attribute="checkout_url", description="Stripe Checkout URL"),
         "amount": fields.Float(description="Amount deposited"),
     }
 )
@@ -92,15 +92,15 @@ class CreateDeposit(Resource):
         data = request.json
 
         # Validate required fields
-        if not data.get("user_id") or not data.get("amount") or not data.get("currency_code"):
+        if not data.get("userId") or not data.get("amount") or not data.get("currencyCode"):
             logger.error("Missing required fields in request")
             return {"error": "Missing required fields"}, 400
 
         # Create transaction in the transaction service
         transaction_payload = {
-            "user_id": data.get('user_id'),
+            "userId": data.get('userId'),
             "amount": data.get('amount'),
-            "currency_code": data.get('currency_code'),
+            "currencyCode": data.get('currencyCode').lower(),
             "type": "deposit",
             "status": "pending"
         }
@@ -110,9 +110,9 @@ class CreateDeposit(Resource):
             response = requests.post(f"{TRANSACTION_SERVICE_URL}/fiat/", json=transaction_payload)
             response.raise_for_status()
             transaction_data = response.json()
-            transaction_id = transaction_data.get("transaction_id")
+            transaction_id = transaction_data.get("transactionId")
             if not transaction_id:
-                raise ValueError("Transaction service did not return a transaction_id")
+                raise ValueError("Transaction service did not return a transactionId")
         except requests.RequestException as e:
             logger.error(f"Failed to store transaction: {e}")
             return {"error": "Failed to store transaction", "details": str(e)}, 500
@@ -131,7 +131,7 @@ class CreateDeposit(Resource):
                 payment_method_types=['card'],
                 line_items=[{
                     'price_data': {
-                        'currency': data.get('currency_code'),
+                        'currency': data.get('currencyCode').lower(),
                         'product_data': {
                             'name': 'Fiat Deposit',
                         },
@@ -151,8 +151,8 @@ class CreateDeposit(Resource):
 
         # Return JSON so Swagger or any client gets a response
         return {
-            "transaction_id": transaction_id,
-            "checkout_url": checkout_session.url,
+            "transactionId": transaction_id,
+            "checkoutUrl": checkout_session.url,
             "amount": data.get('amount')
         }, 201
 
@@ -187,22 +187,27 @@ class StripeWebhook(Resource):
                     trans_resp = requests.get(f"{TRANSACTION_SERVICE_URL}/fiat/{transaction_id}")
                     trans_resp.raise_for_status()
                     transaction_details = trans_resp.json()
-                    user_id = transaction_details.get("user_id")
-                    currency_code = transaction_details.get("currency_code")
+                    user_id = transaction_details.get("userId")
+                    currency_code = transaction_details.get("currencyCode").lower()
                     
                     # Validate required fields
                     if not user_id or not currency_code:
-                        logger.error(f"Missing user_id or currency_code: {transaction_details}")
+                        logger.error(f"Missing userId or currencyCode: {transaction_details}")
                         return {"error": "Missing required transaction data"}, 400
                         
                     # 2) Update the Fiat Service (the user's wallet) first
                     # Convert Decimal to float for proper JSON serialization
                     try:
                         # First convert to string to maintain precision, then to float for JSON compatibility
-                        deposit_amount = float(transaction_details.get("amount"))
+                        amount = transaction_details.get("amount")
+                        if not isinstance(amount, (int, float)):
+                            logger.error(f"Invalid amount: {amount}")
+                            return {"error": "Invalid amount"}, 400
+                            
+                        deposit_amount = float(amount)
                         
                         # Create payload according to API specification
-                        fiat_payload = {"amount_changed": deposit_amount}
+                        fiat_payload = {"amountChanged": deposit_amount}
                         
                         # Set proper content-type header
                         headers = {"Content-Type": "application/json"}
@@ -212,7 +217,7 @@ class StripeWebhook(Resource):
                         
                         fiat_response = requests.put(
                             fiat_url, 
-                            json=fiat_payload,  # Use json parameter for proper serialization
+                            json=fiat_payload,
                             headers=headers
                         )
                         
@@ -223,8 +228,8 @@ class StripeWebhook(Resource):
                         if fiat_response.status_code != 200:
                             logger.error(f"Fiat service error: {fiat_response.status_code} - {fiat_response.text}")
                             return {"error": f"Failed to update balance: {fiat_response.text}"}, 500
-                            
-                        fiat_response.raise_for_status()  # Will raise an exception for 4XX/5XX responses
+                        
+                        # Remove redundant raise_for_status()
                         
                         logger.info(
                             f"[Fiat Service] Wallet updated for user={user_id}, "
@@ -238,13 +243,21 @@ class StripeWebhook(Resource):
                             json=update_payload,
                             headers=headers
                         )
-                        trans_update_response.raise_for_status()
+                        
+                        # Handle non-200 responses explicitly for transaction update
+                        if trans_update_response.status_code != 200:
+                            logger.error(f"Transaction service error: {trans_update_response.status_code} - {trans_update_response.text}")
+                            return {"error": f"Failed to update transaction status: {trans_update_response.text}"}, 500
+                            
+                        # Remove redundant raise_for_status()
+                        
                         logger.info(
                             f"[Transaction Service] Transaction {transaction_id} status set to 'completed'."
                         )
                     except (ValueError, TypeError) as e:
                         logger.error(f"Error converting amount: {e}")
                         return {"error": f"Amount conversion error: {str(e)}"}, 400
+
 
                 except requests.RequestException as e:
                     logger.error(f"Failed during webhook handling for transaction {transaction_id}: {e}")

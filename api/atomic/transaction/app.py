@@ -96,12 +96,13 @@ class TransactionCrypto(db.Model):
     __tablename__ = 'transaction_crypto'
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
-    receiving_user_id = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), nullable=False)
     from_token_id = db.Column(db.Integer, nullable=False)
     from_amount = db.Column(db.Numeric(18, 8), nullable=False)
+    from_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
     to_token_id = db.Column(db.Integer, nullable=False)
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
+    to_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
     limit_price = db.Column(db.Numeric(18, 8), nullable=True)
     usdt_fee = db.Column(db.Numeric(18, 8), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
@@ -167,12 +168,13 @@ fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
 crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
     'transactionId': fields.String(attribute='transaction_id', readonly=True),
     'userId': fields.String(attribute='user_id',required=True),
-    'receivingUserId': fields.String(attribute='receiving_user_id'),
     'status': fields.String(required=True),
     'fromTokenId': fields.Integer(attribute='from_token_id', required=True),
     'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
     'toTokenId': fields.Integer(attribute='to_token_id', required=True),
     'toAmount': fields.Float(attribute='to_amount', required=True),
+    'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
     'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'creation': fields.DateTime,
@@ -182,12 +184,13 @@ crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
 
 crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
     'userId': fields.String(attribute='user_id',required=True),
-    'receivingUserId': fields.String(attribute='receiving_user_id'),
     'status': fields.String(required=True),
     'fromTokenId': fields.Integer(attribute='from_token_id', required=True),
     'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
     'toTokenId': fields.Integer(attribute='to_token_id', required=True),
     'toAmount': fields.Float(attribute='to_amount', required=True),
+    'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
     'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'orderType': fields.String(attribute='order_type', required=True)
@@ -359,12 +362,13 @@ class CryptoTransactionList(Resource):
         data = request.json
         new_transaction = TransactionCrypto(
             user_id=data.get('userId'),
-            receiving_user_id=data.get('receivingUserId'),
             status=data.get('status'),
             from_token_id=data.get('fromTokenId'),
             from_amount=data.get('fromAmount'),
+            from_amount_actual=data.get('fromAmountActual'),
             to_token_id=data.get('toTokenId'),
             to_amount=data.get('toAmount'),
+            to_amount_actual=data.get('toAmountActual'),
             limit_price=data.get('limitPrice'),
             usdt_fee=data.get('usdtFee'),
             order_type=data.get('orderType')
@@ -394,12 +398,13 @@ class CryptoTransactionResource(Resource):
             # Map from camelCase (API) to snake_case (database)
             camel_to_snake = {
                 'userId': 'user_id',
-                'receivingUserId': 'receiving_user_id',
                 'status': 'status',
                 'fromTokenId': 'from_token_id',
                 'fromAmount': 'from_amount',
+                'fromAmountActual': 'from_amount_actual',
                 'toTokenId': 'to_token_id',
                 'toAmount': 'to_amount',
+                'toAmountActual': 'to_amount_actual',
                 'limitPrice': 'limit_price',
                 'usdtFee': 'usdt_fee',
                 'orderType': 'order_type'

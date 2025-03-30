@@ -32,26 +32,30 @@ services:
     security_opt:
       - no-new-privileges
   
-  # fiat-service:
-  #   container_name: fiat-service
-  #   build:
-  #     context: ./api/atomic/fiat
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5001:5000"
-  #   depends_on:
-  #     - rabbitmq
-  #     postgres:
-  #       condition: service_healthy # wait until postgres healthy
-  #   environment:
-  #     - RABBITMQ_HOST=rabbitmq
-  #     - DATABASE_URL=postgresql://user:password@postgres:5432/fiat_db
-  #   volumes:
-  #     - fiat_data:/var/lib/fiat_service
-  #   networks:
-  #     - kong-net
-  #   expose:
-  #     - "5000"
+  fiat-service:
+    container_name: fiat-service
+    build:
+      context: ./api/atomic/fiat
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=fiat_db
+      - DB_USER=user
+      - DB_PASS=password
+    volumes:
+      - fiat_data:/var/lib/fiat_service
+    networks:
+      - kong-net
+    expose:
+      - "5000"
   
   crypto-service:
     container_name: crypto-service
@@ -148,6 +152,34 @@ services:
     expose:
       - "5000"
 
+  deposit-service:
+    container_name: deposit-service
+    build:
+      context: ./api/composite/deposit
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+      
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: stripe-cli
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to deposit-service:5000/api/v1/deposit/webhook
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_DEVICE_NAME=local_dev
+    networks:
+      - kong-net
+    depends_on:
+      - deposit-service 
+
   # rabbitmq:
   #   image: rabbitmq:management
   #   ports:
@@ -189,7 +221,7 @@ services:
   #     - crypto-service
 
 volumes:
-  # fiat_data:
+  fiat_data:
   user_data:
   crypto_data:
   # rabbitmq_data:

@@ -15,7 +15,7 @@ from datetime import datetime
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api/transaction'
+API_ROOT = f'/api/{API_VERSION}/transaction'
 
 app = Flask(__name__)
 CORS(app)
@@ -74,6 +74,7 @@ class TransactionFiat(db.Model):
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Numeric(18, 8), nullable=False)
+    currency_code = db.Column(db.String(3), nullable=False)
     type = db.Column(db.String(10), nullable=False)
     status = db.Column(db.String(15), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
@@ -83,7 +84,6 @@ class TransactionFiatToCrypto(db.Model):
     __tablename__ = 'transaction_fiat_to_crypto'
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)  # No ForeignKey due to separate containers
-    wallet_id = db.Column(db.String(100), nullable=False)  # No ForeignKey due to separate containers
     from_amount = db.Column(db.Numeric(18, 8), nullable=False)
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
     direction = db.Column(db.String(15), nullable=False)
@@ -96,14 +96,13 @@ class TransactionCrypto(db.Model):
     __tablename__ = 'transaction_crypto'
     transaction_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.String(100), nullable=False)
-    wallet_id = db.Column(db.String(100), nullable=False)
-    receiving_wallet_id = db.Column(db.String(100), nullable=False)
-    receiving_user_id = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), nullable=False)
-    from_token_id = db.Column(db.Integer, nullable=False)
+    from_token_id = db.Column(db.String(15), nullable=False)
     from_amount = db.Column(db.Numeric(18, 8), nullable=False)
-    to_token_id = db.Column(db.Integer, nullable=False)
+    from_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
+    to_token_id = db.Column(db.String(15), nullable=False)
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
+    to_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
     limit_price = db.Column(db.Numeric(18, 8), nullable=True)
     usdt_fee = db.Column(db.Numeric(18, 8), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
@@ -125,9 +124,10 @@ class TransactionCrypto(db.Model):
 
 # Fiat Transactions
 fiat_output_model = fiat_ns.model('FiatTransactionOutput', {
-    'transaction_id': fields.String(attribute='transaction_id', readonly=True),
-    'user_id': fields.String(required=True),
+    'transactionId': fields.String(attribute='transaction_id', readonly=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'amount': fields.Float(required=True),
+    'currencyCode': fields.String(attribute='currency_code', required=True),
     'type': fields.String(required=True),
     'status': fields.String(required=True),
     'creation': fields.DateTime,
@@ -135,68 +135,65 @@ fiat_output_model = fiat_ns.model('FiatTransactionOutput', {
 })
 
 fiat_input_model = fiat_ns.model('FiatTransactionInput', {
-    'user_id': fields.String(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'amount': fields.Float(required=True),
+    'currencyCode': fields.String(attribute='currency_code', required=True),
     'type': fields.String(required=True),
     'status': fields.String(required=True)
 })
 
 # Fiat to Crypto Transactions
 fiattocrypto_output_model = fiat_to_crypto_ns.model('FiatToCryptoOutput', {
-    'transaction_id': fields.String(attribute='transaction_id', readonly=True),
-    'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'from_amount': fields.Float(required=True),
-    'to_amount': fields.Float(required=True),
+    'transactionId': fields.String(attribute='transaction_id', readonly=True),
+    'userId': fields.String(attribute='user_id',required=True),
+    'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'toAmount': fields.Float(attribute='to_amount', required=True),
     'direction': fields.String(required=True),
-    'limit_price': fields.Float,
+    'limitPrice': fields.Float(attribute='limit_price', required=True),
     'status': fields.String(required=True),
     'creation': fields.DateTime,
     'confirmation': fields.DateTime
 })
 
 fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
-    'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'from_amount': fields.Float(required=True),
-    'to_amount': fields.Float(required=True),
+    'userId': fields.String(attribute='user_id',required=True),
+    'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'toAmount': fields.Float(attribute='to_amount', required=True),
     'direction': fields.String(required=True),
-    'limit_price': fields.Float,
+    'limitPrice': fields.Float(attribute='limit_price', required=True),
     'status': fields.String(required=True)
 })
 
 # Crypto Transactions
 crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
-    'transaction_id': fields.String(readonly=True),
-    'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'receiving_wallet_id': fields.String(required=True),
-    'receiving_user_id': fields.String,
+    'transactionId': fields.String(attribute='transaction_id', readonly=True),
+    'userId': fields.String(attribute='user_id',required=True),
     'status': fields.String(required=True),
-    'from_token_id': fields.Integer(required=True),
-    'from_amount': fields.Float(required=True),
-    'to_token_id': fields.Integer(required=True),
-    'to_amount': fields.Float(required=True),
-    'limit_price': fields.Float,
-    'usdt_fee': fields.Float(required=True),
+    'fromTokenId': fields.String(attribute='from_token_id', required=True),
+    'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
+    'toTokenId': fields.String(attribute='to_token_id', required=True),
+    'toAmount': fields.Float(attribute='to_amount', required=True),
+    'toAmountActual': fields.Float(attribute='to_amount_actual'),
+    'limitPrice': fields.Float(attribute='limit_price', required=True),
+    'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'creation': fields.DateTime,
     'completion': fields.DateTime,
-    'order_type': fields.String(required=True)
+    'orderType': fields.String(attribute='order_type', required=True)
 })
 
 crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
-    'user_id': fields.String(required=True),
-    'wallet_id': fields.String(required=True),
-    'receiving_wallet_id': fields.String(required=True),
-    'receiving_user_id': fields.String,
+    'userId': fields.String(attribute='user_id',required=True),
     'status': fields.String(required=True),
-    'from_token_id': fields.Integer(required=True),
-    'from_amount': fields.Float(required=True),
-    'to_token_id': fields.Integer(required=True),
-    'to_amount': fields.Float(required=True),
-    'limit_price': fields.Float,
-    'usdt_fee': fields.Float(required=True),
-    'order_type': fields.String(required=True)
+    'fromTokenId': fields.String(attribute='from_token_id', required=True),
+    'fromAmount': fields.Float(attribute='from_amount', required=True),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
+    'toTokenId': fields.String(attribute='to_token_id', required=True),
+    'toAmount': fields.Float(attribute='to_amount', required=True),
+    'toAmountActual': fields.Float(attribute='to_amount_actual'),
+    'limitPrice': fields.Float(attribute='limit_price', required=True),
+    'usdtFee': fields.Float(attribute='usdt_fee', required=True),
+    'orderType': fields.String(attribute='order_type', required=True)
 })
 
 #### API actions - flask restx API autodoc #####
@@ -216,8 +213,9 @@ class FiatTransactionList(Resource):
         """Create a new fiat transaction"""
         data = request.json
         new_transaction = TransactionFiat(
-            user_id=data.get('user_id'),
+            user_id=data.get('userId'),
             amount=data.get('amount'),
+            currency_code=data.get('currencyCode'),
             type=data.get('type'),
             status=data.get('status')
         )
@@ -229,32 +227,33 @@ class FiatTransactionList(Resource):
         except Exception as e:
             fiat_ns.abort(400, f'Failed to create fiat transaction: {str(e)}')
 
-@fiat_ns.route('/<string:transaction_id>')
+@fiat_ns.route('/<string:transactionId>')
 class FiatTransactionResource(Resource):
     @fiat_ns.marshal_with(fiat_output_model)
-    def get(self, transaction_id):
+    def get(self, transactionId):
         """Get a fiat transaction by ID"""
-        return TransactionFiat.query.get_or_404(transaction_id)
+        return TransactionFiat.query.get_or_404(transactionId)
 
-    @fiat_ns.expect(fiat_input_model, validate=True)
+    @fiat_ns.expect(fiat_input_model)
     @fiat_ns.marshal_with(fiat_output_model)
-    def put(self, transaction_id):
+    def put(self, transactionId):
         """Update a fiat transaction"""
-        transaction = TransactionFiat.query.get_or_404(transaction_id)
+        transaction = TransactionFiat.query.get_or_404(transactionId)
         data = request.json
-        transaction.user_id = data.get('user_id', transaction.user_id)
+        transaction.user_id = data.get('userId', transaction.user_id)
         transaction.amount = data.get('amount', transaction.amount)
         transaction.type = data.get('type', transaction.type)
         transaction.status = data.get('status', transaction.status)
+        transaction.currency_code = data.get('currencyCode', transaction.currency_code)
         try:
             db.session.commit()
             return transaction
         except Exception as e:
             fiat_ns.abort(400, f'Failed to update fiat transaction: {str(e)}')
 
-    def delete(self, transaction_id):
+    def delete(self, transactionId):
         """Delete a fiat transaction"""
-        transaction = TransactionFiat.query.get_or_404(transaction_id)
+        transaction = TransactionFiat.query.get_or_404(transactionId)
         try:
             db.session.delete(transaction)
             db.session.commit()
@@ -262,12 +261,12 @@ class FiatTransactionResource(Resource):
         except Exception as e:
             fiat_ns.abort(400, f'Failed to delete fiat transaction: {str(e)}')
 
-@fiat_ns.route('user/<string:user_id>')
+@fiat_ns.route('user/<string:userId>')
 class FiatTransactionsByUser(Resource):
     @fiat_ns.marshal_list_with(fiat_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Get all fiat transactions for a specific user"""
-        return TransactionFiat.query.filter_by(user_id=user_id).all()
+        return TransactionFiat.query.filter_by(user_id=userId).all()
 
 ##### FiatToCrypto Transaction Routes #####
 @fiat_to_crypto_ns.route('/')
@@ -283,12 +282,11 @@ class FiatToCryptoTransactionList(Resource):
         """Create a new fiat-to-crypto transaction"""
         data = request.json
         new_transaction = TransactionFiatToCrypto(
-            user_id=data.get('user_id'),
-            wallet_id=data.get('wallet_id'),
-            from_amount=data.get('from_amount'),
-            to_amount=data.get('to_amount'),
+            user_id=data.get('userId'),
+            from_amount=data.get('fromAmount'),
+            to_amount=data.get('toAmount'),
             direction=data.get('direction'),
-            limit_price=data.get('limit_price'),
+            limit_price=data.get('limitPrice'),
             status=data.get('status')
         )
         try:
@@ -299,30 +297,42 @@ class FiatToCryptoTransactionList(Resource):
         except Exception as e:
             fiat_to_crypto_ns.abort(400, f'Failed to create fiat-to-crypto transaction: {str(e)}')
 
-@fiat_to_crypto_ns.route('/<string:transaction_id>')
+@fiat_to_crypto_ns.route('/<string:transactionId>')
 class FiatToCryptoTransactionResource(Resource):
     @fiat_to_crypto_ns.marshal_with(fiattocrypto_output_model)
-    def get(self, transaction_id):
+    def get(self, transactionId):
         """Get a fiat-to-crypto transaction by ID"""
-        return TransactionFiatToCrypto.query.get_or_404(transaction_id)
+        return TransactionFiatToCrypto.query.get_or_404(transactionId)
 
     @fiat_to_crypto_ns.expect(fiattocrypto_input_model, validate=True)
     @fiat_to_crypto_ns.marshal_with(fiattocrypto_output_model)
-    def put(self, transaction_id):
+    def put(self, transactionId):
         """Update a fiat-to-crypto transaction"""
-        transaction = TransactionFiatToCrypto.query.get_or_404(transaction_id)
+        transaction = TransactionFiatToCrypto.query.get_or_404(transactionId)
         data = request.json
         try:
-            for key in ['user_id', 'wallet_id', 'from_amount', 'to_amount', 'direction', 'limit_price', 'status']:
-                setattr(transaction, key, data.get(key, getattr(transaction, key)))
+            # Map from camelCase (API) to snake_case (database)
+            camel_to_snake = {
+                'userId': 'user_id',
+                'fromAmount': 'from_amount',
+                'toAmount': 'to_amount',
+                'direction': 'direction',
+                'limitPrice': 'limit_price',
+                'status': 'status'
+            }
+            
+            for camel_key, snake_attr in camel_to_snake.items():
+                if camel_key in data:
+                    setattr(transaction, snake_attr, data.get(camel_key))
+            
             db.session.commit()
             return transaction
         except Exception as e:
             fiat_to_crypto_ns.abort(400, f'Failed to update fiat-to-crypto transaction: {str(e)}')
 
-    def delete(self, transaction_id):
+    def delete(self, transactionId):
         """Delete a fiat-to-crypto transaction"""
-        transaction = TransactionFiatToCrypto.query.get_or_404(transaction_id)
+        transaction = TransactionFiatToCrypto.query.get_or_404(transactionId)
         try:
             db.session.delete(transaction)
             db.session.commit()
@@ -330,12 +340,12 @@ class FiatToCryptoTransactionResource(Resource):
         except Exception as e:
             fiat_to_crypto_ns.abort(400, f'Failed to delete fiat-to-crypto transaction: {str(e)}')
 
-@fiat_to_crypto_ns.route('/user/<string:user_id>')
+@fiat_to_crypto_ns.route('/user/<string:userId>')
 class FiatToCryptoTransactionsByUser(Resource):
     @fiat_to_crypto_ns.marshal_list_with(fiattocrypto_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Get all fiat-to-crypto transactions for a specific user"""
-        return TransactionFiatToCrypto.query.filter_by(user_id=user_id).all()
+        return TransactionFiatToCrypto.query.filter_by(user_id=userId).all()
 
 ##### Crypto Transaction Routes #####
 @crypto_ns.route('/')
@@ -351,18 +361,17 @@ class CryptoTransactionList(Resource):
         """Create a new crypto transaction"""
         data = request.json
         new_transaction = TransactionCrypto(
-            user_id=data.get('user_id'),
-            wallet_id=data.get('wallet_id'),
-            receiving_wallet_id=data.get('receiving_wallet_id'),
-            receiving_user_id=data.get('receiving_user_id'),
+            user_id=data.get('userId'),
             status=data.get('status'),
-            from_token_id=data.get('from_token_id'),
-            from_amount=data.get('from_amount'),
-            to_token_id=data.get('to_token_id'),
-            to_amount=data.get('to_amount'),
-            limit_price=data.get('limit_price'),
-            usdt_fee=data.get('usdt_fee'),
-            order_type=data.get('order_type')
+            from_token_id=data.get('fromTokenId'),
+            from_amount=data.get('fromAmount'),
+            from_amount_actual=data.get('fromAmountActual'),
+            to_token_id=data.get('toTokenId'),
+            to_amount=data.get('toAmount'),
+            to_amount_actual=data.get('toAmountActual'),
+            limit_price=data.get('limitPrice'),
+            usdt_fee=data.get('usdtFee'),
+            order_type=data.get('orderType')
         )
         try:
             db.session.add(new_transaction)
@@ -372,31 +381,47 @@ class CryptoTransactionList(Resource):
         except Exception as e:
             crypto_ns.abort(400, f'Failed to create crypto transaction: {str(e)}')
 
-@crypto_ns.route('/<string:transaction_id>')
+@crypto_ns.route('/<string:transactionId>')
 class CryptoTransactionResource(Resource):
     @crypto_ns.marshal_with(crypto_output_model)
-    def get(self, transaction_id):
+    def get(self, transactionId):
         """Get a crypto transaction by transaction ID"""
-        return TransactionCrypto.query.get_or_404(transaction_id)
+        return TransactionCrypto.query.get_or_404(transactionId)
 
     @crypto_ns.expect(crypto_input_model, validate=True)
     @crypto_ns.marshal_with(crypto_output_model)
-    def put(self, transaction_id):
+    def put(self, transactionId):
         """Update a crypto transaction"""
-        transaction = TransactionCrypto.query.get_or_404(transaction_id)
+        transaction = TransactionCrypto.query.get_or_404(transactionId)
         data = request.json
         try:
-            for key in ['user_id', 'wallet_id', 'receiving_wallet_id', 'receiving_user_id', 'status',
-                        'from_token_id', 'from_amount', 'to_token_id', 'to_amount', 'limit_price', 'usdt_fee', 'order_type']:
-                setattr(transaction, key, data.get(key, getattr(transaction, key)))
+            # Map from camelCase (API) to snake_case (database)
+            camel_to_snake = {
+                'userId': 'user_id',
+                'status': 'status',
+                'fromTokenId': 'from_token_id',
+                'fromAmount': 'from_amount',
+                'fromAmountActual': 'from_amount_actual',
+                'toTokenId': 'to_token_id',
+                'toAmount': 'to_amount',
+                'toAmountActual': 'to_amount_actual',
+                'limitPrice': 'limit_price',
+                'usdtFee': 'usdt_fee',
+                'orderType': 'order_type'
+            }
+            
+            for camel_key, snake_attr in camel_to_snake.items():
+                if camel_key in data:
+                    setattr(transaction, snake_attr, data.get(camel_key))
+            
             db.session.commit()
             return transaction
         except Exception as e:
             crypto_ns.abort(400, f'Failed to update crypto transaction: {str(e)}')
 
-    def delete(self, transaction_id):
+    def delete(self, transactionId):
         """Delete a crypto transaction"""
-        transaction = TransactionCrypto.query.get_or_404(transaction_id)
+        transaction = TransactionCrypto.query.get_or_404(transactionId)
         try:
             db.session.delete(transaction)
             db.session.commit()
@@ -404,12 +429,12 @@ class CryptoTransactionResource(Resource):
         except Exception as e:
             crypto_ns.abort(400, f'Failed to delete crypto transaction: {str(e)}')
 
-@crypto_ns.route('/user/<string:user_id>')
+@crypto_ns.route('/user/<string:userId>')
 class CryptoTransactionsByUser(Resource):
     @crypto_ns.marshal_list_with(crypto_output_model)
-    def get(self, user_id):
+    def get(self, userId):
         """Get all crypto transactions for a specific user"""
-        return TransactionCrypto.query.filter_by(user_id=user_id).all()
+        return TransactionCrypto.query.filter_by(user_id=userId).all()
 
 ##### Seed data ##### 
 # def seed_data():

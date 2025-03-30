@@ -35,12 +35,14 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 
 3. Access API documentation:
    - **Atomic microservices**
-      - **Fiat Service:** `http://localhost:5001/v1/api/fiat`
-      - **Crypto Service:** `http://localhost:5002/v1/api/crypto`
-      - **User Service:** `http://localhost:5003/v1/api/user`
-      - **transaction Service:** `http://localhost:5005/v1/api/transaction`
+      - **Fiat Service:** `http://localhost:5001/api/v1/fiat`
+      - **Crypto Service:** `http://localhost:5002/api/v1/crypto`
+      - **User Service:** `http://localhost:5003/api/v1/user`
+      - **transaction Service:** `http://localhost:5005/api/v1/transaction`
    - **Composite microservices**
-      - **identity** `http://localhost:5004/v1/api`
+      - **identity** `http://localhost:5004/api/v1`
+      - **deposit** `http://localhost:5006/api/v1`
+
 
 ## 📌 Features
 - **Secure transactions** between fiat and crypto

@@ -1,8 +1,8 @@
 """reinitalise tables
 
-Revision ID: 0af7b0a3a736
+Revision ID: 13749c5d948a
 Revises: 
-Create Date: 2025-03-31 11:06:54.971352
+Create Date: 2025-03-31 11:43:44.380589
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0af7b0a3a736'
+revision = '13749c5d948a'
 down_revision = None
 branch_labels = None
 depends_on = None

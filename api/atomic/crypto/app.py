@@ -6,7 +6,6 @@ from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
-import bcrypt
 import json
 import uuid
 import os
@@ -14,7 +13,7 @@ import os
 ##### Configuration #####
 # Define API version and root path
 API_VERSION = 'v1'
-API_ROOT = f'/{API_VERSION}/api/crypto'
+API_ROOT = f'/api/{API_VERSION}/crypto'
 
 app = Flask(__name__)
 CORS(app)
@@ -64,34 +63,33 @@ holding_ns = Namespace('holdings', description='Holding related operations')
 
 class CryptoWallet(db.Model):
     __tablename__ = 'crypto_wallet'
-    wallet_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
+    user_id = db.Column(db.String(100), primary_key = True, unique=True, nullable=False)
 
     # Relationships
-    holdings = db.relationship('CryptoHolding', back_populates='wallet', cascade='all, delete-orphan')
+    holdings = db.relationship('CryptoHolding', back_populates='wallet', cascade='all, delete-orphan', primaryjoin="CryptoWallet.user_id == CryptoHolding.user_id")
 
 #(2) stores all tokens to ever exist (can be created or deleted)
 class CryptoToken(db.Model):
     __tablename__ = 'crypto_token'
-    token_id = db.Column(db.String(10), primary_key=True, unique=True, nullable=False)
+    token_id = db.Column(db.String(15), primary_key=True, unique=True, nullable=False)
     token_name = db.Column(db.String(100), unique=True, nullable=False)
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    holding = db.relationship('CryptoHolding', back_populates='token', cascade='all, delete-orphan')
+    holdings = db.relationship('CryptoHolding', back_populates='token', primaryjoin="CryptoToken.token_id == CryptoHolding.token_id")
 
 #(3) stores all crypto holding data (many wallets hold many crypto coins with actual and held balances)
 class CryptoHolding(db.Model):
     __tablename__ = 'crypto_holding'
-    holding_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    wallet_id = db.Column(UUID(as_uuid=True), db.ForeignKey('crypto_wallet.wallet_id', ondelete='CASCADE'), nullable=False)
-    token_id = db.Column(db.String(10), db.ForeignKey('crypto_token.token_id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.String(100), primary_key = True, nullable=False)
+    token_id = db.Column(db.String(15), primary_key = True, nullable=False)
     actual_balance = db.Column(db.Float, default=0.0, nullable=False)
     held_balance = db.Column(db.Float, default=0.0, nullable=False)
     updated_on = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    wallet = db.relationship('CryptoWallet', back_populates='holdings', uselist=False)
-    token = db.relationship('CryptoToken')
+    wallet = db.relationship('CryptoWallet', back_populates='holdings', uselist=False, foreign_keys=[user_id])
+    token = db.relationship('CryptoToken', back_populates='holdings', foreign_keys=[token_id])
 
 ##### API Models - flask restx API autodoc #####
 # To use flask restx, you will have to define API models with their input types

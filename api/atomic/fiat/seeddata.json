@@ -1,0 +1,16 @@
+{
+    "fiatCurrencies": [
+        {"currencyCode": "usd", "rate": 1.0},
+        {"currencyCode": "sgd", "rate": 1.35},
+        {"currencyCode": "eur", "rate": 0.85},
+        {"currencyCode": "myr", "rate": 4.2},
+        {"currencyCode": "aud", "rate": 1.5},
+        {"currencyCode": "gbp", "rate": 0.75},
+        {"currencyCode": "jpy", "rate": 110.0},
+        {"currencyCode": "cny", "rate": 6.5},
+        {"currencyCode": "inr", "rate": 74.0}
+    ],
+    "fiatAccounts": [
+        {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "usd"}
+    ]
+}

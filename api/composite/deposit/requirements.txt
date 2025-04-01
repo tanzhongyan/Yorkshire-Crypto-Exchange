@@ -1,0 +1,7 @@
+Flask
+Flask-restx
+pika
+Flask-Cors
+Requests
+Stripe
+Dotenv

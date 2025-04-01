@@ -149,3 +149,11 @@ services:
         strip_path: false
         plugins:
           - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: order-management-service
+    url: http://order-management-service:5000  # Internal URL of the transaction service
+    routes:
+      - name: order-management-route
+        paths:
+          - /api/v1/order-management
+        strip_path: false

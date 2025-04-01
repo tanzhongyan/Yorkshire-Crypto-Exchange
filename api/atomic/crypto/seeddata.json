@@ -29,6 +29,7 @@
   ],
   "cryptoHoldings": [
     {
+      "holdingId": "1e9a3b86-5c4b-4f3b-a456-3d68bb4d5b2a",
       "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
       "tokenId": "BTC",
       "actualBalance": 2.5,
@@ -36,6 +37,7 @@
       "updatedOn": "2025-03-25T12:30:00Z"
     },
     {
+      "holdingId": "2a7f57cc-8fbb-44f6-8c22-80e05d8c18e5",
       "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
       "tokenId": "XRP",
       "actualBalance": 1000,
@@ -43,6 +45,7 @@
       "updatedOn": "2025-03-25T12:30:00Z"
     },
     {
+      "holdingId": "3b54cafd-6b1d-4b20-8cb7-1a56e61e2b78",
       "walletId": "724e3519-9db0-4c02-b627-d0b2fe8e56d0",
       "tokenId": "SOL",
       "actualBalance": 10,
@@ -50,6 +53,7 @@
       "updatedOn": "2025-03-25T12:30:00Z"
     },
     {
+      "holdingId": "4c8321f5-8712-470e-b497-d4e0a452e48c",
       "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
       "tokenId": "XRP",
       "actualBalance": 500,
@@ -57,6 +61,7 @@
       "updatedOn": "2025-03-25T12:30:00Z"
     },
     {
+      "holdingId": "5d29a78e-4c7f-495c-bf16-2d0c5b457b1e",
       "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
       "tokenId": "SOL",
       "actualBalance": 50,

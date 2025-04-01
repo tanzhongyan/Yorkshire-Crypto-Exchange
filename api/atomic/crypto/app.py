@@ -6,10 +6,10 @@ from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
-import bcrypt
 import json
 import uuid
 import os
+import datetime
 
 ##### Configuration #####
 # Define API version and root path
@@ -168,13 +168,7 @@ class CryptoHoldingResource(Resource):
             holding_ns.abort(404, f"Holding for wallet {wallet_id} and token {token_id} not found")
         
         # Return the holding information (actual balance and held balance)
-        return {
-            'walletId': holding.wallet_id,
-            'tokenId': holding.token_id,
-            'actualBalance': holding.actual_balance,
-            'heldBalance': holding.held_balance,
-            'updatedOn': holding.updated_on
-        }, 200
+        return holding, 200
 
 # POST /v1/api/holdings/held-balance that adds or deduct order amount to held-balance
 @holding_ns.route('/held-balance')
@@ -453,7 +447,7 @@ def seed_data():
             wallet_id = holding["walletId"]
             token_id = holding["tokenId"]
 
-            # Skip if wallet or token does not exist
+            # # Skip if wallet or token does not exist
             if wallet_id not in wallet_lookup:
                 print(f"Skipping holding for unknown wallet '{wallet_id}'")
                 continue
@@ -463,16 +457,16 @@ def seed_data():
 
             # Creating new CryptoHolding
             new_holding = CryptoHolding(
-                wallet_id=wallet_lookup[wallet_id].wallet_id,
-                token_id=token_lookup[token_id].token_id,
+                holding_id=holding["holdingId"],  # Generate new unique UUID
+                wallet_id=holding["walletId"],
+                token_id=holding["tokenId"],
                 actual_balance=holding["actualBalance"],
                 held_balance=holding["heldBalance"],
                 updated_on=holding["updatedOn"]
+                # updated_on=datetime.fromisoformat(holding["updatedOn"].replace("Z", "+00:00"))
             )
             db.session.add(new_holding)
         db.session.commit()
-
-        print("Seed data successfully loaded from seeddata.json.")
 
     except IntegrityError as e:
         db.session.rollback()

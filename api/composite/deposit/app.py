@@ -49,6 +49,7 @@ app.register_blueprint(blueprint)
 # NOTE: Do not use localhost here as localhost refer to this container itself
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
+USER_SERVICE_URL = "http://user-service:5000/api/v1/user"
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
@@ -79,6 +80,86 @@ transaction_output_model = deposit_ns.model(
     }
 )
 
+##### Helper Functions #####
+def check_user_exists(user_id):
+    """
+    Check if a user exists in the system.
+    
+    Args:
+        user_id (str): The user ID to check
+        
+    Returns:
+        bool: True if user exists, False otherwise
+        str: Error message if an exception occurred, None otherwise
+    """
+    try:
+        response = requests.get(f"{USER_SERVICE_URL}/account/{user_id}")
+        if response.status_code == 200:
+            return True, None
+        elif response.status_code == 404:
+            return False, "User does not exist"
+        else:
+            logger.error(f"Failed to check if user exists: {response.status_code} - {response.text}")
+            return False, f"Failed to verify user: {response.text}"
+    except requests.RequestException as e:
+        logger.error(f"Exception checking if user exists: {str(e)}")
+        return False, f"Service unavailable: {str(e)}"
+
+def check_fiat_account_exists(user_id, currency_code):
+    """
+    Check if a fiat account exists for the user with the specified currency code.
+    
+    Args:
+        user_id (str): The user ID
+        currency_code (str): The currency code
+        
+    Returns:
+        bool: True if account exists, False otherwise
+        dict or None: Account details if exists, None otherwise
+        str: Error message if an exception occurred, None otherwise
+    """
+    try:
+        response = requests.get(f"{FIAT_SERVICE_URL}/account/{user_id}/{currency_code}")
+        if response.status_code == 200:
+            return True, response.json(), None
+        elif response.status_code == 404:
+            return False, None, None
+        else:
+            logger.error(f"Failed to check if fiat account exists: {response.status_code} - {response.text}")
+            return False, None, f"Failed to verify fiat account: {response.text}"
+    except requests.RequestException as e:
+        logger.error(f"Exception checking if fiat account exists: {str(e)}")
+        return False, None, f"Service unavailable: {str(e)}"
+
+def create_fiat_account(user_id, currency_code):
+    """
+    Create a new fiat account for the user with the specified currency code.
+    
+    Args:
+        user_id (str): The user ID
+        currency_code (str): The currency code
+        
+    Returns:
+        bool: True if account was created successfully, False otherwise
+        dict or None: Account details if created, None otherwise
+        str: Error message if an exception occurred, None otherwise
+    """
+    try:
+        payload = {
+            "userId": user_id,
+            "balance": 0,
+            "currencyCode": currency_code
+        }
+        response = requests.post(f"{FIAT_SERVICE_URL}/account/", json=payload)
+        if response.status_code == 201:
+            return True, response.json(), None
+        else:
+            logger.error(f"Failed to create fiat account: {response.status_code} - {response.text}")
+            return False, None, f"Failed to create fiat account: {response.text}"
+    except requests.RequestException as e:
+        logger.error(f"Exception creating fiat account: {str(e)}")
+        return False, None, f"Service unavailable: {str(e)}"
+
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 @deposit_ns.route("/fiat/")
@@ -95,7 +176,36 @@ class CreateDeposit(Resource):
         if not data.get("userId") or not data.get("amount") or not data.get("currencyCode"):
             logger.error("Missing required fields in request")
             return {"error": "Missing required fields"}, 400
-
+   
+        # Check if amount is valid
+        if data.get("amount") <= 0:
+            logger.error("Amount must be greater than zero")
+            return {"error": "Validation Error", "message": "Amount must be greater than zero"}, 400
+        
+        user_id = data.get('userId')
+        currency_code = data.get('currencyCode').lower()
+        
+        # Check if user exists
+        user_exists, error_message = check_user_exists(user_id)
+        if not user_exists:
+            logger.error(f"User {user_id} does not exist: {error_message}")
+            return {"error": "User Not Found", "message": error_message}, 404
+        
+        # Check if fiat account exists, create if it doesn't
+        account_exists, account_details, error_message = check_fiat_account_exists(user_id, currency_code)
+        
+        if error_message:
+            logger.error(f"Error checking fiat account: {error_message}")
+            return {"error": "Service Unavailable", "message": error_message}, 500
+        
+        if not account_exists:
+            logger.info(f"Fiat account for user {user_id} with currency {currency_code} does not exist. Creating new account.")
+            account_created, account_details, error_message = create_fiat_account(user_id, currency_code)
+            
+            if not account_created:
+                logger.error(f"Failed to create fiat account: {error_message}")
+                return {"error": "Failed to Create Account", "message": error_message}, 500
+        
         # Create transaction in the transaction service
         transaction_payload = {
             "userId": data.get('userId'),
@@ -194,7 +304,46 @@ class StripeWebhook(Resource):
                     if not user_id or not currency_code:
                         logger.error(f"Missing userId or currencyCode: {transaction_details}")
                         return {"error": "Missing required transaction data"}, 400
+                    
+                    # Check if user still exists
+                    user_exists, error_message = check_user_exists(user_id)
+                    if not user_exists:
+                        logger.error(f"User {user_id} no longer exists: {error_message}")
+                        # Update transaction to failed state
+                        update_payload = {"status": "failed"}
+                        requests.put(
+                            f"{TRANSACTION_SERVICE_URL}/fiat/{transaction_id}",
+                            json=update_payload
+                        )
+                        return {"error": "User Not Found", "message": error_message}, 404
                         
+                    # Check if fiat account exists, create if not
+                    account_exists, account_details, error_message = check_fiat_account_exists(user_id, currency_code)
+
+                    if error_message:
+                        logger.error(f"Error checking fiat account: {error_message}")
+                        # Update transaction to failed state
+                        update_payload = {"status": "failed"}
+                        requests.put(
+                            f"{TRANSACTION_SERVICE_URL}/fiat/{transaction_id}",
+                            json=update_payload
+                        )
+                        return {"error": "Service Unavailable", "message": error_message}, 500
+
+                    if not account_exists:
+                        logger.info(f"Fiat account for user {user_id} with currency {currency_code} does not exist. Creating new account.")
+                        account_created, account_details, error_message = create_fiat_account(user_id, currency_code)
+                        
+                        if not account_created:
+                            logger.error(f"Failed to create fiat account: {error_message}")
+                            # Update transaction to failed state
+                            update_payload = {"status": "failed"}
+                            requests.put(
+                                f"{TRANSACTION_SERVICE_URL}/fiat/{transaction_id}",
+                                json=update_payload
+                            )
+                            return {"error": "Failed to Create Account", "message": error_message}, 500
+
                     # 2) Update the Fiat Service (the user's wallet) first
                     # Convert Decimal to float for proper JSON serialization
                     try:

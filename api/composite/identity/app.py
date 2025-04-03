@@ -66,6 +66,14 @@ create_account_model = identity_ns.model(
     },
 )
 
+# Input for delete account
+delete_account_model = identity_ns.model(
+    "DeleteAccount",
+    {
+        "userId": fields.String(required=True, description="User ID to delete"),
+    },
+)
+
 # Output given upon succesfuly creation of account
 success_response = identity_ns.model(
     "SuccessResponse",
@@ -185,10 +193,106 @@ class CreateAccount(Resource):
         #     return {"error": "Failed to connect to address service", "details": str(e)}, 500
 
         # Create fiat wallet using fiat microservice
+        # Create SGD fiat account using fiat microservice
+        sgd_fiat_payload = {
+            "userId": user_id,
+            "balance": 0,
+            "currencyCode": "sgd"
+        }
 
+        try:
+            sgd_response = requests.post(f"{FIAT_SERVICE_URL}/account/", json=sgd_fiat_payload)
+            if sgd_response.status_code != 201:
+                return {
+                    "error": "Failed to create SGD fiat account",
+                    "details": sgd_response.json() if sgd_response.content else "No response content"
+                }, sgd_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to fiat service for SGD account", "details": str(e)}, 500
+            
+        # Create USD fiat account using fiat microservice
+        usd_fiat_payload = {
+            "userId": user_id,
+            "balance": 0,
+            "currencyCode": "usd"
+        }
+
+        try:
+            usd_response = requests.post(f"{FIAT_SERVICE_URL}/account/", json=usd_fiat_payload)
+            if usd_response.status_code != 201:
+                return {
+                    "error": "Failed to create USD fiat account",
+                    "details": usd_response.json() if usd_response.content else "No response content"
+                }, usd_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to fiat service for USD account", "details": str(e)}, 500
+        
         # Create crypto wallet using crypto microservice
+        wallet_payload = {
+            "userId": user_id
+        }
 
+        try:
+            wallet_response = requests.post(f"{CRYPTO_SERVICE_URL}/wallet", json=wallet_payload)
+            if wallet_response.status_code != 201:
+                return {
+                    "error": "Failed to create crypto wallet",
+                    "details": wallet_response.json() if wallet_response.content else "No response content"
+                }, wallet_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to crypto service", "details": str(e)}, 500
+        
         return {"message": "User account successfully created", "user_id": user_id}, 201
+
+# Delete account service
+@identity_ns.route("/delete-account")
+class DeleteAccount(Resource):
+    @identity_ns.expect(delete_account_model)
+    @identity_ns.response(200, "User deleted successfully", success_response)
+    @identity_ns.response(400, "Bad Request", error_response)
+    @identity_ns.response(500, "Internal Server Error", error_response)
+    def post(self):
+        """Handles complete user deletion across microservices"""
+        data = request.json
+        user_id = data.get("userId")
+
+        if not user_id:
+            return {"error": "User ID is required"}, 400
+
+        # Delete user's crypto wallet and holdings
+        try:
+            crypto_response = requests.delete(f"{CRYPTO_SERVICE_URL}/wallet/{user_id}")
+            if crypto_response.status_code != 200:
+                return {
+                    "error": "Failed to delete crypto wallet and holdings",
+                    "details": crypto_response.json() if crypto_response.content else "No response content"
+                }, crypto_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to crypto service", "details": str(e)}, 500
+
+        # Delete user's fiat accounts
+        try:
+            fiat_response = requests.delete(f"{FIAT_SERVICE_URL}/account/{user_id}")
+            if fiat_response.status_code != 200:
+                return {
+                    "error": "Failed to delete fiat accounts",
+                    "details": fiat_response.json() if fiat_response.content else "No response content"
+                }, fiat_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to fiat service", "details": str(e)}, 500
+
+        # Delete user account (this should cascade and delete authentication and address)
+        try:
+            user_response = requests.delete(f"{USERS_SERVICE_URL}/account/{user_id}")
+            if user_response.status_code != 200:
+                return {
+                    "error": "Failed to delete user account",
+                    "details": user_response.json() if user_response.content else "No response content"
+                }, user_response.status_code
+        except requests.RequestException as e:
+            return {"error": "Failed to connect to user service", "details": str(e)}, 500
+
+        return {"message": "User account and all associated data successfully deleted", "user_id": user_id}, 200
 
 # Add name spaces into api
 api.add_namespace(identity_ns)

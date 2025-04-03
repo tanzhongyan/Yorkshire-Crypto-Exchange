@@ -7,7 +7,7 @@ services:
     routes:
       - name: user-route
         paths:
-          - /v1/api/user
+          - /api/v1/user
         strip_path: false
 
   - name: fiat-service
@@ -15,7 +15,7 @@ services:
     routes:
       - name: fiat-route
         paths:
-          - /v1/api/fiat
+          - /api/v1/fiat
         strip_path: false
 
   - name: identity-service
@@ -23,7 +23,7 @@ services:
     routes:
       - name: identity-route
         paths:
-          - /v1/api/identity
+          - /api/v1/identity
         strip_path: false
 
   - name: transaction-service
@@ -31,5 +31,5 @@ services:
     routes:
       - name: transaction-route
         paths:
-          - /v1/api/transaction
+          - /api/v1/transaction
         strip_path: false

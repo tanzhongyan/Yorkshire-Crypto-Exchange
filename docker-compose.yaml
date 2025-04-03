@@ -57,30 +57,32 @@ services:
     expose:
       - "5000"
   
-  # crypto-service:
-  #   container_name: crypto-service
-  #   build:
-  #     context: ./api/atomic/crypto
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5002:5000"
-  #   depends_on:
-  #     - rabbitmq
-  #     postgres:
-  #       condition: service_healthy # wait until postgres healthy
-  #   environment:
-  #     - RUNNING_IN_DOCKER=true  # Detects Docker mode
-  #     - DB_HOST=postgres
-  #     - DB_PORT=5432
-  #     - DB_NAME=user_db
-  #     - DB_USER=user
-  #     - DB_PASS=password
-  #   volumes:
-  #     - crypto_data:/var/lib/crypto_service
-  #   networks:
-  #     - kong-net
-  #   expose:
-  #     - "5000"
+  crypto-service:
+    container_name: crypto-service
+    build:
+      context: ./api/atomic/crypto
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      # - RABBITMQ_HOST=rabbitmq
+      # - DATABASE_URL=postgresql://user:password@postgres:5432/crypto_db
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=crypto_db
+      - DB_USER=user
+      - DB_PASS=password
+    volumes:
+      - crypto_data:/var/lib/crypto_service
+    networks:
+      - kong-net
+    expose:
+      - "5000"
 
   user-service:
     container_name: user-service
@@ -169,7 +171,7 @@ services:
   stripe-cli:
     image: stripe/stripe-cli:latest
     container_name: stripe-cli
-    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to deposit-service:5000/v1/api/deposit/webhook
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to deposit-service:5000/api/v1/deposit/webhook
     environment:
       - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_DEVICE_NAME=local_dev
@@ -237,7 +239,7 @@ services:
 volumes:
   fiat_data:
   user_data:
-  # crypto_data:
+  crypto_data:
   # rabbitmq_data:
   postgres_data:
   transaction_data:

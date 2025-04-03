@@ -1,7 +1,24 @@
 _format_version: "3.0"
 
-services:
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+        - Origin
+      credentials: true
 
+services:
   - name: user-service
     url: http://user-service:5000  # Internal URL of the user service
     routes:
@@ -18,6 +35,22 @@ services:
           - /api/v1/fiat
         strip_path: false
 
+  - name: crypto-service
+    url: http://crypto-service:5000  # Internal URL of the crypto service
+    routes:
+      - name: crypto-route
+        paths:
+          - /api/v1/crypto
+        strip_path: false
+        
+  - name: transaction-service
+    url: http://transaction-service:5000  # Internal URL of the transaction service
+    routes:
+      - name: transaction-route
+        paths:
+          - /api/v1/transaction
+        strip_path: false
+
   - name: identity-service
     url: http://identity-service:5000  # Internal URL of the identity service
     routes:
@@ -26,10 +59,18 @@ services:
           - /api/v1/identity
         strip_path: false
 
-  - name: transaction-service
-    url: http://transaction-service:5000  # Internal URL of the transaction service
+  - name: deposit-service
+    url: http://deposit-service:5000  # Internal URL of the deposit service
     routes:
-      - name: transaction-route
+      - name: deposit-route
         paths:
-          - /api/v1/transaction
+          - /api/v1/deposit
         strip_path: false
+
+  - name: ramp-service
+    url: http://ramp-service:5000  # Internal URL of the ramp service
+    routes:
+      - name: ramp-route
+        paths:
+          - /api/v1/ramp
+        strip_path: false        

@@ -79,7 +79,7 @@ success_response = identity_ns.model(
     "SuccessResponse",
     {
         "message": fields.String(description="Success message"),
-        "userId": fields.String(attribute='user_id', description="Created User ID"),
+        "userId": fields.String(description="Created User ID"),
     },
 )
 
@@ -242,7 +242,7 @@ class CreateAccount(Resource):
         except requests.RequestException as e:
             return {"error": "Failed to connect to crypto service", "details": str(e)}, 500
         
-        return {"message": "User account successfully created", "user_id": user_id}, 201
+        return {"message": "User account successfully created", "userId": user_id}, 201
 
 # Delete account service
 @identity_ns.route("/delete-account")
@@ -292,7 +292,7 @@ class DeleteAccount(Resource):
         except requests.RequestException as e:
             return {"error": "Failed to connect to user service", "details": str(e)}, 500
 
-        return {"message": "User account and all associated data successfully deleted", "user_id": user_id}, 200
+        return {"message": "User account and all associated data successfully deleted", "userId": user_id}, 200
 
 # Add name spaces into api
 api.add_namespace(identity_ns)

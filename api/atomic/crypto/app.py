@@ -185,13 +185,19 @@ class CryptoWalletResource(Resource):
         return CryptoWallet.query.get_or_404(userId)
     
     def delete(self, userId):
-        """Delete a crypto wallet"""
+        """Delete a crypto wallet and all associated holdings"""
         wallet = CryptoWallet.query.get_or_404(userId)
         
         try:
+            # First delete all holdings for this user
+            holdings = CryptoHolding.query.filter_by(user_id=userId).all()
+            for holding in holdings:
+                db.session.delete(holding)
+            
+            # Then delete the wallet
             db.session.delete(wallet)
             db.session.commit()
-            return {'message': f'Wallet for user ID {userId} deleted successfully'}, 200
+            return {'message': f'Wallet for user ID {userId} and all associated holdings deleted successfully'}, 200
         except Exception as e:
             db.session.rollback()
             wallet_ns.abort(400, f"Failed to delete wallet: {str(e)}")

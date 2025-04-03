@@ -91,6 +91,8 @@ class TransactionFiatToCrypto(db.Model):
     status = db.Column(db.String(15), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
     confirmation = db.Column(db.DateTime(timezone=True), nullable=True, onupdate=func.now())
+    token_id = db.Column(db.String(15), nullable=False)
+    currency_code = db.Column(db.String(3), nullable=False)  # e.g., SGD, USD
 
 class TransactionCrypto(db.Model):
     __tablename__ = 'transaction_crypto'
@@ -151,6 +153,8 @@ fiattocrypto_output_model = fiat_to_crypto_ns.model('FiatToCryptoOutput', {
     'direction': fields.String(required=True),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
     'status': fields.String(required=True),
+    'tokenId': fields.String(attribute='token_id', required=False),
+    'currencyCode': fields.String(attribute='currency_code', required=True),
     'creation': fields.DateTime,
     'confirmation': fields.DateTime
 })
@@ -161,7 +165,9 @@ fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
     'toAmount': fields.Float(attribute='to_amount', required=True),
     'direction': fields.String(required=True),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'status': fields.String(required=True)
+    'status': fields.String(required=True),
+    'tokenId': fields.String(attribute='token_id', required=False),
+    'currencyCode': fields.String(attribute='currency_code', required=True)
 })
 
 # Crypto Transactions
@@ -287,7 +293,9 @@ class FiatToCryptoTransactionList(Resource):
             to_amount=data.get('toAmount'),
             direction=data.get('direction'),
             limit_price=data.get('limitPrice'),
-            status=data.get('status')
+            status=data.get('status'),
+            token_id=data.get('tokenId'),  # Default to USDT
+            currency_code=data.get('currencyCode')
         )
         try:
             db.session.add(new_transaction)
@@ -318,7 +326,9 @@ class FiatToCryptoTransactionResource(Resource):
                 'toAmount': 'to_amount',
                 'direction': 'direction',
                 'limitPrice': 'limit_price',
-                'status': 'status'
+                'status': 'status',
+                'tokenId': 'token_id',         # New field mapping
+                'currencyCode': 'currency_code' # New field mapping
             }
             
             for camel_key, snake_attr in camel_to_snake.items():

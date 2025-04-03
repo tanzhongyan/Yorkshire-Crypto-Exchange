@@ -202,6 +202,31 @@ class FiatAccountList(Resource):
         except Exception as e:
             account_ns.abort(400, f'Failed to create fiat account: {str(e)}')
 
+@account_ns.route('/<string:userId>')
+class UserFiatAccounts(Resource):
+    @account_ns.marshal_list_with(fiat_account_output_model)
+    def get(self, userId):
+        """Get all fiat accounts for a specific user"""
+        accounts = FiatAccount.query.filter_by(user_id=userId).all()
+        if not accounts:
+            account_ns.abort(404, f'No accounts found for user ID: {userId}')
+        return accounts
+
+    def delete(self, userId):
+        """Delete all fiat accounts for a specific user"""
+        try:
+            accounts = FiatAccount.query.filter_by(user_id=userId).all()
+            if not accounts:
+                account_ns.abort(404, f'No accounts found for user ID: {userId}')
+            
+            for account in accounts:
+                db.session.delete(account)
+            
+            db.session.commit()
+            return {'message': f'All fiat accounts for user {userId} deleted successfully'}
+        except Exception as e:
+            account_ns.abort(400, f'Failed to delete fiat accounts: {str(e)}')
+
 @account_ns.route('/<string:userId>/<string:currencyCode>')
 class FiatAccountResource(Resource):
     @account_ns.marshal_with(fiat_account_output_model)

@@ -180,10 +180,10 @@ services:
     depends_on:
       - deposit-service 
   
-  swap-service:
-    container_name: swap-service
+  ramp-service:
+    container_name: ramp-service
     build:
-      context: ./api/composite/swap
+      context: ./api/composite/ramp
       dockerfile: Dockerfile
     ports:
       - "5007:5000"

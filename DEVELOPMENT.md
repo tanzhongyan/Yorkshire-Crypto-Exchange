@@ -264,10 +264,9 @@ Atomic Microservices:
 - **transaction Service:** `http://localhost:5005/api/v1/transaction`
 
 Composite Microservices:
-- **identity** `http://localhost:5004/v1/api`
-- **deposit** `http://localhost:5006/v1/api`
-- **swap** `http://localhost:5007/v1/api`
-
+- **identity** `http://localhost:5004/api/v1`
+- **deposit** `http://localhost:5006/api/v1`
+- **ramp** `http://localhost:5007/api/v1`
 
 
 ## Running the Website Locally

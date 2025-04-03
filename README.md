@@ -42,6 +42,7 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
    - **Composite microservices**
       - **identity** `http://localhost:5004/api/v1`
       - **deposit** `http://localhost:5006/api/v1`
+      - **ramp** `http://localhost:5007/api/v1`
 
 
 ## 📌 Features

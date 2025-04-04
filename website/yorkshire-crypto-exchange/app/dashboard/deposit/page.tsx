@@ -210,7 +210,7 @@ export default function DepositPage() {
                       id="amount"
                       type="number"
                       placeholder="0.00"
-                      className="pl-8"
+                      className="pl-10"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       min="10"

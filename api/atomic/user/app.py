@@ -8,8 +8,10 @@ from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
 import bcrypt
 import json
+import jwt
 import uuid
 import os
+import time
 
 
 ##### Configuration #####
@@ -149,6 +151,7 @@ auth_success_response = authenticate_ns.model(
     {
         "message": fields.String(description="Authentication successful"),
         "userId": fields.String(attribute='user_id', description="Authenticated User ID"),
+        "token": fields.String(description="JWT authentication token")
     },
 )
 
@@ -218,6 +221,18 @@ def check_password(input_password,hashed_password):
     result = bcrypt.checkpw(input_password_bytes,hashed_password_bytes)
     return result
 
+def generate_jwt_token(user_id):
+    """Generate a JWT token with 1-hour expiration"""
+    payload = {
+        'sub': str(user_id),
+        'exp': int(time.time()) + 3600,  # 1 hour expiry
+        'iat': int(time.time()),
+        'kid': 'iloveesd'  # Must match your Kong configuration
+    }
+
+    # Create the token using the same secret defined in Kong
+    token = jwt.encode(payload, 'esdisfun', algorithm='HS256')
+    return token
 
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
@@ -383,9 +398,16 @@ class AuthenticateUser(Resource):
             # Step 3: Verify password
             if not check_password(input_password, stored_hashed_password):
                 return {"error": "Invalid credentials", "details": "Incorrect username/email or password"}, 400
+            
+            # step 4 Generate JWT token
+            token = generate_jwt_token(user_id)
 
-            return {"message": "Authentication successful", "userId": user_id}, 200
-
+            return {
+                "message": "Authentication successful", 
+                "userId": user_id,
+                "token": token
+            }, 200
+        
         except Exception as e:
             return {"error": "Internal Server Error", "details": str(e)}, 500
 

@@ -6,6 +6,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { CreditCard, DollarSign, LogOut, Menu, RefreshCw, ShoppingCart, User, Wallet } from "lucide-react"
+import { useAuth } from "@/components/AuthProvider"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -53,10 +54,10 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const { logout } = useAuth()
 
   const handleLogout = () => {
-    // In a real app, you would handle logout logic here
-    router.push("/login")
+    logout()
   }
 
   return (

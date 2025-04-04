@@ -17,18 +17,46 @@ plugins:
         - Content-Type
         - Origin
       credentials: true
+  - name: jwt
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+      secret_is_base64: false
+      anonymous: anonymous_consumer  # References the anonymous consumer name
+
+# Consumer definition
+consumers:
+  - username: app_client
+    custom_id: frontend-client
+  - username: anonymous_consumer
+
+# JWT credentials
+jwt_secrets:
+  - consumer: app_client
+    key: "iloveesd"
+    secret: "esdisfun"
+    algorithm: HS256
 
 services:
   - name: user-service
-    url: http://user-service:5000  # Internal URL of the user service
+    url: http://user-service:5000
     routes:
+      - name: user-login-route
+        paths:
+          - /api/v1/user/authenticate/login
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
       - name: user-route
         paths:
           - /api/v1/user
         strip_path: false
 
   - name: fiat-service
-    url: http://fiat-service:5000  # Internal URL of the fiat service
+    url: http://fiat-service:5000
     routes:
       - name: fiat-route
         paths:
@@ -36,7 +64,7 @@ services:
         strip_path: false
 
   - name: crypto-service
-    url: http://crypto-service:5000  # Internal URL of the crypto service
+    url: http://crypto-service:5000
     routes:
       - name: crypto-route
         paths:
@@ -44,7 +72,7 @@ services:
         strip_path: false
         
   - name: transaction-service
-    url: http://transaction-service:5000  # Internal URL of the transaction service
+    url: http://transaction-service:5000
     routes:
       - name: transaction-route
         paths:
@@ -52,15 +80,23 @@ services:
         strip_path: false
 
   - name: identity-service
-    url: http://identity-service:5000  # Internal URL of the identity service
+    url: http://identity-service:5000
     routes:
+      - name: identity-create-account
+        paths:
+          - /api/v1/identity/create-account
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
       - name: identity-route
         paths:
           - /api/v1/identity
         strip_path: false
 
   - name: deposit-service
-    url: http://deposit-service:5000  # Internal URL of the deposit service
+    url: http://deposit-service:5000
     routes:
       - name: deposit-route
         paths:
@@ -68,7 +104,7 @@ services:
         strip_path: false
 
   - name: ramp-service
-    url: http://ramp-service:5000  # Internal URL of the ramp service
+    url: http://ramp-service:5000
     routes:
       - name: ramp-route
         paths:

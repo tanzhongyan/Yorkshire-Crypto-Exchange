@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, Blueprint
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields, Namespace
 import requests
+import jwt
+import time
 
 
 ##### Configuration #####
@@ -80,6 +82,7 @@ success_response = identity_ns.model(
     {
         "message": fields.String(description="Success message"),
         "userId": fields.String(description="Created User ID"),
+        "token": fields.String(description="JWT Token"),
     },
 )
 
@@ -242,7 +245,18 @@ class CreateAccount(Resource):
         except requests.RequestException as e:
             return {"error": "Failed to connect to crypto service", "details": str(e)}, 500
         
-        return {"message": "User account successfully created", "userId": user_id}, 201
+        # Generate JWT token with 1 hour expiry
+        payload = {
+            'sub': str(user_id),
+            'exp': int(time.time()) + 3600,  # 1 hour expiry
+            'iat': int(time.time()),
+            'kid': 'iloveesd'  # Must match your Kong configuration
+        }
+
+        # Create the token using the same secret defined in Kong
+        token = jwt.encode(payload, 'esdisfun', algorithm='HS256')
+        
+        return {"message": "User account successfully created", "userId": user_id, "token": token}, 201
 
 # Delete account service
 @identity_ns.route("/delete-account")

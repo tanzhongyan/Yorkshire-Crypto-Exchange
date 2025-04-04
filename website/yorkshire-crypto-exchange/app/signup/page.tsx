@@ -7,13 +7,15 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, UserPlus, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-
+import { useAuth } from '@/components/AuthProvider'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { setCookie, getCookie } from '@/lib/cookies';
 
 export default function SignupPage() {
+  const { login } = useAuth()
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
@@ -47,7 +49,10 @@ export default function SignupPage() {
     setIsLoading(true)
   
     try {
-      // Payload preparation remains the same
+      // 1. First get the token (BEFORE making the fetch call)
+      const token = getCookie('jwt_token');
+
+      // 2. Payload preparation remains the same
       const payload = {
         username: formData.username,
         fullname: formData.fullname,
@@ -55,17 +60,18 @@ export default function SignupPage() {
         email: formData.email,
         password: formData.password,
       }
-  
-      // Call the API endpoint
+
+      // 3. Call the API endpoint
       const response = await fetch('http://localhost:8000/api/v1/identity/create-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify(payload),
       })
   
-      // Try to parse the response as JSON
+      // 4. Try to parse the response as JSON
       let data;
       try {
         data = await response.json();
@@ -74,6 +80,7 @@ export default function SignupPage() {
         data = { error: "Invalid response format" };
       }
   
+      // 5. Handle errors if response is not ok
       if (!response.ok) {
         // Format error according to Swagger ErrorResponse schema
         if (data.error) {
@@ -86,16 +93,23 @@ export default function SignupPage() {
         }
       }
   
-      // Account created successfully
+      // 6. Account created successfully
       const userId = data.userId;
       if (!userId) {
         throw new Error("User ID not returned from server");
       }
   
-      // Store the userId
-      localStorage.setItem('userId', userId);
-      
-      // Redirect to dashboard page
+      // 7. Store the userId in cookie
+      setCookie('userId', userId, 3600); // 1 hour expiry
+
+      // 8. Store JWT token if it's in the response
+      if (data.token) {
+        // Let the AuthProvider handle token storage
+        login(data.token, 3600); // 1 hour expiry
+        // No need to set userId again as we did it above
+      }
+
+      // 9. Redirect to dashboard page
       router.push("/dashboard");
     } catch (error: any) {
       // Handle different types of errors
@@ -142,7 +156,7 @@ export default function SignupPage() {
           </Alert>
         </div>
       )}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="on">
           <CardContent>
             {
               <div className="grid gap-4 sm:grid-cols-2">
@@ -155,6 +169,7 @@ export default function SignupPage() {
                     required
                     value={formData.username}
                     onChange={handleChange}
+                    autoComplete="username"
                   />
                 </div>
                 <div className="space-y-2">
@@ -166,6 +181,7 @@ export default function SignupPage() {
                     required
                     value={formData.fullname}
                     onChange={handleChange}
+                    autoComplete="name"
                   />
                 </div>
                 <div className="space-y-2">
@@ -178,6 +194,7 @@ export default function SignupPage() {
                     required
                     value={formData.email}
                     onChange={handleChange}
+                    autoComplete="email"
                   />
                 </div>
                 <div className="space-y-2">
@@ -189,6 +206,7 @@ export default function SignupPage() {
                     required
                     value={formData.phone}
                     onChange={handleChange}
+                    autoComplete="phone"
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
@@ -202,6 +220,7 @@ export default function SignupPage() {
                       required
                       value={formData.password}
                       onChange={handleChange}
+                      autoComplete="password"
                     />
                     <Button
                       type="button"

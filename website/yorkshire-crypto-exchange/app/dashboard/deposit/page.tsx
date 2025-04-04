@@ -280,9 +280,9 @@ export default function DepositPage() {
         )}
       </div>
       
-      {transactions.length > 0 && (
-        <div className="space-y-2 overflow-y-auto max-h-[80vh]">
-          <h2 className="text-lg font-semibold">Recent Transactions</h2>
+      <div className="space-y-2 overflow-y-auto max-h-[80vh]">
+        <h2 className="text-lg font-semibold">Fiat Transactions</h2>
+        {transactions.length > 0 ? (
           <div className="space-y-2">
             {transactions.map((txn: any) => (
               <Card key={txn.transactionId} className="flex flex-col">
@@ -309,8 +309,12 @@ export default function DepositPage() {
               </Card>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No deposit transactions yet</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

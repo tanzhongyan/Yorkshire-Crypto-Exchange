@@ -556,7 +556,7 @@ export default function RampPage() {
 
       {/* Transactions */}
       <div className="space-y-2 overflow-y-auto max-h-[80vh]">
-        <h2 className="text-lg font-semibold">Swap Transactions</h2>
+        <h2 className="text-lg font-semibold">Ramp Transactions</h2>
         {transactions.length > 0 ? (
           <div className="space-y-2">
             {transactions.map((txn: any) => (

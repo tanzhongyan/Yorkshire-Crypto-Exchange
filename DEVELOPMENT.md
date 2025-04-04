@@ -32,6 +32,15 @@ Before running the project, ensure you have Python installed and install depende
    pip install -r requirements.txt
    ```
 
+## Before Running Docker Compose
+
+If you're facing issues with missing environment variables such as:
+- **STRIPE API KEYs**
+- **EXCHANGE RATE API KEY**
+- **GMAIL USER and PASSWORD**
+
+This is because `.env` files are not stored in Git. Run the setup script from `@tanzhongyan` (either bash or PowerShell) **before** running `docker-compose` for the first time.
+
 ## Running Docker Compose
 
 To initialise and start the database and microservices, run:
@@ -268,6 +277,22 @@ Composite Microservices:
 - **deposit** `http://localhost:5006/api/v1`
 - **ramp** `http://localhost:5007/api/v1`
 
+### Kong Gateway Configuration
+
+Ensure that your `kong.yml` includes both service definitions and JWT plugin setup as follows:
+
+Example
+```
+   - name: fiat-service
+      url: http://fiat-service:5000
+      routes:
+      - name: fiat-route
+         paths:
+            - /api/v1/fiat
+         strip_path: false
+         plugins:
+            - name: jwt
+```
 
 ## Running the Website Locally
 This documentation provides instructions for setting up and running the **Yorkshire Crypto Exchange Website** stored under `/website/yorkshire-crypto-exchange`.
@@ -314,6 +339,24 @@ Ensure dependencies are installed:
 
 ```sh
 npm install
+```
+
+## Integration APIs to frontend
+For every page, make sure that you have the following import at the top.
+```
+import axios from "@/lib/axios";
+```
+
+This is an example of how to use it. If you use axios here, it will pre-append JWT token to allow for authentication.
+Example
+```
+   const response = await axios.post("/api/v1/ramp/swap", {
+      user_id: userId,
+      amount: parseFloat(fromAmount),
+      fiat_currency: direction === "fiattocrypto" ? fromCurrency : toCurrency,
+      token_id: direction === "fiattocrypto" ? toCurrency : fromCurrency,
+      direction: direction
+   });
 ```
 
 ## Accessing Database Data (Visualisation)

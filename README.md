@@ -5,12 +5,13 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 ## 🛠 Tech Stack
 
 - **Database:** PostgreSQL
-- **Website:** Next.js, Node.js, Typescript (Vercel V0)
+- **Website:** Next.js, Typescript (Vercel V0)
 - **API:** Flask + Pika (RabbitMQ) + Kong API gateway
 - **ORM:** Flask-Migrate + SQLAlchemy
 - **CI/CD:** GitHub Actions
 - **Python Formatting:** Black (PEP8 style guide)
 - **Auto-generate Changelog:** Release Changelog Builder
+- **Authentication** JSON Web Tokens (JWT)
 - **API Documentation:** Flask-RESTx
 - **Coding Standards:** Pylint
 - **Containerization:** Docker-Compose (Database, APIs, Website, RabbitMQ)
@@ -23,17 +24,20 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 
 ## 📥 Installation & Setup
 
+### Set up docker containers
 1. Install Python dependencies:
    ```sh
    pip install -r requirements.txt
    ```
 
-2. Start the services using Docker Compose:
+2. Get bash command from @tanzhongyan to get .env files required to run the project.
+
+3. Start the services using Docker Compose:
    ```sh
    docker-compose up -d --build
    ```
 
-3. Access API documentation:
+4. Access API documentation:
    - **Atomic microservices**
       - **Fiat Service:** `http://localhost:5001/api/v1/fiat`
       - **Crypto Service:** `http://localhost:5002/api/v1/crypto`
@@ -44,6 +48,42 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
       - **deposit** `http://localhost:5006/api/v1`
       - **ramp** `http://localhost:5007/api/v1`
 
+### Set up front end website
+1. Install Dependencies
+
+Before running the website, navigate to the project directory and install the necessary dependencies:
+
+```sh
+cd website/yorkshire-crypto-exchange
+npm install
+```
+
+Alternatively, if using Yarn:
+
+```sh
+cd website/yorkshire-crypto-exchange
+yarn install
+```
+
+2. Run the Development Server
+
+To start the Next.js development server, run:
+
+```sh
+npm run dev
+```
+
+Or, if using Yarn:
+
+```sh
+yarn dev
+```
+
+Once the server starts, the website will be available at:
+
+```
+http://localhost:3000
+```
 
 ## 📌 Features
 - **Secure transactions** between fiat and crypto

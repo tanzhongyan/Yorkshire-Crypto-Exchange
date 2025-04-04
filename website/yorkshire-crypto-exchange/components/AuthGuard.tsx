@@ -6,20 +6,24 @@ import { useEffect, useState } from 'react'
 import { getCookie } from '@/lib/cookies'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
-  const router = useRouter()
-  const [checking, setChecking] = useState(true)
-
-  useEffect(() => {
-    const storedToken = getCookie('jwt_token');
-    if (!storedToken || !isAuthenticated) {
-      router.replace('/login');
-    } else {
-      setChecking(false);
-    }
-  }, [isAuthenticated, router])
-
-  if (checking) return null
-
-  return children
+    const { isAuthenticated, isInitializing } = useAuth()
+    const router = useRouter()
+    const [checking, setChecking] = useState(true)
+  
+    useEffect(() => {
+      // Don't check until initialization is complete
+      if (!isInitializing) {
+        const storedToken = getCookie('jwt_token');
+        if (!storedToken || !isAuthenticated) {
+          router.replace('/login');
+        } else {
+          setChecking(false);
+        }
+      }
+    }, [isAuthenticated, isInitializing, router])
+  
+    // Return null during both internal checking and auth provider initialization
+    if (isInitializing || checking) return null
+  
+    return children
 }

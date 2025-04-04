@@ -50,6 +50,7 @@ app.register_blueprint(blueprint)
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
 USER_SERVICE_URL = "http://user-service:5000/api/v1/user"
+FRONTEND_URL = "http://localhost:3000"
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
@@ -231,9 +232,8 @@ class CreateDeposit(Resource):
             return {"error": str(e)}, 500
 
         # Construct success and cancel URLs
-        base_url = request.host_url.rstrip('/')
-        success_url = f"{base_url}/api/v1/deposit/success/{transaction_id}"
-        cancel_url = f"{base_url}/api/v1/deposit/cancel/{transaction_id}"
+        success_url = f"{FRONTEND_URL}/dashboard/deposit?status=success"
+        cancel_url = f"{FRONTEND_URL}/dashboard/deposit?status=cancel"
 
         try:
             # Create Stripe checkout session

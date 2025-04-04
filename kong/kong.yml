@@ -17,13 +17,13 @@ plugins:
         - Content-Type
         - Origin
       credentials: true
+  # JWT plugin without anonymous - it will now properly enforce authentication
   - name: jwt
     config:
       key_claim_name: kid
       claims_to_verify:
         - exp
       secret_is_base64: false
-      anonymous: anonymous_consumer  # References the anonymous consumer name
 
 # Consumer definition
 consumers:
@@ -42,6 +42,7 @@ services:
   - name: user-service
     url: http://user-service:5000
     routes:
+      # Public login route
       - name: user-login-route
         paths:
           - /api/v1/user/authenticate/login
@@ -50,10 +51,13 @@ services:
           - name: jwt
             config:
               anonymous: anonymous_consumer
+      # Protected user route
       - name: user-route
         paths:
           - /api/v1/user
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
   - name: fiat-service
     url: http://fiat-service:5000
@@ -62,6 +66,8 @@ services:
         paths:
           - /api/v1/fiat
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
   - name: crypto-service
     url: http://crypto-service:5000
@@ -70,6 +76,8 @@ services:
         paths:
           - /api/v1/crypto
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
         
   - name: transaction-service
     url: http://transaction-service:5000
@@ -78,10 +86,13 @@ services:
         paths:
           - /api/v1/transaction
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
   - name: identity-service
     url: http://identity-service:5000
     routes:
+      # Public account creation route
       - name: identity-create-account
         paths:
           - /api/v1/identity/create-account
@@ -90,10 +101,13 @@ services:
           - name: jwt
             config:
               anonymous: anonymous_consumer
+      # Protected identity route
       - name: identity-route
         paths:
           - /api/v1/identity
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
   - name: deposit-service
     url: http://deposit-service:5000
@@ -102,6 +116,8 @@ services:
         paths:
           - /api/v1/deposit
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
   - name: ramp-service
     url: http://ramp-service:5000
@@ -109,4 +125,6 @@ services:
       - name: ramp-route
         paths:
           - /api/v1/ramp
-        strip_path: false        
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous

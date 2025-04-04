@@ -265,7 +265,8 @@ def generate_jwt_token(user_id):
         'sub': str(user_id),
         'exp': int(time.time()) + 3600,  # 1 hour expiry
         'iat': int(time.time()),
-        'kid': 'iloveesd'  # Must match your Kong configuration
+        'kid': 'iloveesd',  # Must match your Kong configuration
+        'iss': 'iloveesd'   # Add the issuer claim with the same value as kid
     }
 
     # Create the token using the same secret defined in Kong

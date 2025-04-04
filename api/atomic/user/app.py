@@ -6,13 +6,17 @@ from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
+from twilio.rest import Client
+from dotenv import load_dotenv
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import bcrypt
 import json
 import jwt
 import uuid
 import os
 import time
-
+import smtplib
 
 ##### Configuration #####
 # Define API version and root path
@@ -21,6 +25,15 @@ API_ROOT = f'/api/{API_VERSION}/user'
 
 app = Flask(__name__)
 CORS(app)
+
+# Load environment variables
+load_dotenv()
+
+# Declare website location
+WEBAPP_URL = "http://localhost:3000"
+
+# In-memory storage for reset tokens (in production, use a database table)
+reset_tokens = {}
 
 # Detect if running inside Docker
 RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER", "false").lower() == "true"
@@ -164,6 +177,31 @@ auth_error_response = authenticate_ns.model(
     },
 )
 
+# Reset password request model
+reset_password_request_model = authenticate_ns.model(
+    "ResetPasswordRequest",
+    {
+        "email": fields.String(required=True, description="The email address of the user"),
+    },
+)
+
+# Reset password model (actual reset with token)
+reset_password_model = authenticate_ns.model(
+    "ResetPassword",
+    {
+        "token": fields.String(required=True, description="The reset token"),
+        "newPassword": fields.String(required=True, description="The new password"),
+    },
+)
+
+# Reset password response
+reset_password_response = authenticate_ns.model(
+    "ResetPasswordResponse",
+    {
+        "message": fields.String(description="Operation result message"),
+    },
+)
+
 # output one user address
 address_output_model = address_ns.model('AddressOutput', {
     'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
@@ -234,6 +272,37 @@ def generate_jwt_token(user_id):
     token = jwt.encode(payload, 'esdisfun', algorithm='HS256')
     return token
 
+def send_reset_email(to_email, reset_link):
+    sender_email = os.getenv("GMAIL_USER")
+    sender_password = os.getenv("GMAIL_PASSWORD")
+    
+    subject = "Password Reset Link - Yorkshire Crypto Exchange"
+    body = f"""
+    Hello,
+
+    You requested a password reset. Click the link below to reset your password:
+    {reset_link}
+
+    If you didn’t request this, please ignore this email.
+
+    Regards,
+    Yorkshire Crypto Exchange Team
+    """
+
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+        print(f"Password reset email sent to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
@@ -251,10 +320,10 @@ class UserAccountListResource(Resource):
         """Create a new user account"""
         data = request.json
         new_user = UserAccount(
-            username=data.get('username'),
-            fullname=data.get('fullname'),
+            username=data.get('username').lower(),
+            fullname=data.get('fullname').title(),
             phone=data.get('phone'),
-            email=data.get('email')
+            email=data.get('email').lower()
         )
         try:
             db.session.add(new_user)
@@ -278,10 +347,10 @@ class UserAccountResource(Resource):
         """Update an existing user account"""
         user = UserAccount.query.get_or_404(userId, description='User not found')
         data = request.json
-        user.username = data.get('username', user.username)
-        user.fullname = data.get('fullname', user.fullname)
+        user.username = data.get('username', user.username).lower()
+        user.fullname = data.get('fullname', user.fullname).title()
         user.phone = data.get('phone', user.phone)
-        user.email = data.get('email', user.email)
+        user.email = data.get('email', user.email).lower()
         try:
             db.session.commit()
             return user
@@ -301,7 +370,7 @@ class UserSearchResource(Resource):
     @account_ns.doc(params={"identifier": "The username or email of the user"})
     def get(self):
         """Fetch user details by username or email"""
-        identifier = request.args.get("identifier")
+        identifier = request.args.get("identifier").lower()
         if not identifier:
             account_ns.abort(400, "Username or email is required")
 
@@ -367,7 +436,7 @@ class AuthenticateUser(Resource):
     def post(self):
         """Authenticate user using username/email and password"""
         data = request.json
-        identifier = data.get("identifier")
+        identifier = data.get("identifier").lower()
         input_password = data.get("password")
 
         if not identifier or not input_password:
@@ -411,6 +480,81 @@ class AuthenticateUser(Resource):
         except Exception as e:
             return {"error": "Internal Server Error", "details": str(e)}, 500
 
+@authenticate_ns.route('/reset-password-request')
+class ResetPasswordRequest(Resource):
+    @authenticate_ns.expect(reset_password_request_model)
+    @authenticate_ns.response(200, "Reset email sent", reset_password_response)
+    def post(self):
+        """Request a password reset link"""
+        data = request.json
+        email = data.get("email").lower()
+        
+        # Always return success to prevent email enumeration
+        # (don't reveal if account exists)
+        user = UserAccount.query.filter_by(email=email).first()
+        if not user:
+            # Still return success but don't send email
+            # This prevents attackers from discovering valid emails
+            return {"message": "If the email exists, a reset link has been sent"}, 200
+            
+        # Generate secure token (NOT a JWT)
+        reset_token = str(uuid.uuid4())
+        
+        # Store token with expiration
+        reset_tokens[email] = {
+            "token": reset_token,
+            "user_id": str(user.user_id),
+            "expires": time.time() + 3600  # 1 hour
+        }
+        
+        # Send email with reset link
+        reset_link = f"{WEBAPP_URL}/reset-password/{reset_token}"
+        send_reset_email(email, reset_link)
+        
+        return {"message": "If the email exists, a reset link has been sent"}, 200
+
+@authenticate_ns.route('/reset-password')
+class ResetPassword(Resource):
+    @authenticate_ns.expect(reset_password_model)
+    @authenticate_ns.response(200, "Password reset successful", auth_success_response)
+    def post(self):
+        """Reset password and issue new JWT"""
+        data = request.json
+        token = data.get("token")
+        new_password = data.get("newPassword")
+        
+        # Find user by token
+        user_id = None
+        email = None
+        for e, info in reset_tokens.items():
+            if info["token"] == token and info["expires"] > time.time():
+                user_id = info["user_id"]
+                email = e
+                break
+                
+        if not user_id:
+            return {"error": "Invalid or expired token"}, 400
+            
+        # Update password
+        auth = UserAuthenticate.query.filter_by(user_id=user_id).first()
+        if not auth:
+            return {"error": "User not found"}, 404
+            
+        auth.password_hashed = hash_password(new_password)
+        db.session.commit()
+        
+        # Remove used token
+        del reset_tokens[email]
+        
+        # Generate new JWT for automatic login
+        new_jwt = generate_jwt_token(user_id)
+        
+        # Return success with new JWT
+        return {
+            "message": "Password reset successful",
+            "userId": user_id,
+            "token": new_jwt
+        }, 200
 
 # CRU for UserAddress. No delete as delete is cascaded from account table.
 @address_ns.route('/<uuid:userId>')
@@ -435,15 +579,15 @@ class UserAddressResource(Resource):
         data = request.json
         new_address = UserAddress(
             user_id=userId,  # ✅ user_id from the path, not from request body
-            street_number=data.get('streetNumber'),
-            street_name=data.get('streetName'),
-            unit_number=data.get('unitNumber'),
-            building_name=data.get('buildingName'),
-            district=data.get('district'),
-            city=data.get('city'),
-            state_province=data.get('stateProvince'),
-            postal_code=data.get('postalCode'),
-            country=data.get('country')
+            street_number=data.get('streetNumber').title(),
+            street_name=data.get('streetName').title(),
+            unit_number=data.get('unitNumber').title(),
+            building_name=data.get('buildingName').title(),
+            district=data.get('district').title(),
+            city=data.get('city').title(),
+            state_province=data.get('stateProvince').title(),
+            postal_code=data.get('postalCode').title(),
+            country=data.get('country').title()
         )
         db.session.add(new_address)
         db.session.commit()
@@ -458,15 +602,15 @@ class UserAddressResource(Resource):
             address_ns.abort(404, 'Address not found')
 
         data = request.json
-        address.street_number = data.get('streetNumber', address.street_number)
-        address.street_name = data.get('streetName', address.street_name)
-        address.unit_number=data.get('unitNumber', address.unit_number)
-        address.building_name=data.get('buildingName', address.building_name)
-        address.district=data.get('district', address.district)
-        address.city = data.get('city', address.city)
-        address.state_province = data.get('stateProvince', address.state_province)
-        address.postal_code = data.get('postalCode', address.postal_code)
-        address.country = data.get('country', address.country)
+        address.street_number = data.get('streetNumber', address.street_number).title()
+        address.street_name = data.get('streetName', address.street_name).title()
+        address.unit_number=data.get('unitNumber', address.unit_number).title()
+        address.building_name=data.get('buildingName', address.building_name).title()
+        address.district=data.get('district', address.district).title()
+        address.city = data.get('city', address.city).title()
+        address.state_province = data.get('stateProvince', address.state_province).title()
+        address.postal_code = data.get('postalCode', address.postal_code).title()
+        address.country = data.get('country', address.country).title()
 
         db.session.commit()
         return address

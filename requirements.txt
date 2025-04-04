@@ -9,3 +9,5 @@ Flask-Cors
 Stripe
 Dotenv
 PyJWT
+twilio
+flask-mail

@@ -23,26 +23,23 @@ export default function ForgotPasswordPage() {
     setSuccess(false)
 
     try {
-      // Call your password reset API endpoint
-      const response = await fetch('http://localhost:8000/api/v1/user/reset-password-request', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8000/api/v1/user/authenticate/reset-password-request", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.toLowerCase() }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to request password reset')
-      }
-
-      // Show success message
+      // Always show success message regardless of email existing or not
       setSuccess(true)
       setEmail("")
+
+      // Optionally, you can log response if needed for dev
+      // const data = await response.json()
+      // console.log(data)
     } catch (error: any) {
-      setError(error.message || 'An error occurred')
+      setError(error.message || "An error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -68,21 +65,25 @@ export default function ForgotPasswordPage() {
         )}
 
         {success ? (
-          <div className="px-6 py-4">
+        <>
+            <CardContent className="space-y-4">
             <Alert>
-              <Mail className="h-4 w-4" />
-              <AlertTitle>Check your email</AlertTitle>
-              <AlertDescription>
+                <Mail className="h-4 w-4" />
+                <AlertTitle>Check your email</AlertTitle>
+                <AlertDescription>
                 We've sent you a password reset link. Please check your email and follow the instructions.
-              </AlertDescription>
+                </AlertDescription>
             </Alert>
-            <div className="mt-4 text-center">
-              <Link href="/login" className="text-primary hover:underline inline-flex items-center">
+            </CardContent>
+            <CardFooter className="flex flex-col">
+            <div className="text-center">
+                <Link href="/login" className="text-primary hover:underline inline-flex items-center">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to login
-              </Link>
+                </Link>
             </div>
-          </div>
+            </CardFooter>
+        </>
         ) : (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">

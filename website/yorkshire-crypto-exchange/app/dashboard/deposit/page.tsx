@@ -16,17 +16,17 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Define available currencies with their symbols
+// Define available currencies with their symbols and maximum limits
 const FIAT_CURRENCIES = [
-  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$"},
-  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$"},
-  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€"},
-  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM"},
-  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$"},
-  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£"},
-  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥"},
-  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥"},
-  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹"}
+  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$", maxLimit: 999999.99},
+  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$", maxLimit: 999999.99},
+  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€", maxLimit: 999999.99},
+  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM", maxLimit: 999999.99},
+  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$", maxLimit: 999999.99},
+  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£", maxLimit: 999999.99},
+  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥", maxLimit: 999999.99},
+  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥", maxLimit: 999999.99},
+  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹", maxLimit: 9999999.99}
 ];
 
 export default function DepositPage() {
@@ -43,10 +43,19 @@ export default function DepositPage() {
 
   const searchParams = useSearchParams();
 
+  // Get the currency details for the selected currency
+  const getCurrencyDetails = () => {
+    return FIAT_CURRENCIES.find(c => c.currencyCode === currencyCode) || FIAT_CURRENCIES[0];
+  };
+
   // Get the currency symbol for the selected currency
   const getCurrencySymbol = () => {
-    const currency = FIAT_CURRENCIES.find(c => c.currencyCode === currencyCode);
-    return currency?.symbol || "$";
+    return getCurrencyDetails().symbol;
+  };
+
+  // Get the maximum limit for the selected currency
+  const getCurrencyMaxLimit = () => {
+    return getCurrencyDetails().maxLimit;
   };
 
   useEffect(() => {
@@ -115,7 +124,14 @@ export default function DepositPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!amount || Number.parseFloat(amount) <= 0) return;
+    const parsedAmount = parseFloat(amount);
+    const maxLimit = getCurrencyMaxLimit();
+
+    if (!amount || parsedAmount <= 0) return;
+    if (parsedAmount > maxLimit) {
+      alert(`Maximum deposit amount for ${currencyCode.toUpperCase()} is ${getCurrencySymbol()}${maxLimit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`);
+      return;
+    }
 
     setIsProcessing(true);
 
@@ -125,7 +141,7 @@ export default function DepositPage() {
 
       const response = await axios.post("/api/v1/deposit/fiat/", {
         userId,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         currencyCode: currencyCode.toUpperCase() // Use the selected currency
       });
 
@@ -212,13 +228,24 @@ export default function DepositPage() {
                       placeholder="0.00"
                       className="pl-10"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const maxLimit = getCurrencyMaxLimit();
+                        // Only update if the value is within limits or empty
+                        if (!value || parseFloat(value) <= maxLimit) {
+                          setAmount(value);
+                        }
+                      }}
                       min="10"
+                      max={getCurrencyMaxLimit()}
                       step="0.01"
                       required
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Minimum deposit: {getCurrencySymbol()}10.00</p>
+                  <p className="text-xs text-muted-foreground">
+                    Minimum deposit: {getCurrencySymbol()}10.00 | 
+                    Maximum deposit: {getCurrencySymbol()}{getCurrencyMaxLimit().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
                 </div>
 
                 <Separator />
@@ -248,7 +275,7 @@ export default function DepositPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isProcessing || !amount || Number.parseFloat(amount) <= 0}
+                  disabled={isProcessing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > getCurrencyMaxLimit()}
                 >
                   {isProcessing ? "Processing..." : "Proceed to Payment"}
                 </Button>

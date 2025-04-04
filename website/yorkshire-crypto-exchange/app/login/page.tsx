@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, LogIn, X } from "lucide-react"
+import { Eye, EyeOff, LogIn, X, Home } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from '@/components/AuthProvider'
 
@@ -95,6 +95,14 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="absolute top-6 left-6">
+        <Link href="/" passHref>
+          <Button variant="outline" className="text-sm">
+            <Home className="h-4 w-4" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Sign in to your account</CardTitle>

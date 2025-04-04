@@ -101,12 +101,12 @@ export default function DashboardLayout({
               </SheetContent>
             </Sheet>
             <Link href="/dashboard" className="flex items-center gap-2">
-              <span className="font-bold text-xl md:text-2xl lg:text-3xl tracking-tight">Yorkshire Crypto</span>
+              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">Yorkshire Crypto</span>
             </Link>
           </div>
           <div className="hidden md:flex md:flex-1">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <span className="font-bold text-xl md:text-2xl lg:text-3xl tracking-tight">Yorkshire Crypto</span>
+              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">Yorkshire Crypto</span>
             </Link>
             <nav className="flex flex-1 items-center justify-center gap-6">
               {navItems.map((item) => (

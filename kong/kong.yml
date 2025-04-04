@@ -51,13 +51,34 @@ services:
           - name: jwt
             config:
               anonymous: anonymous_consumer
-      # Protected user route
+
+      # Public reset password request
+      - name: reset-password-request-route
+        paths:
+          - /api/v1/user/authenticate/reset-password-request
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+
+      # Public reset password execution
+      - name: reset-password-route
+        paths:
+          - /api/v1/user/authenticate/reset-password
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+
+      # Protected route - requires valid JWT
       - name: user-route
         paths:
           - /api/v1/user
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: fiat-service
     url: http://fiat-service:5000

@@ -1,35 +1,151 @@
 _format_version: "3.0"
 
-services:
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+        - Origin
+      credentials: true
+  # JWT plugin without anonymous - it will now properly enforce authentication
+  - name: jwt
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+      secret_is_base64: false
 
+# Consumer definition
+consumers:
+  - username: app_client
+    custom_id: frontend-client
+  - username: anonymous_consumer
+
+# JWT credentials
+jwt_secrets:
+  - consumer: app_client
+    key: "iloveesd"
+    secret: "esdisfun"
+    algorithm: HS256
+
+services:
   - name: user-service
-    url: http://user-service:5000  # Internal URL of the user service
+    url: http://user-service:5000
     routes:
+      # Public login route
+      - name: user-login-route
+        paths:
+          - /api/v1/user/authenticate/login
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+
+      # Public reset password request
+      - name: reset-password-request-route
+        paths:
+          - /api/v1/user/authenticate/reset-password-request
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+
+      # Public reset password execution
+      - name: reset-password-route
+        paths:
+          - /api/v1/user/authenticate/reset-password
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+
+      # Protected route - requires valid JWT
       - name: user-route
         paths:
           - /api/v1/user
         strip_path: false
+        plugins:
+          - name: jwt
 
   - name: fiat-service
-    url: http://fiat-service:5000  # Internal URL of the fiat service
+    url: http://fiat-service:5000
     routes:
       - name: fiat-route
         paths:
           - /api/v1/fiat
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
 
-  - name: identity-service
-    url: http://identity-service:5000  # Internal URL of the identity service
+  - name: crypto-service
+    url: http://crypto-service:5000
     routes:
-      - name: identity-route
+      - name: crypto-route
         paths:
-          - /api/v1/identity
+          - /api/v1/crypto
         strip_path: false
-
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+        
   - name: transaction-service
-    url: http://transaction-service:5000  # Internal URL of the transaction service
+    url: http://transaction-service:5000
     routes:
       - name: transaction-route
         paths:
           - /api/v1/transaction
         strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: identity-service
+    url: http://identity-service:5000
+    routes:
+      # Public account creation route
+      - name: identity-create-account
+        paths:
+          - /api/v1/identity/create-account
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              anonymous: anonymous_consumer
+      # Protected identity route
+      - name: identity-route
+        paths:
+          - /api/v1/identity
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: deposit-service
+    url: http://deposit-service:5000
+    routes:
+      - name: deposit-route
+        paths:
+          - /api/v1/deposit
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: ramp-service
+    url: http://ramp-service:5000
+    routes:
+      - name: ramp-route
+        paths:
+          - /api/v1/ramp
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous

@@ -8,3 +8,6 @@ psycopg2-binary
 Flask-Cors
 Stripe
 Dotenv
+PyJWT
+twilio
+flask-mail

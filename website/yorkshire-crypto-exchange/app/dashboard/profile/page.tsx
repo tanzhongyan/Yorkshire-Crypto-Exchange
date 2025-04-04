@@ -1,9 +1,9 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { Save } from "lucide-react"
+import { useEffect, useState } from "react"
+import { AlertCircle, Save, Trash2, Eye, EyeOff } from "lucide-react"
+import { getCookie } from "@/lib/cookies"
+import axios from "@/lib/axios"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,29 +11,48 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { 
+  Dialog,
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger, 
+} from "@/components/ui/dialog"
 
 export default function ProfilePage() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
   const [personalInfo, setPersonalInfo] = useState({
-    username: "cryptouser",
-    fullname: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+65 9123 4567",
+    username: "",
+    fullname: "",
+    email: "",
+    phone: "",
   })
 
+  // Address tab is commented out
+  /*
   const [address, setAddress] = useState({
-    streetNumber: "123",
-    streetName: "Orchard Road",
-    unitNumber: "#05-01",
-    buildingName: "Crypto Tower",
-    district: "Central",
-    city: "Singapore",
-    stateProvince: "Singapore",
-    postalCode: "238861",
-    country: "Singapore",
+    streetNumber: "",
+    streetName: "",
+    unitNumber: "",
+    buildingName: "",
+    district: "",
+    city: "",
+    stateProvince: "",
+    postalCode: "",
+    country: "",
   })
+  */
 
   const [security, setSecurity] = useState({
-    currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
@@ -44,15 +63,51 @@ export default function ProfilePage() {
     push: false,
   })
 
+  const userId = getCookie("userId")
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    if (!userId) {
+      setError("User not authenticated")
+      setLoading(false)
+      return
+    }
+
+    const fetchUserData = async () => {
+      try {
+        setLoading(true)
+        const response = await axios.get(`/api/v1/user/account/${userId}`)
+        
+        setPersonalInfo({
+          username: response.data.username || "",
+          fullname: response.data.fullname || "",
+          email: response.data.email || "",
+          phone: response.data.phone || "",
+        })
+        
+        setLoading(false)
+      } catch (err: any) {
+        console.error("Failed to fetch user data:", err)
+        setError(err.response?.data?.message || "Failed to load user data")
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [userId])
+
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setPersonalInfo((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Address tab is commented out
+  /*
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setAddress((prev) => ({ ...prev, [name]: value }))
   }
+  */
 
   const handleSecurityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -64,39 +119,119 @@ export default function ProfilePage() {
     setNotifications((prev) => ({ ...prev, [name]: checked }))
   }
 
-  const handlePersonalInfoSubmit = (e: React.FormEvent) => {
+  const handlePersonalInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, you would call your API to update the user's personal info
-    alert("Personal information updated successfully!")
+    
+    if (!userId) {
+      setError("User not authenticated")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await axios.put(`/api/v1/user/account/${userId}`, {
+        username: personalInfo.username,
+        fullname: personalInfo.fullname,
+        email: personalInfo.email,
+        phone: personalInfo.phone,
+      })
+      
+      setSuccess("Personal information updated successfully!")
+      setTimeout(() => setSuccess(null), 3000)
+      setLoading(false)
+    } catch (err: any) {
+      console.error("Failed to update personal info:", err)
+      setError(err.response?.data?.message || "Failed to update personal information")
+      setLoading(false)
+    }
   }
 
+  // Address tab is commented out
+  /*
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // In a real app, you would call your API to update the user's address
     alert("Address updated successfully!")
   }
+  */
 
-  const handleSecuritySubmit = (e: React.FormEvent) => {
+  const handleSecuritySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (security.newPassword !== security.confirmPassword) {
-      alert("New passwords do not match!")
+    if (!userId) {
+      setError("User not authenticated")
       return
     }
 
-    // In a real app, you would call your API to update the user's password
-    alert("Password updated successfully!")
-    setSecurity({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
+    if (security.newPassword !== security.confirmPassword) {
+      setError("New passwords do not match!")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await axios.put(`/api/v1/user/authenticate/${userId}`, {
+        password: security.newPassword
+      })
+      
+      setSuccess("Password updated successfully!")
+      setSecurity({
+        newPassword: "",
+        confirmPassword: "",
+      })
+      setTimeout(() => setSuccess(null), 3000)
+      setLoading(false)
+    } catch (err: any) {
+      console.error("Failed to update password:", err)
+      setError(err.response?.data?.message || "Failed to update password")
+      setLoading(false)
+    }
   }
 
   const handleNotificationsSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // In a real app, you would call your API to update the user's notification preferences
-    alert("Notification preferences updated successfully!")
+    setSuccess("Notification preferences updated successfully!")
+    setTimeout(() => setSuccess(null), 3000)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!userId) {
+      setError("User not authenticated")
+      return
+    }
+
+    if (deleteConfirmation !== "delete") {
+      setError("Please type 'delete' to confirm account deletion")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await axios.post(`/api/v1/identity/delete-account`, {
+        userId: userId
+      })
+      
+      // Clear cookies and redirect to homepage
+      document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+      document.cookie = "jwt_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+      
+      window.location.href = "/"
+    } catch (err: any) {
+      console.error("Failed to delete account:", err)
+      setError(err.response?.data?.message || "Failed to delete account")
+      setLoading(false)
+      setDeleteDialogOpen(false)
+      setDeleteConfirmation("")
+    }
+  }
+
+  if (loading && !personalInfo.username) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p>Loading your profile...</p>
+      </div>
+    )
   }
 
   return (
@@ -106,10 +241,26 @@ export default function ProfilePage() {
         <p className="text-muted-foreground">Manage your account settings and preferences</p>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="bg-green-50 text-green-800 border-green-200">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="personal" className="space-y-4">
         <TabsList>
           <TabsTrigger value="personal">Personal Info</TabsTrigger>
-          <TabsTrigger value="address">Address</TabsTrigger>
+          {/* <TabsTrigger value="address">Address</TabsTrigger> */}
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -157,16 +308,61 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button type="submit">
+              <CardFooter className="flex justify-between">
+                <Button type="submit" disabled={loading}>
                   <Save className="mr-2 h-4 w-4" />
                   Save Changes
                 </Button>
+                
+                <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+                  setDeleteDialogOpen(open);
+                  if (!open) setDeleteConfirmation("");
+                }}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Account
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
+                      <DialogDescription>
+                        This action cannot be undone. It will permanently delete your account and remove all your data from our servers.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4">
+                      <Label htmlFor="delete-confirmation">Type "delete" to confirm:</Label>
+                      <Input 
+                        id="delete-confirmation"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <DialogFooter className="mt-4">
+                      <Button variant="outline" onClick={() => {
+                        setDeleteConfirmation("");
+                        setDeleteDialogOpen(false);
+                      }}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleDeleteAccount} 
+                        disabled={loading || deleteConfirmation !== "delete"}
+                      >
+                        {loading ? "Deleting..." : "Delete Account"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardFooter>
             </form>
           </Card>
         </TabsContent>
 
+        {/* Address tab is commented out 
         <TabsContent value="address">
           <Card>
             <form onSubmit={handleAddressSubmit}>
@@ -253,6 +449,7 @@ export default function ProfilePage() {
             </form>
           </Card>
         </TabsContent>
+        */}
 
         <TabsContent value="security">
           <Card>
@@ -263,34 +460,33 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="currentPassword">Current Password</Label>
-                  <Input
-                    id="currentPassword"
-                    name="currentPassword"
-                    type="password"
-                    value={security.currentPassword}
-                    onChange={handleSecurityChange}
-                    required
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
                   <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    name="newPassword"
-                    type="password"
-                    value={security.newPassword}
-                    onChange={handleSecurityChange}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      name="newPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={security.newPassword}
+                      onChange={handleSecurityChange}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 py-0"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={security.confirmPassword}
                     onChange={handleSecurityChange}
                     required
@@ -298,7 +494,7 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit">
+                <Button type="submit" disabled={loading}>
                   <Save className="mr-2 h-4 w-4" />
                   Update Password
                 </Button>
@@ -350,7 +546,7 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit">
+                <Button type="submit" disabled={loading}>
                   <Save className="mr-2 h-4 w-4" />
                   Save Preferences
                 </Button>
@@ -362,4 +558,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-

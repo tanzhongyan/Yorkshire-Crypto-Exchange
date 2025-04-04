@@ -14,9 +14,24 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Define available currencies with their symbols
+const FIAT_CURRENCIES = [
+  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$"},
+  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$"},
+  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€"},
+  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM"},
+  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$"},
+  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£"},
+  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥"},
+  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥"},
+  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹"}
+];
 
 export default function DepositPage() {
   const [amount, setAmount] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("sgd"); // Default to SGD
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
   const [isProcessing, setIsProcessing] = useState(false);
   const [fiatAccounts, setFiatAccounts] = useState([]);
@@ -24,8 +39,15 @@ export default function DepositPage() {
   const [statusMessage, setStatusMessage] = useState<"success" | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [pendingLinks, setPendingLinks] = useState<any>({});
+  const [dataLoading, setDataLoading] = useState(true);
 
   const searchParams = useSearchParams();
+
+  // Get the currency symbol for the selected currency
+  const getCurrencySymbol = () => {
+    const currency = FIAT_CURRENCIES.find(c => c.currencyCode === currencyCode);
+    return currency?.symbol || "$";
+  };
 
   useEffect(() => {
     const fetchFiatAccounts = async () => {
@@ -74,6 +96,8 @@ export default function DepositPage() {
         setPendingLinks(linkMap);
       } catch (error) {
         console.error("Failed to load transactions", error);
+      } finally {
+        setDataLoading(false);
       }
     };
 
@@ -102,7 +126,7 @@ export default function DepositPage() {
       const response = await axios.post("/api/v1/deposit/fiat/", {
         userId,
         amount: parseFloat(amount),
-        currencyCode: "SGD"
+        currencyCode: currencyCode.toUpperCase() // Use the selected currency
       });
 
       const { checkoutUrl, transactionId } = response.data;
@@ -113,10 +137,21 @@ export default function DepositPage() {
       window.location.href = checkoutUrl;
     } catch (err: any) {
       console.error("Deposit initiation failed", err);
+      alert("Deposit failed: " + (err.response?.data?.message || "Unknown error"));
     } finally {
       setIsProcessing(false);
     }
   };
+
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p>Loading your account data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full px-4 lg:px-12 max-w-screen-xl grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -135,7 +170,7 @@ export default function DepositPage() {
             </DialogHeader>
           </DialogContent>
         </Dialog>
-
+        
         <div>
           <h2 className="text-lg font-semibold mb-2">Deposit Section</h2>
           <Card>
@@ -145,10 +180,32 @@ export default function DepositPage() {
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-6">
+                {/* Currency Selector */}
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Amount (SGD)</Label>
+                  <Label htmlFor="currency">Currency</Label>
+                  <Select 
+                    value={currencyCode} 
+                    onValueChange={setCurrencyCode}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FIAT_CURRENCIES.map((currency) => (
+                        <SelectItem key={currency.currencyCode} value={currency.currencyCode}>
+                          {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount ({currencyCode.toUpperCase()})</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      {getCurrencySymbol()}
+                    </span>
                     <Input
                       id="amount"
                       type="number"
@@ -161,7 +218,7 @@ export default function DepositPage() {
                       required
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Minimum deposit: $10.00</p>
+                  <p className="text-xs text-muted-foreground">Minimum deposit: {getCurrencySymbol()}10.00</p>
                 </div>
 
                 <Separator />
@@ -212,7 +269,8 @@ export default function DepositPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold">
-                      ${account.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === account.currencyCode.toLowerCase())?.symbol || '$'}
+                      {account.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </CardContent>
                 </Card>
@@ -221,7 +279,7 @@ export default function DepositPage() {
           </div>
         )}
       </div>
-
+      
       {transactions.length > 0 && (
         <div className="space-y-2 overflow-y-auto max-h-[80vh]">
           <h2 className="text-lg font-semibold">Recent Transactions</h2>
@@ -241,7 +299,8 @@ export default function DepositPage() {
                 </CardHeader>
                 <CardContent className="flex items-center justify-between">
                   <div className="text-xl font-bold">
-                    ${txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === txn.currencyCode.toLowerCase())?.symbol || '$'}
+                    {txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                   {txn.status === "pending" && pendingLinks[txn.transactionId] && (
                     <Button size="sm" onClick={() => window.location.href = pendingLinks[txn.transactionId]}>Continue Payment</Button>

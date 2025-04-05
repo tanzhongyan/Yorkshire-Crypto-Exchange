@@ -1,7 +1,9 @@
 networks:
   kong-net:
+    driver: bridge
     external: false
   # rabbit-net:
+  #   driver: bridge
   #   external: false
 
 
@@ -205,12 +207,15 @@ services:
 
   # rabbitmq:
   #   image: rabbitmq:management
+  #   hostname: yorkshire-rabbit
   #   restart: always
   #   ports:
   #     - "5672:5672"
   #     - "15672:15672"
   #   volumes:
   #     - rabbitmq_data:/var/lib/rabbitmq
+  #   networks:
+  #     - rabbit-net
 
   order-management-service:
     container_name: order-management-service

@@ -197,13 +197,13 @@ export default function RampPage() {
   // Calculate available balance based on current from currency
   const getAvailableBalance = () => {
     if (direction === "fiattocrypto") {
-      // Looking for fiat balance
+      // For fiat to crypto transactions, check fiat account balance
       const account = fiatAccounts.find(acc => acc.currencyCode.toLowerCase() === fromCurrency.toLowerCase());
       return account ? account.balance : 0;
     } else {
-      // Looking for USDT balance
+      // For crypto to fiat transactions, check USDT held balance
       const holding = cryptoHoldings.find(h => h.tokenId.toLowerCase() === fromCurrency.toLowerCase());
-      return holding ? holding.actualBalance : 0;
+      return holding ? holding.heldBalance : 0;
     }
   };
 
@@ -533,6 +533,9 @@ export default function RampPage() {
                   <CardContent>
                     <div className="text-xl font-bold">
                       ${parseFloat(holding.actualBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Available: ${parseFloat(holding.heldBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </CardContent>
                 </Card>

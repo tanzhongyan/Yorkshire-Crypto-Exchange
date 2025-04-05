@@ -174,8 +174,10 @@ services:
     networks:
       - kong-net
       # - rabbit-net
+      # - rabbit-net
     expose:
       - "5000"
+
 
   stripe-cli:
     image: stripe/stripe-cli:latest
@@ -209,6 +211,7 @@ services:
   #   image: rabbitmq:management
   #   hostname: yorkshire-rabbit
   #   restart: always
+  #   restart: always
   #   ports:
   #     - "5672:5672"
   #     - "15672:15672"
@@ -216,6 +219,40 @@ services:
   #     - rabbitmq_data:/var/lib/rabbitmq
   #   networks:
   #     - rabbit-net
+
+  order-management-service:
+    container_name: order-management-service
+    build:
+      context: ./api/composite/order-management
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      # - rabbit-net
+    expose:
+      - "5000"
+
+  order-management-service:
+    container_name: order-management-service
+    build:
+      context: ./api/composite/order-management
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      # - rabbit-net
+    expose:
+      - "5000"
 
   order-management-service:
     container_name: order-management-service

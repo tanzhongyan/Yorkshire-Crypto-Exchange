@@ -73,13 +73,13 @@ class CryptoToken(db.Model):
     token_name = db.Column(db.String(100), unique=True, nullable=False)
     created = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
-#(3) stores all crypto holding data (many wallets hold many crypto coins with actual and held balances)
+#(3) stores all crypto holding data (many wallets hold many crypto coins with actual and available balances)
 class CryptoHolding(db.Model):
     __tablename__ = 'crypto_holding'
     user_id = db.Column(db.String(100), primary_key = True, nullable=False)
     token_id = db.Column(db.String(15), primary_key = True, nullable=False)
     actual_balance = db.Column(db.Float, default=0.0, nullable=False)
-    held_balance = db.Column(db.Float, default=0.0, nullable=False)
+    available_balance = db.Column(db.Float, default=0.0, nullable=False)
     updated_on = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 ##### API Models - flask restx API autodoc #####
@@ -118,7 +118,7 @@ holding_output_model = holding_ns.model('CryptoHoldingOutput', {
     'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
     'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
     'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'heldBalance': fields.Float(attribute='held_balance', required=True, description='The held balance of the token (reserved for orders)'),
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)'),
     'updatedOn': fields.DateTime(attribute='updated_on', description='When the holding was last updated')
 })
 
@@ -126,13 +126,13 @@ holding_input_model = holding_ns.model('CryptoHoldingInput', {
     'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
     'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
     'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'heldBalance': fields.Float(attribute='held_balance', required=True, description='The held balance of the token (reserved for orders)')
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)')
 })
 
 # Model for updating holdings (only non-primary key fields can be updated)
 holding_update_model = holding_ns.model('CryptoHoldingUpdate', {
     'actualBalance': fields.Float(attribute='actual_balance', required=False, description='The new actual balance of the token'),
-    'heldBalance': fields.Float(attribute='held_balance', required=False, description='The new held balance of the token')
+    'availableBalance': fields.Float(attribute='available_balance', required=False, description='The new available balance of the token')
 })
 
 # Updated model for operations that change amounts - now including userId and tokenId
@@ -302,7 +302,7 @@ class CryptoHoldingList(Resource):
             user_id=data['userId'],
             token_id=data['tokenId'],
             actual_balance=data.get('actualBalance', 0.0),
-            held_balance=data.get('heldBalance', 0.0)
+            available_balance=data.get('availableBalance', 0.0)
         )
         
         try:
@@ -339,8 +339,8 @@ class CryptoHoldingResource(Resource):
         if 'actualBalance' in data:
             holding.actual_balance = data['actualBalance']
         
-        if 'heldBalance' in data:
-            holding.held_balance = data['heldBalance']
+        if 'availableBalance' in data:
+            holding.available_balance = data['availableBalance']
         
         try:
             db.session.commit()
@@ -368,7 +368,7 @@ class CryptoHoldingResource(Resource):
 class CryptoHoldingDeposit(Resource):
     @holding_ns.expect(amount_change_model, validate=True)
     def post(self):
-        """Deposit tokens to both actual and held balance"""
+        """Deposit tokens to both actual and available balance"""
         data = request.json
         userId = data.get('userId')
         tokenId = data.get('tokenId')
@@ -391,13 +391,13 @@ class CryptoHoldingDeposit(Resource):
                 user_id=userId,
                 token_id=tokenId,
                 actual_balance=amountChanged,
-                held_balance=amountChanged
+                available_balance=amountChanged
             )
             db.session.add(holding)
         else:
             # Update existing holding
             holding.actual_balance += amountChanged
-            holding.held_balance += amountChanged
+            holding.available_balance += amountChanged
         
         try:
             db.session.commit()
@@ -406,7 +406,7 @@ class CryptoHoldingDeposit(Resource):
                 'userId': userId,
                 'tokenId': tokenId,
                 'actualBalance': holding.actual_balance,
-                'heldBalance': holding.held_balance
+                'availableBalance': holding.available_balance
             }, 200
         except Exception as e:
             db.session.rollback()
@@ -416,7 +416,7 @@ class CryptoHoldingDeposit(Resource):
 class CryptoHoldingReserve(Resource):
     @holding_ns.expect(amount_change_model, validate=True)
     def post(self):
-        """Reserve tokens for an order (reduces held balance only)"""
+        """Reserve tokens for an order (reduces available balance only)"""
         data = request.json
         userId = data.get('userId')
         tokenId = data.get('tokenId')
@@ -432,11 +432,11 @@ class CryptoHoldingReserve(Resource):
             description=f'Holding not found for user {userId} and token {tokenId}'
         )
         
-        # Check if sufficient held balance
-        if holding.held_balance < amountChanged:
-            holding_ns.abort(400, f"Insufficient held balance. Required: {amountChanged}, Available: {holding.held_balance}")
+        # Check if sufficient available balance
+        if holding.available_balance < amountChanged:
+            holding_ns.abort(400, f"Insufficient available balance. Required: {amountChanged}, Available: {holding.available_balance}")
         
-        holding.held_balance -= amountChanged
+        holding.available_balance -= amountChanged
         
         try:
             db.session.commit()
@@ -445,7 +445,7 @@ class CryptoHoldingReserve(Resource):
                 'userId': userId,
                 'tokenId': tokenId,
                 'actualBalance': holding.actual_balance,
-                'heldBalance': holding.held_balance
+                'availableBalance': holding.available_balance
             }, 200
         except Exception as e:
             db.session.rollback()
@@ -455,7 +455,7 @@ class CryptoHoldingReserve(Resource):
 class CryptoHoldingRelease(Resource):
     @holding_ns.expect(amount_change_model, validate=True)
     def post(self):
-        """Release reserved tokens (increases held balance only)"""
+        """Release reserved tokens (increases available balance only)"""
         data = request.json
         userId = data.get('userId')
         tokenId = data.get('tokenId')
@@ -471,7 +471,7 @@ class CryptoHoldingRelease(Resource):
             description=f'Holding not found for user {userId} and token {tokenId}'
         )
         
-        holding.held_balance += amountChanged
+        holding.available_balance += amountChanged
         
         try:
             db.session.commit()
@@ -480,7 +480,7 @@ class CryptoHoldingRelease(Resource):
                 'userId': userId,
                 'tokenId': tokenId,
                 'actualBalance': holding.actual_balance,
-                'heldBalance': holding.held_balance
+                'availableBalance': holding.available_balance
             }, 200
         except Exception as e:
             db.session.rollback()
@@ -519,7 +519,7 @@ class CryptoHoldingExecute(Resource):
                 'userId': userId,
                 'tokenId': tokenId,
                 'actualBalance': holding.actual_balance,
-                'heldBalance': holding.held_balance
+                'availableBalance': holding.available_balance
             }, 200
         except Exception as e:
             db.session.rollback()
@@ -529,7 +529,7 @@ class CryptoHoldingExecute(Resource):
 class CryptoHoldingWithdraw(Resource):
     @holding_ns.expect(amount_change_model, validate=True)
     def post(self):
-        """Withdraw tokens (reduces both actual and held balance)"""
+        """Withdraw tokens (reduces both actual and available balance)"""
         data = request.json
         userId = data.get('userId')
         tokenId = data.get('tokenId')
@@ -549,11 +549,11 @@ class CryptoHoldingWithdraw(Resource):
         if holding.actual_balance < amountChanged:
             holding_ns.abort(400, f"Insufficient actual balance. Required: {amountChanged}, Available: {holding.actual_balance}")
         
-        if holding.held_balance < amountChanged:
-            holding_ns.abort(400, f"Insufficient held balance. Required: {amountChanged}, Available: {holding.held_balance}")
+        if holding.available_balance < amountChanged:
+            holding_ns.abort(400, f"Insufficient available balance. Required: {amountChanged}, Available: {holding.available_balance}")
         
         holding.actual_balance -= amountChanged
-        holding.held_balance -= amountChanged
+        holding.available_balance -= amountChanged
         
         try:
             db.session.commit()
@@ -562,7 +562,7 @@ class CryptoHoldingWithdraw(Resource):
                 'userId': userId,
                 'tokenId': tokenId,
                 'actualBalance': holding.actual_balance,
-                'heldBalance': holding.held_balance
+                'availableBalance': holding.available_balance
             }, 200
         except Exception as e:
             db.session.rollback()
@@ -632,7 +632,7 @@ class CryptoHoldingWithdraw(Resource):
 #                 wallet_id=wallet_lookup[wallet_id].wallet_id,
 #                 token_id=token_lookup[token_id].token_id,
 #                 actual_balance=holding["actualBalance"],
-#                 held_balance=holding["heldBalance"],
+#                 available_balance=holding["availableBalance"],
 #                 updated_on=holding["updatedOn"]
 #             )
 #             db.session.add(new_holding)

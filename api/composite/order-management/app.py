@@ -2,7 +2,10 @@ from flask import Flask, jsonify, request, Blueprint
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields, Namespace
 import requests
-
+import amqp_lib
+import pika
+import json
+import threading
 
 ##### Configuration #####
 # Define API version and root path
@@ -11,6 +14,16 @@ API_ROOT = f'/api/{API_VERSION}'
 
 app = Flask(__name__)
 CORS(app)
+
+# RabbitMQ
+rabbit_host = "rabbitmq"
+rabbit_port = 5672
+exchange_name = "order_topic"
+exchange_type = "topic"
+queue_name = "order_management_service.orders_placed"
+
+connection = None 
+channel = None
 
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
@@ -23,9 +36,6 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
-# CRYPTO_SERVICE_URL = "http://crypto-service:5002/api/v1/crypto"
-# TRANSACTION_SERVICE_URL = "http://transaction-service:5005/api/v1/transaction"
-
 CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
@@ -114,6 +124,34 @@ order_publish_model = order_ns.model(
     },
 )
 
+##### AMQP Connection Functions  #####
+
+def connectAMQP():
+    # Use global variables to reduce number of reconnection to RabbitMQ
+    global connection
+    global channel
+
+    print("  Connecting to AMQP broker...")
+    try:
+        connection, channel = amqp_lib.connect(
+                hostname=rabbit_host,
+                port=rabbit_port,
+                exchange_name=exchange_name,
+                exchange_type=exchange_type,
+        )
+    except Exception as exception:
+        print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
+        exit(1) # terminate
+
+def callback(channel, method, properties, body):
+    try:
+        error = json.loads(body)
+        print(f"Error message (JSON): {error}")
+    except Exception as e:
+        print(f"Unable to parse JSON: {e=}")
+        print(f"Error message: {body}")
+    print()
+
 ##### Individual helper functions  #####
 
 # (F1) Check for balance (connects to crypto service)
@@ -152,7 +190,6 @@ def post_transaction_log(transaction_log_payload):
     except requests.RequestException as e:
         return None, {"error": "Failed to connect to transaction service", "details": str(e)}, 500   
 
-
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
@@ -165,6 +202,9 @@ class CheckBalance(Resource):
     @order_ns.response(500, "Internal Server Error", error_response)
     def post(self):
         """Checks balance, creates transaction log, and creates order for orderbook to swap"""
+        if connection is None or not amqp_lib.is_connection_open(connection):
+            connectAMQP()
+        
         data = request.json
 
         user_id = data.get("userId")
@@ -209,8 +249,30 @@ class CheckBalance(Resource):
         if transaction_error:
             return transaction_error, transaction_status_code 
         
+        transaction_id = transaction_response["transactionId"]
+        creation = transaction_response["creation"]
+        
         # (3) publish to orderbook service and respond to user
+        message_to_publish = {
+            "message": "order publishing message?", # 1) tbc, do we need this and what is it
+            "transactionId": transaction_id,
+            "userId": user_id,
+            "type": "buy", # 2) buy or sell, tbc do we need this
+            "fromTokenId": from_token_id,
+            "toTokenId": to_token_id,
+            "fromAmount": from_amount,
+            "price": limit_price, # 3) tbc, its the limit price of base (the currency to buy) right
+            "creation": creation
+        }
 
+        json_message = json.dumps(message_to_publish)
+
+        channel.basic_publish(
+                exchange=exchange_name,
+                routing_key="order.new",
+                body=message_to_publish,
+                properties=pika.BasicProperties(delivery_mode=2),
+                )
 
         return {"message": "Order created successfully", 
                 "transaction_id": transaction_response["transactionId"],
@@ -221,4 +283,12 @@ class CheckBalance(Resource):
 api.add_namespace(order_ns)
 
 if __name__ == '__main__':
+    connectAMQP()
+    # consumer_thread = threading.Thread(
+    #     target=lambda: amqp_lib.start_consuming(
+    #         rabbit_host, rabbit_port, exchange_name, exchange_type, queue_name, callback
+    #     ),
+    #     daemon=True
+    # )
+    # consumer_thread.start()
     app.run(host='0.0.0.0', port=5000, debug=True)	

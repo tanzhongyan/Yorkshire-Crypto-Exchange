@@ -196,7 +196,7 @@ services:
     expose:
       - "5000"
 
-    market_detail-service:
+  market_detail-service:
       container_name: market_detail-service
       build:
         context: ./api/composite/market_detail

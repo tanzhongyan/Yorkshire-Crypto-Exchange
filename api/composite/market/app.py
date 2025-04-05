@@ -19,7 +19,7 @@ CORS(app)
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
 blueprint = Blueprint('api',__name__,url_prefix=API_ROOT)
-api = Api(blueprint, version=API_VERSION, title='Market Detail Service API', description='Market Detail Service API for Yorkshire Crypto Exchange')
+api = Api(blueprint, version=API_VERSION, title='Market Service API', description='Market Service API for Yorkshire Crypto Exchange')
 
 # Register Blueprint with Flask app
 app.register_blueprint(blueprint)
@@ -39,29 +39,29 @@ COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
-market_detail_ns = Namespace('market_detail', description='Market Detail related operations')
+market_ns = Namespace('market', description='Market related operations')
 
 
 ##### API Models - flask restx API autodoc #####
-market_detail_params = market_detail_ns.model('MarketDetailParams', {
+market_params = market_ns.model('MarketParams', {
     'coin': fields.String(required=False, default='bitcoin', description='Cryptocurrency name for CoinGecko API'),
     'days': fields.String(required=False, default='1', description='Time period for CoinGecko API'),
     # 'crypto_pair': fields.String(required=False, default='BTC-USD', description='Trading pair for OrderBook API'),
     # 'side': fields.String(required=False, description='Order side for OrderBook API (buy/sell)')
 })
 
-coin_gecko_model = market_detail_ns.model('CoinGeckoData', {
+coin_gecko_model = market_ns.model('CoinGeckoData', {
     'prices': fields.Raw(description='Price data points [timestamp, price]'),
     'market_caps': fields.Raw(description='Market cap data points [timestamp, cap]'),
     'total_volumes': fields.Raw(description='Volume data points [timestamp, volume]')
 })
 
 
-market_detail_response = market_detail_ns.model('MarketDetailResponse', {
+market_response = market_ns.model('MarketDetailResponse', {
     'coinGecko': fields.Nested(coin_gecko_model, description='Data from CoinGecko API')
 })
 
-error_response = market_detail_ns.model('ErrorResponse', {
+error_response = market_ns.model('ErrorResponse', {
     'errors': fields.Raw(description='Error details from various services')
 })
 
@@ -142,9 +142,9 @@ def get_coingecko_data(coin="bitcoin", days="30"):
 
 
 ##### API actions - flask restx API autodoc #####
-@market_detail_ns.route('')
+@market_ns.route('')
 class MarketDetailResource(Resource):
-    @market_detail_ns.doc(
+    @market_ns.doc(
         params={
             'coin': {'description': 'Cryptocurrency name for CoinGecko API', 'default': 'bitcoin'},
             'days': {'description': 'Time period for CoinGecko API', 'default': '30'},
@@ -156,11 +156,11 @@ class MarketDetailResource(Resource):
             500: 'Server Error'
         }
     )
-    @market_detail_ns.marshal_with(market_detail_response, code=200)
-    @market_detail_ns.marshal_with(error_response, code=500)
+    @market_ns.marshal_with(market_response, code=200)
+    @market_ns.marshal_with(error_response, code=500)
     def get(self):
         """
-        Retrieve combined market detail data from CoinGecko and OrderBook
+        Retrieve combined market data from CoinGecko and OrderBook
         
         This endpoint fetches and combines market data from multiple sources:
         - Historical price and volume data from CoinGecko
@@ -190,14 +190,14 @@ class MarketDetailResource(Resource):
             return {"errors": errors}, 500
         
         # Merge responses if no errors
-        combined_market_detail = {
+        combined_market = {
             "coinGecko": data_coin_gecko
         }
 
         
-        return combined_market_detail
+        return combined_market
 
-api.add_namespace(market_detail_ns)
+api.add_namespace(market_ns)
 
 
 if __name__ == "__main__":

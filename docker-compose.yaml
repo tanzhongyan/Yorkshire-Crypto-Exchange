@@ -1,6 +1,9 @@
 networks:
   kong-net:
     external: false
+  # rabbit-net:
+  #   external: false
+
 
 services:
   kong:
@@ -81,6 +84,7 @@ services:
       - crypto_data:/var/lib/crypto_service
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -122,6 +126,7 @@ services:
         condition: service_healthy # wait until postgres healthy
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -149,6 +154,7 @@ services:
       - transaction_data:/var/lib/transaction_service
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -165,9 +171,10 @@ services:
         condition: service_healthy # wait until postgres healthy
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
-      
+
   stripe-cli:
     image: stripe/stripe-cli:latest
     container_name: stripe-cli
@@ -198,11 +205,29 @@ services:
 
   # rabbitmq:
   #   image: rabbitmq:management
+  #   restart: always
   #   ports:
   #     - "5672:5672"
   #     - "15672:15672"
   #   volumes:
   #     - rabbitmq_data:/var/lib/rabbitmq
+
+  order-management-service:
+    container_name: order-management-service
+    build:
+      context: ./api/composite/order-management
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      # - rabbit-net
+    expose:
+      - "5000"
 
   postgres:
     build: ./database

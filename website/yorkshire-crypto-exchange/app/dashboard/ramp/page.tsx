@@ -201,9 +201,9 @@ export default function RampPage() {
       const account = fiatAccounts.find(acc => acc.currencyCode.toLowerCase() === fromCurrency.toLowerCase());
       return account ? account.balance : 0;
     } else {
-      // For crypto to fiat transactions, check USDT held balance
+      // For crypto to fiat transactions, check USDT available balance
       const holding = cryptoHoldings.find(h => h.tokenId.toLowerCase() === fromCurrency.toLowerCase());
-      return holding ? holding.heldBalance : 0;
+      return holding ? holding.availableBalance : 0;
     }
   };
 
@@ -535,7 +535,7 @@ export default function RampPage() {
                       ${parseFloat(holding.actualBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Available: ${parseFloat(holding.heldBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      Available: ${parseFloat(holding.availableBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </CardContent>
                 </Card>

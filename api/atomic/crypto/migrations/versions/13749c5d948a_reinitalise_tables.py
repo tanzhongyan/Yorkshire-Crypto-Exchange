@@ -22,7 +22,7 @@ def upgrade():
     sa.Column('user_id', sa.String(length=100), nullable=False),
     sa.Column('token_id', sa.String(length=15), nullable=False),
     sa.Column('actual_balance', sa.Float(), nullable=False),
-    sa.Column('held_balance', sa.Float(), nullable=False),
+    sa.Column('available_balance', sa.Float(), nullable=False),
     sa.Column('updated_on', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('user_id', 'token_id')
     )

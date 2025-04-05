@@ -277,7 +277,7 @@ def check_crypto_holding(user_id, token_id):
 def deposit_crypto(user_id, token_id, amount):
     """
     Deposit crypto into a user's holding.
-    Increases both actual and held balance.
+    Increases both actual and available balance.
     
     Args:
         user_id (str): The user ID
@@ -313,7 +313,7 @@ def deposit_crypto(user_id, token_id, amount):
 def withdraw_crypto(user_id, token_id, amount):
     """
     Withdraw crypto from a user's holding.
-    Reduces both actual and held balance.
+    Reduces both actual and available balance.
     
     Args:
         user_id (str): The user ID
@@ -363,7 +363,7 @@ def create_crypto_holding(user_id, token_id, amount):
             "userId": user_id,
             "tokenId": token_id,
             "actualBalance": amount,
-            "heldBalance": amount  # Set both balances to the same amount
+            "availableBalance": amount  # Set both balances to the same amount
         }
         response = requests.post(f"{CRYPTO_SERVICE_URL}/holdings", json=payload)
         if response.status_code == 201:
@@ -758,9 +758,9 @@ class SwapResource(Resource):
         if 'error' in crypto_holding:
             return crypto_holding, 500
         
-        # Step 2: Check if crypto holding has sufficient held balance
-        if crypto_holding['heldBalance'] < crypto_amount:
-            return {'error': 'Insufficient balance', 'message': f"Insufficient {token_id} balance. Required: {crypto_amount}, Available: {crypto_holding['heldBalance']}"}, 400
+        # Step 2: Check if crypto holding has sufficient available balance
+        if crypto_holding['availableBalance'] < crypto_amount:
+            return {'error': 'Insufficient balance', 'message': f"Insufficient {token_id} balance. Required: {crypto_amount}, Available: {crypto_holding['availableBalance']}"}, 400
         
         # Step 3: Get exchange rate from crypto to fiat
         # Assume crypto amount is in USD equivalent

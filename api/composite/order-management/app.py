@@ -23,21 +23,25 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
-USERS_SERVICE_URL = "http://user-service:5000/api/v1/user"
-FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
+# CRYPTO_SERVICE_URL = "http://crypto-service:5002/api/v1/crypto"
+# TRANSACTION_SERVICE_URL = "http://transaction-service:5005/api/v1/transaction"
+
 CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
+TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
 order_ns = Namespace('order', description='Order related operations')
+# balance_ns = Namespace('balance', description='Balance related operations')
+# transaction_ns = Namespace('transaction', description='Transaction related operations')
 
 ##### API Models - flask restx API autodoc #####
 # To use flask restx, you will have to define API models with their input types
 # For all API models, add a comment to the top to signify its importance
 # E.g. Input/Output One/Many user account
 
-# Input one user account - order request
-create_account_model = order_ns.model(
+# Input from FE for creating order, also needed for checking balance
+create_order_model = order_ns.model(
     "CreateAccount",
     {
         # Admin details
@@ -51,30 +55,32 @@ create_account_model = order_ns.model(
         "toAmount": fields.Float(required=True, description="Total amount of base currency"),
         "limitPrice": fields.Float(required=True, description="Base price at which user is willing to execute"),
 
-        "usdtFee": fields.Float(required=True, description="Fee of transaction"),
-        "orderType": fields.Float(required=True, description="Type of Order (Limit/Market)")
+        # "usdtFee": fields.Float(required=True, description="Fee of transaction"),
+        "orderType": fields.String(required=True, description="Type of Order (Limit/Market)")
     },
 )
 
-# Output given upon successful creation of order in transaction log
+# Output to FE upon successful creation of order in transaction log
 success_creation_response = order_ns.model(
-    "SuccessResponse",
+    "SuccessfulTransactionResponse",
     {
-        "message": fields.String(description="Success message"),
-        "transactionId": fields.String(attribute='transaction_id', description="Created Transaction ID"),
+        "message": fields.String(description="Order creation success message"),
+        "transactionId": fields.String(attribute='transaction_id', 
+        description="Created Transaction ID"),
+        "transactionStatus": fields.String,
     },
 )
 
-# Output given upon successful update of order in transaction log
-success_update_response = order_ns.model(
-    "SuccessResponse",
+# Output to FE upon insufficient balance for order detected
+insufficient_balance_response = order_ns.model(
+    "InsufficientBalanceErrorResponse",
     {
-        "message": fields.String(description="Success message"),
-        "transactionId": fields.String(attribute='transaction_id', description="Updated Transaction ID"),
+        "error": fields.String(description="Error message"),
+        "shortOf": fields.Float(description="Amount shortage")
     },
 )
 
-# Output given upon failure in general
+# Output to FE given upon failure in general
 error_response = order_ns.model(
     "ErrorResponse",
     {
@@ -82,115 +88,137 @@ error_response = order_ns.model(
         "details": fields.String(description="Error details"),
     },
 )
+# Output to FE upon fulfillment of order (partial/full)
+# order_update_response = order_ns.model(
+#     "OrderUpdateResponse",
+#     {
+#         "message": fields.String(description="Order update message"),
+#         "transactionId": fields.String(attribute='transaction_id', description="Tranaction ID for updated order"),
+#     },
+# )
+
+# Output to orderbook_service
+order_publish_model = order_ns.model(
+    "PublishOrder",
+    {
+        "message": fields.String(description="Order publishing message"),
+        "transactionId": fields.String(attribute='transaction_id'),
+        "userId": fields.String(attribute='user_id', description="User ID (wallet) associated with order"),
+        "type": fields.String(attribute='type', description="Order type - buy or sell"),
+        # "baseQuotePair": fields.String(attribute='type', description="Order pair, i.e. BTC/XRP"),
+        "fromTokenId": fields.String(attribute='from_token_id', description="Token ID for crypto buying with (quote)"),
+        "toTokenId": fields.String(attribute='to_token_id', description="Token ID for crypto being bought (base)"),
+        "fromAmount": fields.Float(attribute='from_amount', description="Amount being bought with from(quote) Token (i.e Amount of XRP from BTC/XRP that you are willing to pay for the given price of BTC)"),
+        "price": fields.Float(attribute='price', description="Price of to(base) Token (i.e BTC with limit price of 100,000 for BTC/XRP)"),
+        "creation": fields.DateTime
+    },
+)
+
+##### Individual helper functions  #####
+
+# (F1) Check for balance (connects to crypto service)
+def check_crypto_balance(user_id, token_id, required_from_amount):
+    try:
+        holding_response = requests.get(f"{CRYPTO_SERVICE_URL}/holdings/{user_id}/{token_id}")
+        if holding_response.status_code != 200:
+            return None, {
+                "error": "Failed to retrieve holding balance",
+                "details": holding_response.json() if holding_response.content else "No response content"
+            }, holding_response.status_code, None
+        
+        response_dict = holding_response.json()
+        is_sufficient = True
+        short_of = None
+        if response_dict["heldBalance"] < required_from_amount:
+            is_sufficient = False
+            short_of = required_from_amount - response_dict["heldBalance"]
+        
+        return is_sufficient, None, 200, short_of
+
+    except requests.RequestException as e:
+        return None, {"error": "Failed to connect to crypto service", "details": str(e)}, 500, None 
+
+# (F2) Post order to transaction log (connects to transaction logs service)
+def post_transaction_log(transaction_log_payload):
+    try:
+        transaction_response = requests.post(f"{TRANSACTION_SERVICE_URL}/crypto/", json=transaction_log_payload)
+        if transaction_response.status_code != 201:
+            return None, {
+                "error": "Failed to create transaction log",
+                "details": transaction_response.json() if transaction_response.content else "No response content"
+            }, transaction_response.status_code
+        
+        return transaction_response.json(), None, None
+    except requests.RequestException as e:
+        return None, {"error": "Failed to connect to transaction service", "details": str(e)}, 500   
+
 
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
 # Create account service
-@identity_ns.route("/create-account")
-class CreateAccount(Resource):
-    @identity_ns.expect(create_account_model)
-    @identity_ns.response(201, "User created successfully", success_response)
-    @identity_ns.response(400, "Bad Request", error_response)
-    @identity_ns.response(500, "Internal Server Error", error_response)
+@order_ns.route("/create_order")
+class CheckBalance(Resource):
+    @order_ns.expect(create_order_model) # expected input structure
+    @order_ns.response(201, "Order created successfully", success_creation_response) # documents responses from this func
+    @order_ns.response(400, "Order failed (insufficient balance)", insufficient_balance_response)
+    @order_ns.response(500, "Internal Server Error", error_response)
     def post(self):
-        """Handles user account creation across microservices"""
+        """Checks balance, creates transaction log, and creates order for orderbook to swap"""
         data = request.json
 
-        username = data.get("username")
-        password = data.get("password")
-        fullname = data.get("fullname")
-        phone = data.get("phone")
-        email = data.get("email")
+        user_id = data.get("userId")
+        from_token_id = data.get("fromTokenId")
+        from_amount = data.get("fromAmount")
+        to_token_id = data.get("toTokenId")
+        to_amount = data.get("toAmount")
+        limit_price = data.get("limitPrice")
+        order_type = data.get("orderType") # limited to limit order rn
+        order_fee = 0.05 * from_amount # usually just 0.05% for takers (taking base crypto out of pool)
+        required_from_amount = order_fee + from_amount
 
-        # # Address Fields
-        # street_number = data.get("streetNumber")
-        # street_name = data.get("streetName")
-        # unit_number = data.get("unitNumber")
-        # building_name = data.get("buildingName")
-        # district = data.get("district")
-        # city = data.get("city")
-        # state_province = data.get("stateProvince")
-        # postal_code = data.get("postalCode")
-        # country = data.get("country")
+        # (1) Check quote (from/paying) crypto balance of user (BTC/XRP -> XRP)
+        crypto_sufficient, crypto_error, crypto_status_code, shortOf = check_crypto_balance(user_id, from_token_id, required_from_amount)
 
-        # Validate required fields properly
-        # required_fields = [username, password, fullname, phone, email, country, street_number, street_name, city, state_province, postal_code]
-        required_fields = [username, password, fullname, phone, email]
-        if None in required_fields or "" in required_fields:
-            return {"error": "Missing required fields"}, 400  # Bad request response
+        if crypto_error:
+            return crypto_error, crypto_status_code
+        
+        if crypto_sufficient == False:
+            return {
+                "error": "Insufficient balance to fulfil order",
+                "shortOf": shortOf,
+                    }, 400
 
-        # Create the user in account under user microservice
-        user_account_payload = {
-            "username": username,
-            "fullname": fullname,
-            "phone": phone,
-            "email": email,
+        # (2) Create transaction log
+        transaction_log_payload = {
+            "userId": user_id,
+            "status": "pending",
+            "fromTokenId": from_token_id,
+            "fromAmount": from_amount,
+            "fromAmountActual": 0, #is this really needed
+            "toTokenId": to_token_id,
+            "toAmount": to_amount,
+            "toAmountActual": 0, #is this really needed
+            "limitPrice": limit_price,
+            "usdtFee": order_fee, #not usdt
+            "orderType": "order_type",
         }
 
-        try:
-            user_response = requests.post(f"{USERS_SERVICE_URL}/account", json=user_account_payload)
-            if user_response.status_code != 201:
-                return {
-                    "error": "Failed to create user account",
-                    "details": user_response.json() if user_response.content else "No response content"
-                }, user_response.status_code
-            user_data = user_response.json()
-        except requests.RequestException as e:
-            return {"error": "Failed to connect to user service", "details": str(e)}, 500
+        transaction_response, transaction_error, transaction_status_code = post_transaction_log(transaction_log_payload)
 
-        user_id = user_data.get("userId")
+        if transaction_error:
+            return transaction_error, transaction_status_code 
+        
+        # (3) publish to orderbook service and respond to user
 
-        # Ensure user_id is retrieved correctly
-        if not user_id:
-            return {"error": "User ID missing from response"}, 500
 
-        # Store authentication details in authenticate under users microservice
-        user_auth_payload = {
-            "password": password
-        }
-
-        try:
-            auth_response = requests.post(f"{USERS_SERVICE_URL}/authenticate/{user_id}", json=user_auth_payload)
-            if auth_response.status_code != 201:
-                return {
-                    "error": "Failed to create authentication record",
-                    "details": auth_response.json() if auth_response.content else "No response content"
-                }, auth_response.status_code
-        except requests.RequestException as e:
-            return {"error": "Failed to connect to authentication service", "details": str(e)}, 500
-
-        # # Store address details in address under user microservice
-        # user_address_payload = {
-        #     "streetNumber": street_number,
-        #     "streetName": street_name,
-        #     "unitNumber": unit_number,
-        #     "buildingName": building_name,
-        #     "district": district,
-        #     "city": city,
-        #     "stateProvince": state_province,
-        #     "postalCode": postal_code,
-        #     "country": country
-        # }
-
-        # try:
-        #     address_response = requests.post(f"{USERS_SERVICE_URL}/address/{user_id}", json=user_address_payload)
-        #     if address_response.status_code != 201:
-        #         return {
-        #             "error": "Failed to store user address",
-        #             "details": address_response.json() if address_response.content else "No response content"
-        #         }, address_response.status_code
-        # except requests.RequestException as e:
-        #     return {"error": "Failed to connect to address service", "details": str(e)}, 500
-
-        # Create fiat wallet using fiat microservice
-
-        # Create crypto wallet using crypto microservice
-
-        return {"message": "User account successfully created", "user_id": user_id}, 201
+        return {"message": "Order created successfully", 
+                "transaction_id": transaction_response["transactionId"],
+                "transaction_status": transaction_response["status"],
+                }, 201
 
 # Add name spaces into api
-api.add_namespace(identity_ns)
+api.add_namespace(order_ns)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)	

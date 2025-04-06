@@ -11,6 +11,7 @@
         {"currencyCode": "inr", "rate": 74.0}
     ],
     "fiatAccounts": [
-        {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "usd"}
+        {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "usd"},
+        {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "sgd"}
     ]
-}
+  }

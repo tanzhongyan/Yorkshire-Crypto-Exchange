@@ -646,14 +646,127 @@ class TransactionLogByUser(Resource):
         return txn_list.get_paginated_transactions(page, per_page, user_id=userId)
 
 ##### Seed data ##### 
-# def seed_data():
-#     with open('seeddata.json') as f:
-#         data = json.load(f)
-#         for entry in data:
-#             transaction = TransactionLog(**entry)
-#             db.session.add(transaction)
-#         db.session.commit()
-#         print("Seed data inserted successfully.")
+def seed_data():
+    try:
+        # Check if the seeddata.json exists, if not, create it with our data
+        try:
+            with open("seeddata.json", "r") as file:
+                data = json.load(file)
+                print("Loading existing seeddata.json file.")
+        except FileNotFoundError:
+            print("seeddata.json not found. Creating default seed data.")
+            data = {
+                "transactionFiat": [
+                    {
+                        "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+                        "amount": 1000.0,
+                        "currencyCode": "sgd",
+                        "type": "deposit",
+                        "status": "pending"
+                    },
+                    {
+                        "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+                        "amount": 2000.0,
+                        "currencyCode": "usd",
+                        "type": "deposit",
+                        "status": "pending"
+                    }
+                ],
+                "transactionFiatToCrypto": [
+                    {
+                        "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+                        "fromAmount": 1000.0,
+                        "toAmount": 1000.0,
+                        "direction": "fiattocrypto",
+                        "limitPrice": 1.0,
+                        "status": "pending",
+                        "tokenId": "usdt",
+                        "currencyCode": "usd"
+                    }
+                ]
+            }
+            
+            # Save the seed data to a file
+            with open("seeddata.json", "w") as file:
+                json.dump(data, file, indent=2)
+                print("Created seeddata.json with initial data.")
+
+        # Insert fiat transaction data
+        fiat_transactions = data.get("transactionFiat", [])
+        
+        # Check for existing fiat transactions to avoid duplicates
+        for tx in fiat_transactions:
+            # Check if transaction already exists with similar attributes
+            existing_transaction = TransactionFiat.query.filter_by(
+                user_id=tx["userId"],
+                amount=tx["amount"],
+                currency_code=tx["currencyCode"].lower(),
+                type=tx["type"]
+            ).first()
+            
+            if existing_transaction:
+                print(f"Skipping duplicate fiat transaction for user: {tx['userId']}, amount: {tx['amount']} {tx['currencyCode']}")
+                continue
+                
+            # Create and add the initial pending transaction
+            new_transaction = TransactionFiat(
+                user_id=tx["userId"],
+                amount=tx["amount"],
+                currency_code=tx["currencyCode"].lower(),
+                type=tx["type"],
+                status="pending"
+            )
+            db.session.add(new_transaction)
+            db.session.flush()  # Flush to get the transaction ID
+            
+            # Update to completed to trigger confirmation timestamp
+            new_transaction.status = "completed"
+        
+        # Insert fiat to crypto transaction data
+        fiat_to_crypto_transactions = data.get("transactionFiatToCrypto", [])
+        
+        # Check for existing fiat-to-crypto transactions to avoid duplicates
+        for tx in fiat_to_crypto_transactions:
+            # Check if transaction already exists with similar attributes
+            existing_transaction = TransactionFiatToCrypto.query.filter_by(
+                user_id=tx["userId"],
+                from_amount=tx["fromAmount"],
+                to_amount=tx["toAmount"],
+                direction=tx["direction"],
+                token_id=tx["tokenId"].lower(),
+                currency_code=tx["currencyCode"].lower()
+            ).first()
+            
+            if existing_transaction:
+                print(f"Skipping duplicate fiat-to-crypto transaction for user: {tx['userId']}, converting {tx['fromAmount']} {tx['currencyCode']} to {tx['toAmount']} {tx['tokenId']}")
+                continue
+                
+            # Create and add the initial pending transaction
+            new_transaction = TransactionFiatToCrypto(
+                user_id=tx["userId"],
+                from_amount=tx["fromAmount"],
+                to_amount=tx["toAmount"],
+                direction=tx["direction"],
+                limit_price=tx["limitPrice"],
+                status="pending",
+                token_id=tx["tokenId"].lower(),
+                currency_code=tx["currencyCode"].lower()
+            )
+            db.session.add(new_transaction)
+            db.session.flush()  # Flush to get the transaction ID
+            
+            # Update to completed to trigger confirmation timestamp
+            new_transaction.status = "completed"
+        
+        db.session.commit()
+        print("Seed data successfully loaded from seeddata.json.")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"Data seeding failed due to integrity error: {e}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Data seeding failed with error: {e}")
 
 # Add name spaces into api
 api.add_namespace(fiat_ns)
@@ -662,6 +775,6 @@ api.add_namespace(crypto_ns)
 api.add_namespace(transaction_log_ns)
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     seed_data()
+    with app.app_context():
+        seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

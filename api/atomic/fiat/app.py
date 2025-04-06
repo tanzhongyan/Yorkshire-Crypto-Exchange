@@ -270,8 +270,35 @@ class FiatAccountResource(Resource):
 # Provide seed data for all tables
 def seed_data():
     try:
-        with open("seeddata.json", "r") as file:
-            data = json.load(file)
+        # Check if the seeddata.json exists, if not, create it with our data
+        try:
+            with open("seeddata.json", "r") as file:
+                data = json.load(file)
+                print("Loading existing seeddata.json file.")
+        except FileNotFoundError:
+            print("seeddata.json not found. Creating default seed data.")
+            data = {
+                "fiatCurrencies": [
+                    {"currencyCode": "usd", "rate": 1.0},
+                    {"currencyCode": "sgd", "rate": 1.35},
+                    {"currencyCode": "eur", "rate": 0.85},
+                    {"currencyCode": "myr", "rate": 4.2},
+                    {"currencyCode": "aud", "rate": 1.5},
+                    {"currencyCode": "gbp", "rate": 0.75},
+                    {"currencyCode": "jpy", "rate": 110.0},
+                    {"currencyCode": "cny", "rate": 6.5},
+                    {"currencyCode": "inr", "rate": 74.0}
+                ],
+                "fiatAccounts": [
+                    {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "usd"},
+                    {"userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0", "balance": 1000.0, "currencyCode": "sgd"}
+                ]
+            }
+            
+            # Save the seed data to a file
+            with open("seeddata.json", "w") as file:
+                json.dump(data, file, indent=2)
+                print("Created seeddata.json with initial data.")
 
         # 1) Insert FiatCurrency data
         fiat_currencies_data = data.get("fiatCurrencies", [])
@@ -320,8 +347,9 @@ def seed_data():
     except IntegrityError as e:
         db.session.rollback()
         print(f"Data seeding failed due to integrity error: {e}")
-    except FileNotFoundError:
-        print("seeddata.json not found. Skipping seeding.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Data seeding failed with error: {e}")
 
 # Add name spaces into api
 api.add_namespace(currency_ns)

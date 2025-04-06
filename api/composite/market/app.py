@@ -36,8 +36,14 @@ COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
 # ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
 # ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
 
+# New Exchange Rate API URL
+EXCHANGE_RATE_API_URL = "https://v6.exchangerate-api.com/v6/{api_key}/latest/USD"
+
 # coingecko api
 COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
+
+# Exchange Rate API key
+EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY")
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
@@ -67,6 +73,13 @@ market_response = market_ns.model('MarketResponse', {
 # market/exchangerate response
 exchange_rate_response = market_ns.model('ExchangeRateResponse', {
     'rates': fields.Raw(description='Exchange rates for requested tokens against USDT')
+})
+
+# New exchange rate API response model
+exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
+    'base_code': fields.String(description='Base currency code'),
+    'conversion_rates': fields.Raw(description='Currency conversion rates'),
+    'time_last_update_utc': fields.String(description='Last update time in UTC')
 })
 
 # error response
@@ -195,6 +208,37 @@ def get_exchange_rates(tokens):
     except Exception as e:
         return None, f"Error fetching exchange rates: {str(e)}"
 
+# New helper function to get exchange rates from Exchange Rate API
+def get_exchange_rate_api_data(base_currency="USD"):
+    """
+    Get exchange rates from Exchange Rate API
+    
+    Args:
+        base_currency (str): Base currency code (default: USD)
+        
+    Returns:
+        tuple: (data_dict, error_message)
+    """
+    try:
+        if not EXCHANGE_RATE_API_KEY:
+            return None, "Exchange Rate API key not provided"
+        
+        # Format URL with API key
+        formatted_url = EXCHANGE_RATE_API_URL.format(api_key=EXCHANGE_RATE_API_KEY)
+        
+        # Make the request
+        response = requests.get(formatted_url)
+        
+        # Validate response
+        if response.status_code == 200:
+            return response.json(), None
+        else:
+            error_msg = f"Failed to fetch data from Exchange Rate API (Status: {response.status_code})"
+            return None, error_msg
+            
+    except Exception as e:
+        return None, f"Error fetching Exchange Rate API data: {str(e)}"
+
 # helper function for outsystem order book
 # must get 5 highest buy price & 5 lowest sell price for the crypto-usdt pair
 # commented out till shahul updates order book
@@ -226,7 +270,6 @@ def get_exchange_rates(tokens):
             
 #     except Exception as e:
 #         return None, f"Error fetching OrderBook data: {str(e)}"
-
 
 ##### API actions - flask restx API autodoc #####
 @market_ns.route('')
@@ -328,8 +371,41 @@ class ExchangeRateResource(Resource):
         # Return just the rates dictionary
         return {"rates": rates}
 
+# New endpoint for Exchange Rate API
+@market_ns.route('/fiatrates')
+class FiatRatesResource(Resource):
+    @market_ns.doc(
+        responses={
+            200: 'Success',
+            500: 'Server Error'
+        }
+    )
+    
+    @market_ns.marshal_with(exchange_rate_api_response, code=200)
+    # @market_ns.marshal_with(error_response, code=500)
+
+    def get(self):
+        """
+        Retrieve current exchange rates for fiat currencies
+        
+        This endpoint fetches current exchange rates from Exchange Rate API.
+        Returns the base currency and conversion rates for various fiat currencies.
+        """
+        # Get exchange rates
+        data, error = get_exchange_rate_api_data()
+        
+        # Return error if any
+        if error:
+            return {"error": error}, 500
+        
+        # Return the data
+        return data
+
 if __name__ == "__main__":
     if not COINGECKO_API_KEY:
         print("Warning: No CoinGecko API key found. Set COINGECKO_API_KEY environment variable.")
+    
+    if not EXCHANGE_RATE_API_KEY:
+        print("Warning: No Exchange Rate API key found. Set EXCHANGE_RATE_API_KEY environment variable.")
     
     app.run(host='0.0.0.0', port=5000, debug=True)

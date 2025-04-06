@@ -63,6 +63,7 @@ def handle_exception(e):
 fiat_ns = Namespace('fiat', description='Fiat transaction related operations')
 fiat_to_crypto_ns = Namespace('fiattocrypto', description='Fiat to crypto transaction related operations')
 crypto_ns = Namespace('crypto', description='Crypto transaction related operations')
+transaction_log_ns = Namespace('aggregated', description='Aggregated transaction logs operations')
 
 ##### DB table classes declaration - flask migrate #####
 # To use flask migrate, you have to create classes for the table of the entity
@@ -200,6 +201,49 @@ crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
     'limitPrice': fields.Float(attribute='limit_price', required=True),
     'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'orderType': fields.String(attribute='order_type', required=True)
+})
+
+# Aggregated Transaction Logs
+transaction_log_output_model = transaction_log_ns.model('TransactionLogOutput', {
+    'transactionId': fields.String(attribute='transaction_id'),
+    'userId': fields.String(attribute='user_id'),
+    'status': fields.String(),
+    'creationDate': fields.DateTime(attribute='creation_date'),
+    'transactionType': fields.String(attribute='transaction_type'),
+    # Common financial fields
+    'amount': fields.Float(attribute='amount', required=False),
+    'currencyCode': fields.String(attribute='currency_code', required=False),
+    # Fiat specific fields
+    'type': fields.String(required=False),
+    'confirmation': fields.DateTime(required=False),
+    # Fiat to Crypto specific fields
+    'fromAmount': fields.Float(attribute='from_amount', required=False),
+    'toAmount': fields.Float(attribute='to_amount', required=False),
+    'direction': fields.String(required=False),
+    'limitPrice': fields.Float(attribute='limit_price', required=False),
+    'tokenId': fields.String(attribute='token_id', required=False),
+    # Crypto specific fields
+    'fromTokenId': fields.String(attribute='from_token_id', required=False),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual', required=False),
+    'toTokenId': fields.String(attribute='to_token_id', required=False),
+    'toAmountActual': fields.Float(attribute='to_amount_actual', required=False),
+    'usdtFee': fields.Float(attribute='usdt_fee', required=False),
+    'orderType': fields.String(attribute='order_type', required=False),
+    'completion': fields.DateTime(required=False)
+})
+
+# Pagination model for metadata
+pagination_model = transaction_log_ns.model('PaginationInfo', {
+    'total': fields.Integer(description='Total number of records'),
+    'pages': fields.Integer(description='Total number of pages'),
+    'page': fields.Integer(description='Current page number'),
+    'per_page': fields.Integer(description='Number of records per page')
+})
+
+# Combined response model with both data and pagination info
+transaction_log_response_model = transaction_log_ns.model('TransactionLogResponse', {
+    'transactions': fields.List(fields.Nested(transaction_log_output_model)),
+    'pagination': fields.Nested(pagination_model)
 })
 
 #### API actions - flask restx API autodoc #####
@@ -446,6 +490,161 @@ class CryptoTransactionsByUser(Resource):
         """Get all crypto transactions for a specific user"""
         return TransactionCrypto.query.filter_by(user_id=userId).all()
 
+@transaction_log_ns.route('/')
+class TransactionLogList(Resource):
+    @transaction_log_ns.doc(params={
+        'page': 'Page number (default: 1)',
+        'per_page': 'Items per page (default: 10, max: 100)',
+        'user_id': 'Filter by user ID (optional)'
+    })
+    @transaction_log_ns.marshal_with(transaction_log_response_model)
+    def get(self):
+        """Get all transactions across different types with pagination"""
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)  # Limit max per_page to 100
+        user_id = request.args.get('user_id', None)
+        
+        # Implement the logic to fetch, merge and paginate
+        return self.get_paginated_transactions(page, per_page, user_id)
+    
+    def get_paginated_transactions(self, page, per_page, user_id=None):
+        """Helper method to fetch and paginate transactions from all three tables"""
+        # We'll query each table separately, then combine and sort
+        # First, count total records to know what to fetch
+        
+        # Count fiat transactions
+        fiat_query = TransactionFiat.query
+        if user_id:
+            fiat_query = fiat_query.filter_by(user_id=user_id)
+        fiat_count = fiat_query.count()
+        
+        # Count fiat to crypto transactions
+        fiat_to_crypto_query = TransactionFiatToCrypto.query
+        if user_id:
+            fiat_to_crypto_query = fiat_to_crypto_query.filter_by(user_id=user_id)
+        fiat_to_crypto_count = fiat_to_crypto_query.count()
+        
+        # Count crypto transactions
+        crypto_query = TransactionCrypto.query
+        if user_id:
+            crypto_query = crypto_query.filter_by(user_id=user_id)
+        crypto_count = crypto_query.count()
+        
+        # Calculate total records and total pages
+        total_records = fiat_count + fiat_to_crypto_count + crypto_count
+        total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+        
+        # To be efficient, we'll fetch a bit more than we need from each table
+        # This approach won't be perfect for all distributions of data but will work well in most cases
+        # The multiplier determines how many records to fetch from each table relative to per_page
+        fetch_multiplier = 3  # Fetch 3x per_page from each table to handle imbalanced distributions
+        fetch_limit = per_page * fetch_multiplier
+        
+        # Fetch transactions from each table with order by date desc
+        fiat_txns = fiat_query.order_by(TransactionFiat.creation.desc()).limit(fetch_limit).all()
+        fiat_to_crypto_txns = fiat_to_crypto_query.order_by(TransactionFiatToCrypto.creation.desc()).limit(fetch_limit).all()
+        crypto_txns = crypto_query.order_by(TransactionCrypto.creation.desc()).limit(fetch_limit).all()
+        
+        # Transform data into a standardized format
+        all_transactions = []
+        
+        # Process fiat transactions
+        for txn in fiat_txns:
+            all_transactions.append({
+                'transaction_id': str(txn.transaction_id),
+                'user_id': txn.user_id,
+                'status': txn.status,
+                'creation_date': txn.creation,
+                'transaction_type': 'fiat',
+                'amount': float(txn.amount),
+                'currency_code': txn.currency_code,
+                'type': txn.type,
+                'confirmation': txn.confirmation
+            })
+        
+        # Process fiat to crypto transactions
+        for txn in fiat_to_crypto_txns:
+            all_transactions.append({
+                'transaction_id': str(txn.transaction_id),
+                'user_id': txn.user_id,
+                'status': txn.status,
+                'creation_date': txn.creation,
+                'transaction_type': 'fiat_to_crypto',
+                'from_amount': float(txn.from_amount),
+                'to_amount': float(txn.to_amount),
+                'direction': txn.direction,
+                'limit_price': float(txn.limit_price) if txn.limit_price else None,
+                'token_id': txn.token_id,
+                'currency_code': txn.currency_code,
+                'confirmation': txn.confirmation
+            })
+        
+        # Process crypto transactions
+        for txn in crypto_txns:
+            # For crypto, we use the 'completion' date if available, otherwise 'creation'
+            date_for_sorting = txn.completion if txn.completion else txn.creation
+            all_transactions.append({
+                'transaction_id': str(txn.transaction_id),
+                'user_id': txn.user_id,
+                'status': txn.status,
+                'creation_date': txn.creation,
+                'sort_date': date_for_sorting,  # Additional field just for sorting
+                'transaction_type': 'crypto',
+                'from_token_id': txn.from_token_id,
+                'from_amount': float(txn.from_amount),
+                'from_amount_actual': float(txn.from_amount_actual) if txn.from_amount_actual else None,
+                'to_token_id': txn.to_token_id,
+                'to_amount': float(txn.to_amount),
+                'to_amount_actual': float(txn.to_amount_actual) if txn.to_amount_actual else None,
+                'limit_price': float(txn.limit_price) if txn.limit_price else None,
+                'usdt_fee': float(txn.usdt_fee),
+                'completion': txn.completion,
+                'order_type': txn.order_type
+            })
+        
+        # Sort all transactions by date in descending order
+        # For crypto transactions, use the sort_date field we added
+        all_transactions.sort(key=lambda x: x.get('sort_date', x['creation_date']), reverse=True)
+        
+        # Apply pagination
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_transactions = all_transactions[start:end]
+        
+        # Clean up any temporary fields we added for sorting
+        for txn in paginated_transactions:
+            if 'sort_date' in txn:
+                del txn['sort_date']
+        
+        # Return the paginated results with pagination metadata
+        return {
+            'transactions': paginated_transactions,
+            'pagination': {
+                'total': total_records,
+                'pages': total_pages,
+                'page': page,
+                'per_page': per_page
+            }
+        }
+
+@transaction_log_ns.route('/user/<string:userId>')
+class TransactionLogByUser(Resource):
+    @transaction_log_ns.doc(params={
+        'page': 'Page number (default: 1)',
+        'per_page': 'Items per page (default: 10, max: 100)'
+    })
+    @transaction_log_ns.marshal_with(transaction_log_response_model)
+    def get(self, userId):
+        """Get all transactions for a specific user with pagination"""
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)  # Limit max per_page to 100
+        
+        # Reuse the same logic but filter by user_id
+        txn_list = TransactionLogList()
+        return txn_list.get_paginated_transactions(page, per_page, user_id=userId)
+
 ##### Seed data ##### 
 # def seed_data():
 #     with open('seeddata.json') as f:
@@ -460,6 +659,7 @@ class CryptoTransactionsByUser(Resource):
 api.add_namespace(fiat_ns)
 api.add_namespace(fiat_to_crypto_ns)
 api.add_namespace(crypto_ns)
+api.add_namespace(transaction_log_ns)
 
 if __name__ == '__main__':
     # with app.app_context():

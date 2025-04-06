@@ -2,6 +2,8 @@ import requests
 import amqp_lib
 import pika
 import json
+import decimal
+from decimal import Decimal
 
 
 # RabbitMQ
@@ -14,6 +16,17 @@ routing_key = "order.executed"
 
 connection = None 
 channel = None
+
+# Set the precision context for all decimal operations
+decimal.getcontext().prec = 18  # Common in crypto (Ethereum uses 18 decimals)
+decimal.getcontext().rounding = decimal.ROUND_HALF_UP  # Standard financial rounding
+
+# for sending messages, to prevent TypeError: Object of type 'Decimal' is not JSON serializable
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
 
 # Environment variables for microservice
 # Environment variables for microservice URLs
@@ -392,7 +405,7 @@ def update_order_in_orderbook(transaction_id, from_amount_left):
     '''
     
     try:
-        payload = {"fromAmount": from_amount_left}
+        payload = {"fromAmount": float(from_amount_left)}
         print(f"Adding updating order in order book for transaction_id: {transaction_id} and from_amount: {from_amount_left}")
         update_amount_response = requests.patch(f"{ORDERBOOK_SERVICE_URL}/UpdateOrderQuantity/{transaction_id}/", json=payload)
         update_amount_response = update_amount_response.json() 
@@ -435,8 +448,16 @@ def match_incoming_buy(incoming_order, counterparty_orders):
     fail_incoming_req = True
     
     # intialise for readability
-    buy = incoming_order
-    sell_orders = counterparty_orders
+    buy = incoming_order.copy()
+    buy['fromAmount'] = Decimal(str(buy['fromAmount']))
+    buy['limitPrice'] = Decimal(str(buy['limitPrice']))
+    
+    sell_orders = []
+    for sell in counterparty_orders:
+        sell_copy = sell.copy()
+        sell_copy['fromAmount'] = Decimal(str(sell['fromAmount']))
+        sell_copy['limitPrice'] = Decimal(str(sell['limitPrice']))
+        sell_orders.append(sell_copy)
     
     # to keep track and use for updating crypto
     base_crypto_id = buy.get('toTokenId')
@@ -446,7 +467,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
     for sell in sell_orders:
         
         # limit price fulfillment check. The sell price should be lower or equal to limit price for buy tolerance.
-        if sell.get('limitPrice') <= buy.get('limitPrice'):
+        if sell.get('limitPrice') <= buy.get('limitPrice') and sell.get('userId') != buy.get('userId'):
             
             # favour buyer in this case since requester
             price_executed = min(buy.get('limitPrice'), sell.get('limitPrice'))
@@ -467,36 +488,36 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             # crypto to be updated here first since we dont want to update order without making sure wallet updated
             # step 1: minus from buy order userId 
             updated_all_services = False
-            execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
+            execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
             
             # if step 1 fail: nothing to rollback, updated_all_services is False. stops here and exits this nested if 
             # if step 1 success: 
                 # step 2:minus from sell order userId 
             if 'error' not in execute_buy_result:
-                execute_sell_result = update_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
+                execute_sell_result = update_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                 
                 # if step 2 fail: rollback step1, updated_all_services is False. stops here and exits this nested if 
                 if 'error' in execute_sell_result:
-                    rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
+                    rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                 # if step 2 success: 
                     # step 3:add to buy order userId 
                 else:
-                    deposit_buy_result = update_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
+                    deposit_buy_result = update_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
                     
                     # if step 3 fail: rollback step1 and step2, updated_all_services is False. stops here and exits this nested if 
                     if 'error' in deposit_buy_result:
-                        rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
-                        rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
+                        rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
+                        rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                     # if step 3 success: 
                         # step 4:add to sell order userId 
                     else:
-                        deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], quote_qty_traded)
+                        deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], float(quote_qty_traded))
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
                         if 'error' in deposit_sell_result:
-                            rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
-                            rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
-                            rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
+                            rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
+                            rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
+                            rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
                         # if step 4 success: 
                             # step 5:send message and update orderbook (more details below), updated_all_services is now True
                         else:
@@ -513,16 +534,17 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
+                            ZERO_THRESHOLD = Decimal('0.00000000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             buy['fromAmount'] = buy_from_amount_left
-                            if buy_from_amount_left >0:
+                            if buy_from_amount_left > ZERO_THRESHOLD:
                                 buy_status = 'Partially filled'
                             else:
                                 buy_status = 'Success'
                                 fulfilled_incoming_req = True
                                 
-                            if sell_from_amount_left >0:
+                            if sell_from_amount_left > ZERO_THRESHOLD:
                                 sell_status = 'Partially filled'
                                 update_book_response = update_order_in_orderbook(sell.get('transactionId'), sell_from_amount_left)
                             else:
@@ -564,7 +586,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                 if connection is None or not amqp_lib.is_connection_open(connection):
                                     connectAMQP()
                     
-                                json_message = json.dumps(message_to_publish_buy)
+                                json_message = json.dumps(message_to_publish_buy, cls=DecimalEncoder)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -572,7 +594,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                     properties=pika.BasicProperties(delivery_mode=2),
                                     )
                                 
-                                json_message2 = json.dumps(message_to_publish_sell)
+                                json_message2 = json.dumps(message_to_publish_sell, cls=DecimalEncoder)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -624,8 +646,16 @@ def match_incoming_sell(incoming_order, counterparty_orders):
     fail_incoming_req = True
     
     # intialise for readability
-    sell = incoming_order
-    buy_orders = counterparty_orders
+    sell = incoming_order.copy()
+    sell['fromAmount'] = Decimal(str(sell['fromAmount']))
+    sell['limitPrice'] = Decimal(str(sell['limitPrice']))
+    
+    buy_orders = []
+    for buy in counterparty_orders:
+        buy_copy = buy.copy()
+        buy_copy['fromAmount'] = Decimal(str(buy['fromAmount']))
+        buy_copy['limitPrice'] = Decimal(str(buy['limitPrice']))
+        buy_orders.append(buy_copy)
     
     # to keep track and use for updating crypto
     base_crypto_id = sell.get('fromTokenId')
@@ -635,7 +665,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
     for buy in buy_orders:
         
         # limit price fulfillment check. The buy price should be higher or equal to limit price for sell tolerance.
-        if buy.get('limitPrice') >= sell.get('limitPrice'):
+        if buy.get('limitPrice') >= sell.get('limitPrice') and sell.get('userId') != buy.get('userId'):
             
             # favour seller in this case since requester
             price_executed = max(buy.get('limitPrice'), sell.get('limitPrice'))
@@ -656,36 +686,36 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             # crypto to be updated here first since we dont want to update order without making sure wallet updated
             # step 1: minus from buy order userId 
             updated_all_services = False
-            execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
+            execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
             
             # if step 1 fail: nothing to rollback, updated_all_services is False. stops here and exits this nested if 
             # if step 1 success: 
                 # step 2:minus from sell order userId 
             if 'error' not in execute_buy_result:
-                execute_sell_result = update_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
+                execute_sell_result = update_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                 
                 # if step 2 fail: rollback step1, updated_all_services is False. stops here and exits this nested if 
                 if 'error' in execute_sell_result:
-                    rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
+                    rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                 # if step 2 success: 
                     # step 3:add to buy order userId 
                 else:
-                    deposit_buy_result = update_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
+                    deposit_buy_result = update_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
                     
                     # if step 3 fail: rollback step1 and step2, updated_all_services is False. stops here and exits this nested if 
                     if 'error' in deposit_buy_result:
-                        rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
-                        rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
+                        rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
+                        rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                     # if step 3 success: 
                         # step 4:add to sell order userId 
                     else:
-                        deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], quote_qty_traded)
+                        deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], float(quote_qty_traded))
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
                         if 'error' in deposit_sell_result:
-                            rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
-                            rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
-                            rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
+                            rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
+                            rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
+                            rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
                         # if step 4 success: 
                             # step 5:send message and update orderbook (more details below), updated_all_services is now True
                         else:
@@ -702,16 +732,17 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
+                            ZERO_THRESHOLD = Decimal('0.00000000001')
                             # find status of orders
                             # adding of incoming sell order to order book to be done last after full iteration
                             sell['fromAmount'] = sell_from_amount_left
-                            if sell_from_amount_left >0:
+                            if sell_from_amount_left > ZERO_THRESHOLD:
                                 sell_status = 'Partially filled'
                             else:
                                 sell_status = 'Success'
                                 fulfilled_incoming_req = True
                                 
-                            if buy_from_amount_left >0:
+                            if buy_from_amount_left > ZERO_THRESHOLD:
                                 buy_status = 'Partially filled'
                                 update_book_response = update_order_in_orderbook(buy.get('transactionId'), buy_from_amount_left)
                                 
@@ -740,7 +771,6 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                                 'toAmountActual' : buy_to_amount_actual, 
                                                 'details' : buy_description
                                             }            
-                                ##################################################################################################################################################################### publish msg here
                                 
                                 message_to_publish_sell = {
                                                     'transactionId' : sell.get('transactionId'), 
@@ -752,7 +782,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 if connection is None or not amqp_lib.is_connection_open(connection):
                                     connectAMQP()
                     
-                                json_message = json.dumps(message_to_publish_buy)
+                                json_message = json.dumps(message_to_publish_buy, cls=DecimalEncoder)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -760,7 +790,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                     properties=pika.BasicProperties(delivery_mode=2),
                                     )
                                 
-                                json_message2 = json.dumps(message_to_publish_sell)
+                                json_message2 = json.dumps(message_to_publish_sell, cls=DecimalEncoder)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,

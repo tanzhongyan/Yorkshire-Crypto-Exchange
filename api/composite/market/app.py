@@ -244,7 +244,7 @@ class MarketResource(Resource):
         }
     )
     @market_ns.marshal_with(market_response, code=200)
-    @market_ns.marshal_with(error_response, code=500)
+    # @market_ns.marshal_with(error_response, code=500)
 
     def get(self):
         """

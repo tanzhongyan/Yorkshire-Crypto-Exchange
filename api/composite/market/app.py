@@ -32,7 +32,8 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
 COINGECKO_URL = "https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
-# ORDERBOOK_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrders?CryptoPair={CryptoPair}&Side={Side}"
+# ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
+# ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
 
 # coingecko api
 COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
@@ -41,6 +42,7 @@ COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
 # Namespaces are essentially folders that group all related API calls
 market_ns = Namespace('market', description='Market related operations')
 
+api.add_namespace(market_ns)
 
 ##### API Models - flask restx API autodoc #####
 market_params = market_ns.model('MarketParams', {
@@ -57,7 +59,7 @@ coin_gecko_model = market_ns.model('CoinGeckoData', {
 })
 
 
-market_response = market_ns.model('MarketDetailResponse', {
+market_response = market_ns.model('MarketResponse', {
     'coinGecko': fields.Nested(coin_gecko_model, description='Data from CoinGecko API')
 })
 
@@ -143,7 +145,7 @@ def get_coingecko_data(coin="bitcoin", days="30"):
 
 ##### API actions - flask restx API autodoc #####
 @market_ns.route('')
-class MarketDetailResource(Resource):
+class MarketResource(Resource):
     @market_ns.doc(
         params={
             'coin': {'description': 'Cryptocurrency name for CoinGecko API', 'default': 'bitcoin'},
@@ -157,7 +159,8 @@ class MarketDetailResource(Resource):
         }
     )
     @market_ns.marshal_with(market_response, code=200)
-    @market_ns.marshal_with(error_response, code=500)
+    # @market_ns.marshal_with(error_response, code=500)
+
     def get(self):
         """
         Retrieve combined market data from CoinGecko and OrderBook
@@ -196,8 +199,6 @@ class MarketDetailResource(Resource):
 
         
         return combined_market
-
-api.add_namespace(market_ns)
 
 
 if __name__ == "__main__":

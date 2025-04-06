@@ -4,3 +4,4 @@ pika
 Flask-Cors
 Requests
 Dotenv
+Werkzeug

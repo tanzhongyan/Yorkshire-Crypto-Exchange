@@ -40,15 +40,6 @@ def connectAMQP():
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
         exit(1) # terminate
 
-def callback(channel, method, properties, body):
-    try:
-        error = json.loads(body)
-        print(f"Error message (JSON): {error}")
-    except Exception as e:
-        print(f"Unable to parse JSON: {e=}")
-        print(f"Error message: {body}")
-    print()
-
 
 ##### Individual helper functions  #####
 
@@ -502,7 +493,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                         deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], quote_qty_traded)
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
-                        if 'error' not in deposit_sell_result:
+                        if 'error' in deposit_sell_result:
                             rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
                             rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
                             rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
@@ -524,6 +515,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
+                            buy['fromAmount'] = buy_from_amount_left
                             if buy_from_amount_left >0:
                                 buy_status = 'Partially filled'
                             else:
@@ -554,7 +546,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                 buy_description = f"{buy_from_amount_actual}{buy.get('fromTokenId')} was swapped for {buy_to_amount_actual}{buy.get('toTokenId')}"
                                 sell_description = f"{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}"
 
-                                message_to_publish_buy = execution = {
+                                message_to_publish_buy = {
                                                 'transactionId' : buy.get('transactionId'), 
                                                 'status' : buy_status, 
                                                 'fromAmountActual' : buy_from_amount_actual, 
@@ -562,7 +554,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                                 'details' : buy_description
                                             }            
                                 
-                                message_to_publish_sell = execution = {
+                                message_to_publish_sell = {
                                                     'transactionId' : sell.get('transactionId'), 
                                                     'status' : sell_status, 
                                                     'fromAmountActual' : sell_from_amount_actual, 
@@ -607,7 +599,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
-            message_to_publish = execution = {
+            message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'status' : 'Fail', 
                                                 'fromAmountActual' : 0, 
@@ -617,7 +609,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             if connection is None or not amqp_lib.is_connection_open(connection):
                 connectAMQP()
 
-            json_message = json.dumps(message_to_publish_buy)
+            json_message = json.dumps(message_to_publish)
             channel.basic_publish(
                 exchange=exchange_name,
                 routing_key=routing_key,
@@ -690,7 +682,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                         deposit_sell_result = update_to_crypto(sell['userId'], sell['toTokenId'], quote_qty_traded)
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
-                        if 'error' not in deposit_sell_result:
+                        if 'error' in deposit_sell_result:
                             rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
                             rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
                             rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
@@ -712,6 +704,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             
                             # find status of orders
                             # adding of incoming sell order to order book to be done last after full iteration
+                            sell['fromAmount'] = sell_from_amount_left
                             if sell_from_amount_left >0:
                                 sell_status = 'Partially filled'
                             else:
@@ -724,7 +717,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 
                             else:
                                 buy_status = 'Success'
-                                update_book_response = delete_order_in_orderbook(sell.get('transactionId'))
+                                update_book_response = delete_order_in_orderbook(buy.get('transactionId'))
                                 
                             if not update_book_response.get('success'):
                                 # rollback step 1,2,3,4, updated_all_services is False. stops here and exits this nested if
@@ -740,7 +733,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
 
                                 buy_description = f"{buy_from_amount_actual}{buy.get('fromTokenId')} was swapped for {buy_to_amount_actual}{buy.get('toTokenId')}"
                                 sell_description = f"{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}"
-                                message_to_publish_buy = execution = {
+                                message_to_publish_buy = {
                                                 'transactionId' : buy.get('transactionId'), 
                                                 'status' : buy_status, 
                                                 'fromAmountActual' : buy_from_amount_actual, 
@@ -749,7 +742,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                             }            
                                 ##################################################################################################################################################################### publish msg here
                                 
-                                message_to_publish_sell = execution = {
+                                message_to_publish_sell = {
                                                     'transactionId' : sell.get('transactionId'), 
                                                     'status' : sell_status, 
                                                     'fromAmountActual' : sell_from_amount_actual, 
@@ -794,7 +787,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
-            message_to_publish = execution = {
+            message_to_publish = {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'status' : 'Fail', 
                                                 'fromAmountActual' : 0, 
@@ -846,7 +839,7 @@ def callback(channel, method, properties, body):
                     
                     # current description will be add order to orderbook fail or duplicate order exist
                         
-                    message_to_publish = execution = {
+                    message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'), 
                                                         'status' : 'Fail', 
                                                         'fromAmountActual' : 0, 
@@ -866,7 +859,7 @@ def callback(channel, method, properties, body):
                     
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
-                message_to_publish = execution = {
+                message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'), 
                                                         'status' : 'Fail', 
                                                         'fromAmountActual' : 0, 
@@ -886,7 +879,6 @@ def callback(channel, method, properties, body):
                     properties=pika.BasicProperties(delivery_mode=2),
                     )
                 
-            ##################################################################################################################################################################### publish msg here
         
         # counterparty order was able to be obtained. now ready for processsing.
         else:

@@ -20,7 +20,7 @@ rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "order_topic"
 exchange_type = "topic"
-queue_name = "order_management_service.orders_placed"
+# queue_name = "order_management_service.orders_placed"
 
 connection = None 
 channel = None
@@ -28,7 +28,7 @@ channel = None
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
 blueprint = Blueprint('api',__name__,url_prefix=API_ROOT)
-api = Api(blueprint, version=API_VERSION, title='Order Management Service API', description='Order Management Service API for Yorkshire Crypto Exchange')
+api = Api(blueprint, version=API_VERSION, title='Order Initiation Service API', description='Order Initiation Service API for Yorkshire Crypto Exchange')
 
 # Register Blueprint with Flask app
 app.register_blueprint(blueprint)

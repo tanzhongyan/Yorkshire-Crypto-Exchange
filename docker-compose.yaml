@@ -226,10 +226,10 @@ services:
     networks:
       - rabbit-net
 
-  order-management-service:
-    container_name: order-management-service
+  order-initiation-service:
+    container_name: order-initiation-service
     build:
-      context: ./api/composite/order-management
+      context: ./api/composite/order-initiation
       dockerfile: Dockerfile
     ports:
       - "5008:5000"

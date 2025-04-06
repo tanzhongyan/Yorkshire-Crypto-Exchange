@@ -9,8 +9,8 @@ rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "order_topic"
 exchange_type = "topic"
-queue_name = "match_queue"
-# queue_name = "order_management_service.orders_placed"
+queue_name = "order_initiation_service.orders_creation"
+routing_key = "order.executed"
 
 connection = None 
 channel = None
@@ -561,7 +561,6 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                                 'toAmountActual' : buy_to_amount_actual, 
                                                 'details' : buy_description
                                             }            
-                                ##################################################################################################################################################################### publish msg here
                                 
                                 message_to_publish_sell = execution = {
                                                     'transactionId' : sell.get('transactionId'), 
@@ -570,7 +569,24 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                                     'toAmountActual' : sell_to_amount_actual, 
                                                     'details' : sell_description
                                                 }            
-                                ##################################################################################################################################################################### publish msg here
+                                if connection is None or not amqp_lib.is_connection_open(connection):
+                                    connectAMQP()
+                    
+                                json_message = json.dumps(message_to_publish_buy)
+                                channel.basic_publish(
+                                    exchange=exchange_name,
+                                    routing_key=routing_key,
+                                    body=json_message,
+                                    properties=pika.BasicProperties(delivery_mode=2),
+                                    )
+                                
+                                json_message2 = json.dumps(message_to_publish_sell)
+                                channel.basic_publish(
+                                    exchange=exchange_name,
+                                    routing_key=routing_key,
+                                    body=json_message2,
+                                    properties=pika.BasicProperties(delivery_mode=2),
+                                    )
                                 # if incoming order fulfilled and services updated and message published for executions, then break out of loop to check for orders
                                 if fulfilled_incoming_req:
                                     break
@@ -598,7 +614,16 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                                 'toAmountActual' : 0, 
                                                 'details' : description
                                             }
-            ##################################################################################################################################################################### publish msg here
+            if connection is None or not amqp_lib.is_connection_open(connection):
+                connectAMQP()
+
+            json_message = json.dumps(message_to_publish_buy)
+            channel.basic_publish(
+                exchange=exchange_name,
+                routing_key=routing_key,
+                body=json_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+                )
 
 def match_incoming_sell(incoming_order, counterparty_orders):
     
@@ -731,7 +756,24 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                                     'toAmountActual' : sell_to_amount_actual, 
                                                     'details' : sell_description
                                                 }            
-                                ##################################################################################################################################################################### publish msg here
+                                if connection is None or not amqp_lib.is_connection_open(connection):
+                                    connectAMQP()
+                    
+                                json_message = json.dumps(message_to_publish_buy)
+                                channel.basic_publish(
+                                    exchange=exchange_name,
+                                    routing_key=routing_key,
+                                    body=json_message,
+                                    properties=pika.BasicProperties(delivery_mode=2),
+                                    )
+                                
+                                json_message2 = json.dumps(message_to_publish_sell)
+                                channel.basic_publish(
+                                    exchange=exchange_name,
+                                    routing_key=routing_key,
+                                    body=json_message2,
+                                    properties=pika.BasicProperties(delivery_mode=2),
+                                    )
                                 # if incoming order fulfilled and services updated and message published for executions, then break out of loop to check for orders
                                 if fulfilled_incoming_req:
                                     break
@@ -759,7 +801,16 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                                 'toAmountActual' : 0, 
                                                 'details' : description
                                             }
-            ##################################################################################################################################################################### publish msg here
+            if connection is None or not amqp_lib.is_connection_open(connection):
+                connectAMQP()
+            
+            json_message = json.dumps(message_to_publish)
+            channel.basic_publish(
+                exchange=exchange_name,
+                routing_key=routing_key,
+                body=json_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+                )
 
 
 
@@ -802,6 +853,17 @@ def callback(channel, method, properties, body):
                                                         'toAmountActual' : 0, 
                                                         'details' : description
                                                     }
+                    if connection is None or not amqp_lib.is_connection_open(connection):
+                        connectAMQP()
+                    
+                    json_message = json.dumps(message_to_publish)
+                    channel.basic_publish(
+                        exchange=exchange_name,
+                        routing_key=routing_key,
+                        body=json_message,
+                        properties=pika.BasicProperties(delivery_mode=2),
+                        )
+                    
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
                 message_to_publish = execution = {
@@ -810,7 +872,19 @@ def callback(channel, method, properties, body):
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
                                                         'details' : description
-                                                    }            
+                                                    }
+                    # for publishing
+                if connection is None or not amqp_lib.is_connection_open(connection):
+                    connectAMQP()
+                    
+                json_message = json.dumps(message_to_publish)
+
+                channel.basic_publish(
+                    exchange=exchange_name,
+                    routing_key=routing_key,
+                    body=json_message,
+                    properties=pika.BasicProperties(delivery_mode=2),
+                    )
                 
             ##################################################################################################################################################################### publish msg here
         
@@ -828,7 +902,7 @@ def callback(channel, method, properties, body):
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 if __name__ == '__main__':
-    print('Match composite service - amqp consumer...')
+    print('Match composite service - amqp consumer and publisher...')
     connectAMQP()
 
     try:

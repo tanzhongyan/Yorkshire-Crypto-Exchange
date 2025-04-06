@@ -221,21 +221,17 @@ services:
     expose:
       - "5000"
 
-
-  # rabbitmq:
-  #   image: rabbitmq:management
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-  #   volumes:
-  #     - rabbitmq_data:/var/lib/rabbitmq
   rabbitmq:
     image: rabbitmq:management
-    hostname: yorkshire-rabbit
     restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -246,27 +242,9 @@ services:
       context: ./rabbitmq
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - rabbit-net
-
-  order-initiation-service:
-    container_name: order-initiation-service
-    build:
-      context: ./api/composite/order-initiation
-      dockerfile: Dockerfile
-    ports:
-      - "5008:5000"
-    depends_on:
-      rabbitmq:
-        condition: service_started # wait until rabbitmq healthy
-      postgres:
-        condition: service_healthy # wait until postgres healthy
-    networks:
-      - kong-net
-      - rabbit-net
-    expose:
-      - "5000"
 
   postgres:
     build: ./database
@@ -288,6 +266,26 @@ services:
     restart: on-failure
     networks:
       - kong-net
+
+  order-initiation-service:
+    container_name: order-initiation-service
+    build:
+      context: ./api/composite/order-initiation
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      - rabbit-net
+    expose:
+      - "5000"
 
   # website:
   #   build:

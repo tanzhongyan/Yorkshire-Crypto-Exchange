@@ -9,7 +9,8 @@ rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "order_topic"
 exchange_type = "topic"
-queue_name = "order_management_service.orders_placed"
+queue_name = "match_queue"
+# queue_name = "order_management_service.orders_placed"
 
 connection = None 
 channel = None
@@ -19,6 +20,37 @@ channel = None
 # NOTE: Do not use localhost here as localhost refer to this container itself
 CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
 ORDERBOOK_SERVICE_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/"
+
+##### AMQP Connection Functions  #####
+
+def connectAMQP():
+    # Use global variables to reduce number of reconnection to RabbitMQ
+    global connection
+    global channel
+
+    print("  Connecting to AMQP broker...")
+    try:
+        connection, channel = amqp_lib.connect(
+                hostname=rabbit_host,
+                port=rabbit_port,
+                exchange_name=exchange_name,
+                exchange_type=exchange_type,
+        )
+    except Exception as exception:
+        print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
+        exit(1) # terminate
+
+def callback(channel, method, properties, body):
+    try:
+        error = json.loads(body)
+        print(f"Error message (JSON): {error}")
+    except Exception as e:
+        print(f"Unable to parse JSON: {e=}")
+        print(f"Error message: {body}")
+    print()
+
+
+##### Individual helper functions  #####
 
 def determine_side(incoming_order):
     '''
@@ -788,14 +820,16 @@ def callback(channel, method, properties, body):
                 match_incoming_buy(incoming_order, counterparty_orders)
             elif incoming_side == 'sell':
                 match_incoming_sell(incoming_order, counterparty_orders)
-                
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         print(f"Unable to parse JSON: {e=}")
         print(f"Error message: {body}")
         print()
+        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 if __name__ == '__main__':
     print('Match composite service - amqp consumer...')
+    connectAMQP()
 
     try:
         amqp_lib.start_consuming(

@@ -84,7 +84,7 @@ def start_consuming(
 
                 print(f"Consuming from queue: {queue_name}")
                 channel.basic_consume(
-                     queue=queue_name, on_message_callback=callback, auto_ack=True
+                     queue=queue_name, on_message_callback=callback, auto_ack=False
                 )
                 channel.start_consuming()
 

@@ -1,72 +1,69 @@
 {
   "cryptoWallets": [
     {
-      "userId": "f5d7b933-dc52-4c87-9a45-eeb0a091f6cf",
-      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d"
-    },
-    {
-      "userId": "3d1a9c5a-bc97-4d78-b1b4-1bc72d649b3d",
-      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb"
-    },
-    {
-      "userId": "7ff35b62-5d6a-47cd-b4f6-c1d6c621fe5d",
-      "walletId": "724e3519-9db0-4c02-b627-d0b2fe8e56d0"
+      "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0"
     }
   ],
   "cryptoTokens": [
     {
-      "token_id": "BTC",
-      "token_name": "Bitcoin"
+      "tokenId": "btc",
+      "tokenName": "Bitcoin"
     },
     {
-      "token_id": "XRP",
-      "token_name": "Ripple"
+      "tokenId": "eth",
+      "tokenName": "Ethereum"
     },
     {
-      "token_id": "SOL",
-      "token_name": "Solana"
+      "tokenId": "xrp",
+      "tokenName": "Ripple"
+    },
+    {
+      "tokenId": "usdt",
+      "tokenName": "Tether"
+    },
+    {
+      "tokenId": "bnb",
+      "tokenName": "Binancecoin"
+    },
+    {
+      "tokenId": "ada",
+      "tokenName": "Cardano"
+    },
+    {
+      "tokenId": "sol",
+      "tokenName": "Solana"
+    },
+    {
+      "tokenId": "doge",
+      "tokenName": "Dogecoin"
+    },
+    {
+      "tokenId": "dot",
+      "tokenName": "Polkadot"
+    },
+    {
+      "tokenId": "matic",
+      "tokenName": "Matic-network"
+    },
+    {
+      "tokenId": "ltc",
+      "tokenName": "Litecoin"
+    },
+    {
+      "tokenId": "link",
+      "tokenName": "Chainlink"
+    },
+    {
+      "tokenId": "avax",
+      "tokenName": "Avalanche-2"
     }
   ],
   "cryptoHoldings": [
     {
-      "holdingId": "1e9a3b86-5c4b-4f3b-a456-3d68bb4d5b2a",
-      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
-      "tokenId": "BTC",
-      "actualBalance": 2.5,
-      "availableBalance": 1.0,
-      "updatedOn": "2025-03-25T12:30:00Z"
-    },
-    {
-      "holdingId": "2a7f57cc-8fbb-44f6-8c22-80e05d8c18e5",
-      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
-      "tokenId": "XRP",
-      "actualBalance": 1000,
-      "availableBalance": 500,
-      "updatedOn": "2025-03-25T12:30:00Z"
-    },
-    {
-      "holdingId": "3b54cafd-6b1d-4b20-8cb7-1a56e61e2b78",
-      "walletId": "724e3519-9db0-4c02-b627-d0b2fe8e56d0",
-      "tokenId": "SOL",
-      "actualBalance": 10,
-      "availableBalance": 2,
-      "updatedOn": "2025-03-25T12:30:00Z"
-    },
-    {
-      "holdingId": "4c8321f5-8712-470e-b497-d4e0a452e48c",
-      "walletId": "ba6bdb39-3459-45e4-8bfc-b6bcd1c13e6d",
-      "tokenId": "XRP",
-      "actualBalance": 500,
-      "availableBalance": 100,
-      "updatedOn": "2025-03-25T12:30:00Z"
-    },
-    {
-      "holdingId": "5d29a78e-4c7f-495c-bf16-2d0c5b457b1e",
-      "walletId": "4a90f019-b02a-450f-a8ff-d68cc6b848eb",
-      "tokenId": "SOL",
-      "actualBalance": 50,
-      "availableBalance": 5,
-      "updatedOn": "2025-03-25T12:30:00Z"
+      "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+      "tokenId": "usdt",
+      "actualBalance": 1000.0,
+      "availableBalance": 1000.0
     }
   ]
 }

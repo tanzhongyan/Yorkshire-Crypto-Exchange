@@ -5,7 +5,7 @@ import requests
 import amqp_lib
 import pika
 import json
-import threading
+# import threading
 
 ##### Configuration #####
 # Define API version and root path
@@ -20,7 +20,7 @@ rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "order_topic"
 exchange_type = "topic"
-queue_name = "order_management_service.orders_placed"
+# queue_name = "order_management_service.orders_placed"
 
 connection = None 
 channel = None
@@ -28,7 +28,7 @@ channel = None
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
 blueprint = Blueprint('api',__name__,url_prefix=API_ROOT)
-api = Api(blueprint, version=API_VERSION, title='Order Management Service API', description='Order Management Service API for Yorkshire Crypto Exchange')
+api = Api(blueprint, version=API_VERSION, title='Order Initiation Service API', description='Order Initiation Service API for Yorkshire Crypto Exchange')
 
 # Register Blueprint with Flask app
 app.register_blueprint(blueprint)
@@ -115,7 +115,6 @@ order_publish_model = order_ns.model(
         "transactionId": fields.String(attribute='transaction_id'),
         "userId": fields.String(attribute='user_id', description="User ID (wallet) associated with order"),
         "type": fields.String(attribute='type', description="Order type - buy or sell"),
-        # "baseQuotePair": fields.String(attribute='type', description="Order pair, i.e. BTC/XRP"),
         "fromTokenId": fields.String(attribute='from_token_id', description="Token ID for crypto buying with (quote)"),
         "toTokenId": fields.String(attribute='to_token_id', description="Token ID for crypto being bought (base)"),
         "fromAmount": fields.Float(attribute='from_amount', description="Amount being bought with from(quote) Token (i.e Amount of XRP from BTC/XRP that you are willing to pay for the given price of BTC)"),
@@ -167,9 +166,9 @@ def check_crypto_balance(user_id, token_id, required_from_amount):
         response_dict = holding_response.json()
         is_sufficient = True
         short_of = None
-        if response_dict["heldBalance"] < required_from_amount:
+        if response_dict["availableBalance"] < required_from_amount:
             is_sufficient = False
-            short_of = required_from_amount - response_dict["heldBalance"]
+            short_of = required_from_amount - response_dict["availableBalance"]
         
         return is_sufficient, None, 200, short_of
 
@@ -235,12 +234,12 @@ class CheckBalance(Resource):
             "status": "pending",
             "fromTokenId": from_token_id,
             "fromAmount": from_amount,
-            "fromAmountActual": 0, #is this really needed
+            "fromAmountActual": 0, 
             "toTokenId": to_token_id,
             "toAmount": to_amount,
-            "toAmountActual": 0, #is this really needed
-            "limitPrice": limit_price,
-            "usdtFee": order_fee, #not usdt
+            "toAmountActual": 0, 
+            "limitPrice": limit_price, # (!) will be market price for market orders
+            "usdtFee": order_fee, 
             "orderType": "order_type",
         }
 
@@ -254,14 +253,13 @@ class CheckBalance(Resource):
         
         # (3) publish to orderbook service and respond to user
         message_to_publish = {
-            "message": "order publishing message?", # 1) tbc, do we need this and what is it
             "transactionId": transaction_id,
             "userId": user_id,
-            "type": "buy", # 2) buy or sell, tbc do we need this
+            "orderType": order_type,
             "fromTokenId": from_token_id,
             "toTokenId": to_token_id,
             "fromAmount": from_amount,
-            "price": limit_price, # 3) tbc, its the limit price of base (the currency to buy) right
+            "limitPrice": limit_price, # 3) limit price or None
             "creation": creation
         }
 
@@ -270,7 +268,7 @@ class CheckBalance(Resource):
         channel.basic_publish(
                 exchange=exchange_name,
                 routing_key="order.new",
-                body=message_to_publish,
+                body=json_message,
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
 

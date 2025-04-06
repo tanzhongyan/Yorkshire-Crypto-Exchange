@@ -34,10 +34,10 @@ const CustomPieTooltip = ({ active, payload }) => {
       <div className="bg-white p-2 border rounded shadow-sm">
         <p className="font-bold">{data.name}</p>
         <p>Amount: ${data.value.toFixed(2)}</p>
-        <p>Price: $1.00 per {data.name === "USDT" ? "USDT" : "USD"}</p>
+        <p>Price: {data.name === "USDT" ? "$1.00 per USDT" : `$${data.price?.toFixed(6) || '1.00'} per ${data.name === "Crypto" ? "token" : data.tokenId || ''}`}</p>
         <p>Net Worth: ${data.value.toFixed(2)}</p>
         {data.available !== undefined && (
-          <p>Available: ${data.available.toFixed(2)}</p>
+          <p>Available: {data.name === "Fiat" ? `$${data.available.toFixed(2)}` : `${data.availableTokens?.toFixed(8) || data.available.toFixed(2)} ${data.tokenId || ''}`}</p>
         )}
       </div>
     );
@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [cryptoHoldings, setCryptoHoldings] = useState([])
   const [usdtHolding, setUsdtHolding] = useState(null)
   const [exchangeRates, setExchangeRates] = useState({})
+  const [cryptoPrices, setCryptoPrices] = useState({})
   const [transactions, setTransactions] = useState([])
   const [pagination, setPagination] = useState({
     total: 0,
@@ -84,6 +85,28 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Fetch crypto prices from the market/exchangerate endpoint
+  const fetchCryptoPrices = useCallback(async (tokenIds) => {
+    if (!tokenIds || tokenIds.length === 0) return;
+    
+    try {
+      // Convert token IDs to a comma-separated string
+      const tokenString = tokenIds.join(',');
+      
+      // Call the exchangerate endpoint
+      const response = await axios.get(`/api/v1/market/exchangerate?tokens=${tokenString}`);
+      
+      if (response.data && response.data.rates) {
+        // Store the prices
+        setCryptoPrices(response.data.rates);
+      } else {
+        console.error("Failed to fetch crypto prices:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching crypto prices:", error);
+    }
+  }, []);
+
   // Calculate total fiat balance in USD (excluding USDT)
   const calculateTotalFiatBalanceUSD = useCallback(() => {
     if (!fiatAccounts.length || !Object.keys(exchangeRates).length) return 0;
@@ -105,13 +128,13 @@ export default function DashboardPage() {
   const calculateTotalCryptoBalanceUSD = useCallback(() => {
     if (!cryptoHoldings.length) return 0;
     
-    // Sum up crypto holdings excluding USDT
-    // In the future, we would fetch actual crypto prices and multiply by holdings
-    // For now, just use the amounts directly as if 1 token = 1 USD
+    // Sum up crypto holdings excluding USDT, using real prices when available
     return cryptoHoldings.reduce((total, holding) => {
-      return total + holding.actualBalance;
+      const tokenId = holding.tokenId.toUpperCase();
+      const price = cryptoPrices[tokenId] || 1; // Default to 1 USD if price not available
+      return total + (holding.actualBalance * price);
     }, 0);
-  }, [cryptoHoldings]);
+  }, [cryptoHoldings, cryptoPrices]);
 
   // Prepare data for pie chart
   const getPieChartData = useCallback(() => {
@@ -119,16 +142,51 @@ export default function DashboardPage() {
     const usdtTotal = getUsdtBalanceUSD();
     const usdtAvailable = usdtHolding ? usdtHolding.availableBalance : 0;
     const cryptoTotal = calculateTotalCryptoBalanceUSD();
-    const cryptoAvailable = cryptoHoldings.reduce((total, holding) => total + holding.availableBalance, 0);
+    
+    // Calculate available tokens and total value for each crypto
+    const cryptoData = cryptoHoldings.map(holding => {
+      const tokenId = holding.tokenId.toUpperCase();
+      const price = cryptoPrices[tokenId] || 1;
+      const value = holding.actualBalance * price;
+      const availableTokens = holding.availableBalance;
+      
+      return {
+        name: tokenId,
+        tokenId: tokenId,
+        value: value,
+        available: holding.availableBalance * price,
+        availableTokens: availableTokens,
+        price: price
+      };
+    });
+    
+    // Calculate aggregate crypto available balance
+    const cryptoAvailable = cryptoHoldings.reduce((total, holding) => {
+      const tokenId = holding.tokenId.toUpperCase();
+      const price = cryptoPrices[tokenId] || 1;
+      return total + (holding.availableBalance * price);
+    }, 0);
     
     const data = [
       { name: "Fiat", value: fiatTotal, available: fiatTotal }, // For fiat, available = total
-      { name: "USDT", value: usdtTotal, available: usdtAvailable },
-      { name: "Crypto", value: cryptoTotal, available: cryptoAvailable }
+      { 
+        name: "USDT", 
+        tokenId: "USDT", 
+        value: usdtTotal, 
+        available: usdtAvailable,
+        availableTokens: usdtAvailable,
+        price: 1
+      },
+      { 
+        name: "Crypto", 
+        value: cryptoTotal, 
+        available: cryptoAvailable,
+        holdings: cryptoData
+      }
     ].filter(item => item.value > 0); // Only include non-zero values
     
     return data;
-  }, [calculateTotalFiatBalanceUSD, getUsdtBalanceUSD, usdtHolding, calculateTotalCryptoBalanceUSD, cryptoHoldings]);
+  }, [calculateTotalFiatBalanceUSD, getUsdtBalanceUSD, usdtHolding, calculateTotalCryptoBalanceUSD, cryptoHoldings, cryptoPrices]);
 
   // Fetch fiat accounts
   const fetchFiatAccounts = useCallback(async () => {
@@ -148,17 +206,25 @@ export default function DashboardPage() {
     if (!userId) return;
     
     try {
-      // This endpoint would return all crypto holdings for user
+      // This endpoint returns all crypto holdings for user
       const response = await axios.get(`/api/v1/crypto/holdings/${userId}`);
       
-      // Filter USDT holding separately
-      const usdt = response.data.find(h => h.tokenId.toLowerCase() === 'usdt');
-      if (usdt) {
-        setUsdtHolding(usdt);
+      // If response is successful, extract tokens for price fetching
+      if (response.data && Array.isArray(response.data)) {
+        const tokenIds = response.data.map(holding => holding.tokenId);
+        
+        // Fetch prices for all tokens
+        await fetchCryptoPrices(tokenIds);
+        
+        // Filter USDT holding separately
+        const usdt = response.data.find(h => h.tokenId.toLowerCase() === 'usdt');
+        if (usdt) {
+          setUsdtHolding(usdt);
+        }
+        
+        // Set other holdings
+        setCryptoHoldings(response.data.filter(h => h.tokenId.toLowerCase() !== 'usdt'));
       }
-      
-      // Set other holdings
-      setCryptoHoldings(response.data.filter(h => h.tokenId.toLowerCase() !== 'usdt'));
     } catch (error) {
       console.error("Failed to load crypto holdings:", error);
       
@@ -175,7 +241,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingBalances(false);
     }
-  }, [userId]);
+  }, [userId, fetchCryptoPrices]);
 
   const fetchTransactions = async (page = 1) => {
     if (!userId) return;
@@ -484,7 +550,7 @@ export default function DashboardPage() {
                                 ${usdtHolding.actualBalance.toFixed(2)}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                Available: ${usdtHolding.availableBalance.toFixed(2)} • Rate: $1.00
+                                Available: {usdtHolding.availableBalance.toFixed(2)} USDT • Rate: $1.00
                               </div>
                             </div>
                           </div>
@@ -501,24 +567,30 @@ export default function DashboardPage() {
                       <h3 className="text-sm font-medium mb-2">Other Cryptocurrencies</h3>
                       <div className="space-y-2">
                         {cryptoHoldings.length > 0 ? (
-                          cryptoHoldings.map((holding) => (
-                            <div key={holding.tokenId} className="flex justify-between items-center p-2 rounded-md border">
-                              <div>
-                                <div className="font-medium">{holding.tokenId.toUpperCase()}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {holding.actualBalance.toFixed(8)} {holding.tokenId.toUpperCase()}
+                          cryptoHoldings.map((holding) => {
+                            const tokenId = holding.tokenId.toUpperCase();
+                            const price = cryptoPrices[tokenId] || 1;
+                            const valueInUSD = holding.actualBalance * price;
+                            
+                            return (
+                              <div key={holding.tokenId} className="flex justify-between items-center p-2 rounded-md border">
+                                <div>
+                                  <div className="font-medium">{holding.tokenId.toUpperCase()}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {holding.actualBalance.toFixed(8)} {holding.tokenId.toUpperCase()}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium">
+                                    ${valueInUSD.toFixed(2)}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Available: {holding.availableBalance.toFixed(8)} {tokenId} • Price: ${price.toFixed(2)}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="font-medium">
-                                  ${holding.actualBalance.toFixed(2)}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Available: {holding.availableBalance.toFixed(8)} • Price: $1.00
-                                </div>
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
                           <div className="text-center py-4 text-muted-foreground">
                             <p>No other crypto holdings found</p>
@@ -590,7 +662,7 @@ export default function DashboardPage() {
                           ${usdtHolding.actualBalance.toFixed(2)}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Available: ${usdtHolding.availableBalance.toFixed(2)}
+                          Available: {usdtHolding.availableBalance.toFixed(2)} USDT
                         </div>
                       </CardContent>
                     </Card>
@@ -607,22 +679,31 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold mb-2">Other Cryptocurrencies</h3>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {cryptoHoldings.length > 0 ? (
-                    cryptoHoldings.map((holding) => (
-                      <Card key={holding.tokenId}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">{holding.tokenId.toUpperCase()}</CardTitle>
-                          <CardDescription>Cryptocurrency</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">
-                            {holding.actualBalance.toFixed(8)} {holding.tokenId.toUpperCase()}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Available: {holding.availableBalance.toFixed(8)}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                    cryptoHoldings.map((holding) => {
+                      const tokenId = holding.tokenId.toUpperCase();
+                      const price = cryptoPrices[tokenId] || 1;
+                      const valueInUSD = holding.actualBalance * price;
+                      
+                      return (
+                        <Card key={holding.tokenId}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{tokenId}</CardTitle>
+                            <CardDescription>Cryptocurrency</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">
+                              {holding.actualBalance.toFixed(8)} {tokenId}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              ${valueInUSD.toFixed(2)} USD • Price: ${price.toFixed(2)}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Available: {holding.availableBalance.toFixed(8)} {tokenId}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   ) : (
                     <div className="col-span-full text-center py-4 text-muted-foreground">
                       <p>No other crypto holdings found</p>

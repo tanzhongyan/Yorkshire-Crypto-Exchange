@@ -313,6 +313,21 @@ class CryptoHoldingList(Resource):
             db.session.rollback()
             holding_ns.abort(400, f"Failed to create holding: {str(e)}")
 
+# New route to get all holdings for a specific user
+@holding_ns.route('/<string:userId>')
+@holding_ns.param('userId', 'The user ID')
+class UserCryptoHoldingList(Resource):
+    @holding_ns.marshal_list_with(holding_output_model)
+    def get(self, userId):
+        """Get all crypto holdings for a specific user"""
+        # Check if user exists
+        wallet = CryptoWallet.query.get_or_404(userId, f'Wallet not found for user {userId}')
+        
+        # Get all holdings for this user
+        holdings = CryptoHolding.query.filter_by(user_id=userId).all()
+        
+        return holdings
+
 @holding_ns.route('/<string:userId>/<string:tokenId>')
 @holding_ns.param('userId', 'The user ID')
 @holding_ns.param('tokenId', 'The token ID')

@@ -42,7 +42,7 @@ EXCHANGE_RATE_API_URL = "https://v6.exchangerate-api.com/v6/{api_key}/latest/USD
 # coingecko api
 COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
 
-# Exchange Rate API key
+# Fiat Exchange Rate API key
 EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY")
 
 # Define namespaces to group api calls together
@@ -57,8 +57,6 @@ api.add_namespace(orderbook_ns)
 market_params = market_ns.model('MarketParams', {
     'coin': fields.String(required=False, default='bitcoin', description='Cryptocurrency name for CoinGecko API'),
     'days': fields.String(required=False, default='1', description='Time period for CoinGecko API'),
-    # 'crypto_pair': fields.String(required=False, default='BTC-USD', description='Trading pair for OrderBook API'),
-    # 'side': fields.String(required=False, description='Order side for OrderBook API (buy/sell)')
 })
 
 # /market response
@@ -72,34 +70,42 @@ market_response = market_ns.model('MarketResponse', {
     'coinGecko': fields.Nested(coin_gecko_model, description='Data from CoinGecko API')
 })
 
-# market/exchangerate response
+# market/exchangerate response model
 exchange_rate_response = market_ns.model('ExchangeRateResponse', {
     'rates': fields.Raw(description='Exchange rates for requested tokens against USDT')
 })
 
-# New exchange rate API response model
+# market/fiatrates API response model
 exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
     'base_code': fields.String(description='Base currency code'),
     'conversion_rates': fields.Raw(description='Currency conversion rates'),
     'time_last_update_utc': fields.String(description='Last update time in UTC')
 })
 
-# Uncomment and update the orderbook model following outsystems orderbook GET response
+# orders model from outsystem orderbook
 orderbook_model = orderbook_ns.model('OrderBookData', {
-    'transactionId': fields.String(description='Unique identifier for the transaction', example='UUID1'),
-    'userId': fields.String(description='Unique identifier for the user', example='UUID1'),
+    'transactionId': fields.String(description='Unique identifier for the transaction'),
+    'userId': fields.String(description='Unique identifier for the user'),
     'orderType': fields.String(description='Type of order (e.g., limit)', example='limit'),
-    'fromTokenId': fields.String(description='Source token identifier', example='eth'),
-    'toTokenId': fields.String(description='Destination token identifier', example='usdt'),
-    'fromAmount': fields.Float(description='Amount of source token', example=1.0),
-    'limitPrice': fields.Float(description='Limit price for the order', example=1900.0),
+    'fromTokenId': fields.String(description='Source token identifier'),
+    'toTokenId': fields.String(description='Destination token identifier'),
+    'fromAmount': fields.Float(description='Amount of source token'),
+    'limitPrice': fields.Float(description='Limit price for the order'),
     'creation': fields.DateTime(description='Timestamp of order creation', example='2014-12-31T23:59:59.937Z')
 })
 
-# Uncomment and update the recent orders response model
+# /recentorders output model
 recent_orders_response = orderbook_ns.model('RecentOrderResponse', {
     'orders': fields.List(fields.Nested(orderbook_model), description='List of recent orders in the orderbook')
 })
+
+# /sortedorders output model (buy contains 5 most expensive usdt to crypto buy-ins, sell contains 5 cheapest crypto to usdt sell-outs)
+sorted_orders_response = orderbook_ns.model('SortedOrdersResponse', {
+    'buy': fields.List(fields.Nested(orderbook_model), description='List of 5 most expensive buy orders (USDT to token)'),
+    'sell': fields.List(fields.Nested(orderbook_model), description='List of 5 cheapest sell orders (token to USDT)')
+})
+
+#### - HELPER FUNCTIONS - ####
 
 # helper function to convert symbol to coingecko ID
 def symbol_to_coingecko_id(symbol):
@@ -145,24 +151,20 @@ def get_coingecko_data(coin="bitcoin", days="30"):
         tuple: (data_dict, error_message)
     """
     try:
-        # Format URL with parameters
         formatted_url = COINGECKO_MARKET_CHART_URL.format(coin=coin)
         
-        # Add query parameters
+        # http get by query params
         params = {
             'vs_currency': 'usd',
             'days': days,
         }
         
-        # Add authorization header if API key is provided
         headers = {}
         if COINGECKO_API_KEY:
             headers = {"x-cg-demo-api-key": COINGECKO_API_KEY}
         
-        # Make the request
         response = requests.get(formatted_url, params=params, headers=headers)
         
-        # Validate response
         if response.status_code == 200:
             return response.json(), None
         else:
@@ -172,7 +174,7 @@ def get_coingecko_data(coin="bitcoin", days="30"):
     except Exception as e:
         return None, f"Error fetching CoinGecko data: {str(e)}"
 
-# New helper function to get exchange rates
+# helper function to get exchange rates
 def get_exchange_rates(tokens):
     """
     Get exchange rates for specified tokens against USDT
@@ -184,28 +186,26 @@ def get_exchange_rates(tokens):
         tuple: (rates_dict, error_message)
     """
     try:
-        # Convert token symbols to CoinGecko IDs
+        # convert token symbols to coingecko IDs
         token_ids = [symbol_to_coingecko_id(token) for token in tokens]
         
-        # Add query parameters
+        # get by query params
         params = {
             'ids': ','.join(token_ids),
-            'vs_currencies': 'usd'  # We'll use USD as a proxy for USDT
+            'vs_currencies': 'usd'  # use USD as a proxy for USDT
         }
         
-        # Add authorization header if API key is provided
         headers = {}
         if COINGECKO_API_KEY:
             headers = {"x-cg-demo-api-key": COINGECKO_API_KEY}
         
-        # Make the request
         response = requests.get(COINGECKO_SIMPLE_PRICE_URL, params=params, headers=headers)
         
-        # Validate response
+        # validation
         if response.status_code == 200:
             data = response.json()
             
-            # Convert to our desired output format
+            # convert to our desired output format
             rates = {}
             for token in tokens:
                 token_id = symbol_to_coingecko_id(token)
@@ -222,7 +222,8 @@ def get_exchange_rates(tokens):
     except Exception as e:
         return None, f"Error fetching exchange rates: {str(e)}"
 
-# New helper function to get exchange rates from Exchange Rate API
+
+# helper function to get exchange rates from Exchange Rate API
 def get_exchange_rate_api_data(base_currency="USD"):
     """
     Get exchange rates from Exchange Rate API
@@ -253,8 +254,8 @@ def get_exchange_rate_api_data(base_currency="USD"):
     except Exception as e:
         return None, f"Error fetching Exchange Rate API data: {str(e)}"
 
-# helper function for outsystem order book 5 most recent orders timestamped on order creation
 
+# helper function for outsystem order book 5 most recent orders timestamped on order creation
 def get_five_recent_orders():
     """
     Get 5 most recent orders from OrderBook API
@@ -263,35 +264,86 @@ def get_five_recent_orders():
         tuple: (data_list, error_message)
     """
     try:
-        # Make the request to the OrderBook API
+        # make request to OrderBook API in outsystems 
         response = requests.get(ORDERBOOK_GET_ALL_URL)
         
-        # Validate response
+        # validation
         if response.status_code == 200:
             data = response.json()
             
-            # Check if orders exist in the response
+            # check if orders exist in the response
             if 'orders' in data and isinstance(data['orders'], list):
-                # Sort orders by creation date (newest first)
+                # sort orders by creation date (newest first)
                 sorted_orders = sorted(
                     data['orders'], 
                     key=lambda x: x.get('creation', ''), 
                     reverse=True
                 )
                 
-                # Get the 5 most recent orders
+                # get 5 most recent by creation timestamp
                 recent_orders = sorted_orders[:5]
                 
                 return recent_orders, None
             else:
-                return [], None  # Return empty list if no orders field
+                return [], None  # return empty list if no orders field
         else:
             return None, "Failed to fetch data from OrderBook API"
             
     except Exception as e:
         return None, f"Error fetching OrderBook data: {str(e)}"
+    
+# helper function to get sorted orders for a input token
+def get_sorted_orders(token):
+    """
+    Get 5 most expensive buy orders and 5 cheapest sell orders for a specific token
+    
+    Args:
+        token (str): Token identifier (e.g., eth, btc)
+        
+    Returns:
+        tuple: (data_dict, error_message)
+    """
+    try:
+        # get buy orders (USDT to input token)
+        buy_url = ORDERBOOK_GET_BY_TOKEN_URL.format(FromTokenId='usdt', ToTokenId=token)
+        buy_response = requests.get(buy_url)
+        
+        # get sell orders (input token to USDT)
+        sell_url = ORDERBOOK_GET_BY_TOKEN_URL.format(FromTokenId=token, ToTokenId='usdt')
+        sell_response = requests.get(sell_url)
+        
+        # success request?
+        if buy_response.status_code == 200 and sell_response.status_code == 200:
+            buy_data = buy_response.json()
+            sell_data = sell_response.json()
+            
+            # sorting buy orders - get 5 most expensive (highest limit price)
+            buy_orders = []
+            if 'orders' in buy_data and isinstance(buy_data['orders'], list):
+                # filter buy orders and sort by limit price (highest first)
+                filtered_buy_orders = [order for order in buy_data['orders'] if order.get('orderType') == 'limit']
+                sorted_buy_orders = sorted(filtered_buy_orders, key=lambda x: x.get('limitPrice', 0), reverse=True)
+                buy_orders = sorted_buy_orders[:5]
+            
+            # sorting sell orders - get 5 cheapest (lowest limit price)
+            sell_orders = []
+            if 'orders' in sell_data and isinstance(sell_data['orders'], list):
+                # filter sell orders and sort by limit price (lowest first)
+                filtered_sell_orders = [order for order in sell_data['orders'] if order.get('orderType') == 'limit']
+                sorted_sell_orders = sorted(filtered_sell_orders, key=lambda x: x.get('limitPrice', 0))
+                sell_orders = sorted_sell_orders[:5]
+            
+            return {"buy": buy_orders, "sell": sell_orders}, None
+        else:
+            error_msg = f"Failed to fetch data from OrderBook API (Buy Status: {buy_response.status_code}, Sell Status: {sell_response.status_code})"
+            return None, error_msg
+            
+    except Exception as e:
+        return None, f"Error fetching sorted orders: {str(e)}"
 
 ##### API actions - flask restx API autodoc #####
+
+# api endpoint for market/
 @market_ns.route('')
 class MarketResource(Resource):
     @market_ns.doc(
@@ -314,31 +366,26 @@ class MarketResource(Resource):
         - Historical price and volume data from CoinGecko
         - Order book data from the OrderBook service (currently disabled)
         """
-        # Get parameters from request
         coin = request.args.get("coin", "bitcoin")
         days = request.args.get("days", "30")
         
-        # Store errors
         errors = {}
         
-        # Get CoinGecko data
         data_coin_gecko, error_coin_gecko = get_coingecko_data(coin, days)
         if error_coin_gecko:
             errors["coin_gecko"] = error_coin_gecko
 
-        
-        # Return if any errors
+    
         if errors:
             return {"errors": errors}, 500
-        
-        # Merge responses if no errors
+
         combined_market = {
             "coinGecko": data_coin_gecko
         }
         
         return combined_market
 
-# New endpoint for exchange rates
+# api endpoint for market/exchangerate
 @market_ns.route('/exchangerate')
 class ExchangeRateResource(Resource):
     @market_ns.doc(
@@ -360,10 +407,10 @@ class ExchangeRateResource(Resource):
         This endpoint fetches current exchange rates from CoinGecko API for the requested tokens.
         Returns a dictionary with token symbols as keys and their USDT rates as values.
         """
-        # Get tokens from query parameters (comma-separated)
+        # get tokens from query params (string of tokens separated by commas)
         tokens_param = request.args.get("tokens", "BTC,ETH,XRP")
         
-        # Parse tokens
+        # parse tokens
         try:
             tokens = [token.strip() for token in tokens_param.split(',') if token.strip()]
             if not tokens:
@@ -371,17 +418,14 @@ class ExchangeRateResource(Resource):
         except Exception as e:
             return {"error": f"Invalid token format: {str(e)}"}, 400
         
-        # Get exchange rates
         rates, error = get_exchange_rates(tokens)
         
-        # Return error if any
         if error:
             return {"error": error}, 500
         
-        # Return just the rates dictionary
-        return {"rates": rates}
+        return {"rates": rates} # return rates dict
 
-# New endpoint for Exchange Rate API
+# api endpoint for market/fiatrates
 @market_ns.route('/fiatrates')
 class FiatRatesResource(Resource):
     @market_ns.doc(
@@ -400,17 +444,14 @@ class FiatRatesResource(Resource):
         This endpoint fetches current exchange rates from Exchange Rate API.
         Returns the base currency and conversion rates for various fiat currencies.
         """
-        # Get exchange rates
         data, error = get_exchange_rate_api_data()
         
-        # Return error if any
         if error:
             return {"error": error}, 500
         
-        # Return the data
         return data
     
-# Endpoint for recent orders data
+# api endpoint for /orderbook/recentorders
 @orderbook_ns.route('/recentorders')
 class RecentOrdersResource(Resource):
     @orderbook_ns.doc(
@@ -427,15 +468,43 @@ class RecentOrdersResource(Resource):
         This endpoint fetches the 5 most recent orders from the OrderBook service,
         sorted by creation timestamp (newest first).
         """
-        # Get recent orders
         recent_orders, error = get_five_recent_orders()
         
-        # Return error if any
         if error:
             return {"error": error}, 500
         
-        # Return the data using the updated model structure
         return {"orders": recent_orders}
+
+# api endpoint for /orderbook/sortedorders
+@orderbook_ns.route('/sortedorders')
+class SortedOrdersResource(Resource):
+    @orderbook_ns.doc(
+        params={
+            'token': {'description': 'Token identifier (e.g., eth, btc)', 'default': 'eth'}
+        },
+        responses={
+            200: 'Success',
+            500: 'Server Error'
+        }
+    )
+    @orderbook_ns.marshal_with(sorted_orders_response, code=200)
+    def get(self):
+        """
+        Retrieve 5 most expensive buy orders and 5 cheapest sell orders for a specific token
+        
+        This endpoint fetches:
+        - 5 most expensive buy orders (USDT to token)
+        - 5 cheapest sell orders (token to USDT)
+        """
+        # get token from query parameters
+        token = request.args.get("token", "eth").lower()
+        
+        sorted_orders, error = get_sorted_orders(token)
+        
+        if error:
+            return {"error": error}, 500
+
+        return sorted_orders
 
 if __name__ == "__main__":
     if not COINGECKO_API_KEY:

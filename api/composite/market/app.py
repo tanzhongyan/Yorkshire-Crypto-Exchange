@@ -31,10 +31,10 @@ app.register_blueprint(blueprint)
 # Environment variables for microservice
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
-COINGECKO_URL = "https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
+COINGECKO_MARKET_CHART_URL = "https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
 COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
-# ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
-# ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
+ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
+ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
 
 # New Exchange Rate API URL
 EXCHANGE_RATE_API_URL = "https://v6.exchangerate-api.com/v6/{api_key}/latest/USD"
@@ -132,7 +132,7 @@ def get_coingecko_data(coin="bitcoin", days="30"):
     """
     try:
         # Format URL with parameters
-        formatted_url = COINGECKO_URL.format(coin=coin)
+        formatted_url = COINGECKO_MARKET_CHART_URL.format(coin=coin)
         
         # Add query parameters
         params = {

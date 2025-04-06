@@ -83,6 +83,7 @@ exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
 })
 
 # orders model from outsystem orderbook
+# same as json response from orderbook, we are only working with limit 
 orderbook_model = orderbook_ns.model('OrderBookData', {
     'transactionId': fields.String(description='Unique identifier for the transaction'),
     'userId': fields.String(description='Unique identifier for the user'),
@@ -256,9 +257,9 @@ def get_exchange_rate_api_data(base_currency="USD"):
 
 
 # helper function for outsystem order book 5 most recent orders timestamped on order creation
-def get_five_recent_orders():
+def get_ten_recent_orders():
     """
-    Get 5 most recent orders from OrderBook API
+    Get 10 most recent orders from OrderBook API
     
     Returns:
         tuple: (data_list, error_message)
@@ -273,15 +274,18 @@ def get_five_recent_orders():
             
             # check if orders exist in the response
             if 'orders' in data and isinstance(data['orders'], list):
+
+                # filter such that only limit orders will be sorted 
+                limit_orders = [order for order in data['orders'] if order.get('orderType') == 'limit']
                 # sort orders by creation date (newest first)
                 sorted_orders = sorted(
-                    data['orders'], 
+                    limit_orders, 
                     key=lambda x: x.get('creation', ''), 
                     reverse=True
                 )
                 
-                # get 5 most recent by creation timestamp
-                recent_orders = sorted_orders[:5]
+                # get 10 most recent by creation timestamp
+                recent_orders = sorted_orders[:10]
                 
                 return recent_orders, None
             else:
@@ -463,12 +467,12 @@ class RecentOrdersResource(Resource):
     @orderbook_ns.marshal_with(recent_orders_response, code=200)
     def get(self):
         """
-        Retrieve 5 most recent orders from the OrderBook
+        Retrieve 10 most recent orders from the OrderBook
         
-        This endpoint fetches the 5 most recent orders from the OrderBook service,
+        This endpoint fetches the 10 most recent orders from the OrderBook service,
         sorted by creation timestamp (newest first).
         """
-        recent_orders, error = get_five_recent_orders()
+        recent_orders, error = get_ten_recent_orders()
         
         if error:
             return {"error": error}, 500

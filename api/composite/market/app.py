@@ -298,7 +298,7 @@ def get_sorted_orders(token):
     Get 5 most expensive buy orders and 5 cheapest sell orders for a specific token
     
     Args:
-        token (str): Token identifier (e.g., eth, btc)
+        token (str): Token identifier (e.g., BTC, ETH)
         
     Returns:
         tuple: (data_dict, error_message)
@@ -480,7 +480,7 @@ class RecentOrdersResource(Resource):
 class SortedOrdersResource(Resource):
     @orderbook_ns.doc(
         params={
-            'token': {'description': 'Token identifier (e.g., eth, btc)', 'default': 'eth'}
+            'token': {'description': 'Token identifier (e.g., BTC, ETH)', 'default': 'BTC'}
         },
         responses={
             200: 'Success',
@@ -497,7 +497,7 @@ class SortedOrdersResource(Resource):
         - 5 cheapest sell orders (token to USDT)
         """
         # get token from query parameters
-        token = request.args.get("token", "eth").lower()
+        token = request.args.get("token", "BTC").lower()
         
         sorted_orders, error = get_sorted_orders(token)
         

@@ -450,7 +450,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             # if step 1 success: 
                 # step 2:minus from sell order userId 
             if 'error' not in execute_buy_result:
-                execute_sell_result = update_from_crypto(sell.get['userId'], sell.get['fromTokenId'], base_qty_traded)
+                execute_sell_result = update_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
                 
                 # if step 2 fail: rollback step1, updated_all_services is False. stops here and exits this nested if 
                 if 'error' in execute_sell_result:
@@ -519,8 +519,8 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                 updated_all_services = True 
                                 
                                 # description of execution
-                                buy_description = f'{buy_from_amount_actual}{buy.get('fromTokenId')} was swapped for {buy_to_amount_actual}{buy.get('toTokenId')}'
-                                sell_description = f'{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}'
+                                buy_description = f"{buy_from_amount_actual}{buy.get('fromTokenId')} was swapped for {buy_to_amount_actual}{buy.get('toTokenId')}"
+                                sell_description = f"{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}"
 
                                 message_to_publish_buy = execution = {
                                                 'transactionId' : buy.get('transactionId'), 
@@ -681,12 +681,14 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 fail_incoming_req = False
                                 updated_all_services = True 
 
+                                buy_description = f"{buy_from_amount_actual}{buy.get('fromTokenId')} was swapped for {buy_to_amount_actual}{buy.get('toTokenId')}"
+                                sell_description = f"{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}"
                                 message_to_publish_buy = execution = {
                                                 'transactionId' : buy.get('transactionId'), 
                                                 'status' : buy_status, 
                                                 'fromAmountActual' : buy_from_amount_actual, 
                                                 'toAmountActual' : buy_to_amount_actual, 
-                                                'details' : description
+                                                'details' : buy_description
                                             }            
                                 ##################################################################################################################################################################### publish msg here
                                 
@@ -695,7 +697,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                                     'status' : sell_status, 
                                                     'fromAmountActual' : sell_from_amount_actual, 
                                                     'toAmountActual' : sell_to_amount_actual, 
-                                                    'details' : description
+                                                    'details' : sell_description
                                                 }            
                                 ##################################################################################################################################################################### publish msg here
                                 # if incoming order fulfilled and services updated and message published for executions, then break out of loop to check for orders

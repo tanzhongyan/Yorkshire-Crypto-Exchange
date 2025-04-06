@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowUpRight, Wallet } from "lucide-react"
+import { ArrowUpRight, Wallet, ChevronLeft, ChevronRight } from "lucide-react"
+import { getCookie } from "@/lib/cookies"
+import axios from "@/lib/axios"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AreaChart, BarChart } from "@/components/chart"
+import { Button } from "@/components/ui/button"
 
 // Mock data for the charts
 const areaChartData = [
@@ -41,10 +44,116 @@ const wallets = [
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
+  const [transactions, setTransactions] = useState([])
+  const [pagination, setPagination] = useState({
+    total: 0,
+    pages: 0,
+    page: 1,
+    per_page: 10
+  })
+  const [loading, setLoading] = useState(false)
+  const userId = getCookie("userId")
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const fetchTransactions = async (page = 1) => {
+    if (!userId) return
+    
+    setLoading(true)
+    try {
+      const response = await axios.get(`/api/v1/transaction/aggregated/user/${userId}`, {
+        params: {
+          page,
+          per_page: 10
+        }
+      })
+      
+      setTransactions(response.data.transactions)
+      setPagination(response.data.pagination)
+    } catch (error) {
+      console.error("Failed to load transactions:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage) => {
+    fetchTransactions(newPage)
+  }
+
+  // Initial load of transactions
+  useEffect(() => {
+    if (mounted && userId) {
+      fetchTransactions(1)
+    }
+  }, [mounted, userId])
+
+  // Format dates for display
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr)
+    return date.toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Format transaction amount for display
+  const formatTransactionDisplay = (transaction) => {
+    switch (transaction.transactionType) {
+      case 'fiat':
+        return {
+          title: transaction.type === 'deposit' 
+            ? `Deposited ${transaction.currencyCode.toUpperCase()}` 
+            : `Withdrew ${transaction.currencyCode.toUpperCase()}`,
+          amount: `${transaction.type === 'deposit' ? '+' : '-'}${transaction.amount} ${transaction.currencyCode.toUpperCase()}`,
+          value: `${transaction.type === 'deposit' ? '+' : '-'}$${transaction.amount.toLocaleString()}`,
+          className: transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'
+        }
+      case 'fiat_to_crypto':
+        return {
+          title: transaction.direction === 'fiattocrypto' 
+            ? `Swapped ${transaction.currencyCode.toUpperCase()} to ${transaction.tokenId.toUpperCase()}` 
+            : `Swapped ${transaction.tokenId.toUpperCase()} to ${transaction.currencyCode.toUpperCase()}`,
+          amount: transaction.direction === 'fiattocrypto' 
+            ? `+${transaction.toAmount} ${transaction.tokenId.toUpperCase()}` 
+            : `+${transaction.toAmount} ${transaction.currencyCode.toUpperCase()}`,
+          value: `$${transaction.toAmount.toLocaleString()}`,
+          className: 'text-green-500'
+        }
+      case 'crypto':
+        if (transaction.fromTokenId === transaction.toTokenId) {
+          // Transfer of same token
+          return {
+            title: `Transferred ${transaction.fromTokenId.toUpperCase()}`,
+            amount: `${transaction.fromAmount} ${transaction.fromTokenId.toUpperCase()}`,
+            value: `-$${transaction.fromAmount.toLocaleString()}`,
+            className: 'text-red-500'
+          }
+        } else {
+          // Swap between tokens
+          return {
+            title: `Swapped ${transaction.fromTokenId.toUpperCase()} to ${transaction.toTokenId.toUpperCase()}`,
+            amount: `+${transaction.toAmount} ${transaction.toTokenId.toUpperCase()}`,
+            value: transaction.toAmountActual 
+              ? `$${transaction.toAmountActual.toLocaleString()}` 
+              : `$${transaction.toAmount.toLocaleString()}`,
+            className: 'text-muted-foreground'
+          }
+        }
+      default:
+        return {
+          title: 'Unknown Transaction',
+          amount: '',
+          value: '',
+          className: 'text-muted-foreground'
+        }
+    }
+  }
 
   if (!mounted) {
     return null
@@ -107,7 +216,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -194,48 +302,63 @@ export default function DashboardPage() {
                 <CardDescription>Your recent transactions across all wallets</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <div>
-                      <div className="font-medium">Bought Bitcoin</div>
-                      <div className="text-sm text-muted-foreground">Mar 14, 2025</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">+0.01 BTC</div>
-                      <div className="text-sm text-green-500">$650.00</div>
-                    </div>
+                {loading ? (
+                  <div className="flex justify-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <div>
-                      <div className="font-medium">Sold Ethereum</div>
-                      <div className="text-sm text-muted-foreground">Mar 12, 2025</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">-0.5 ETH</div>
-                      <div className="text-sm text-red-500">-$1,200.00</div>
-                    </div>
+                ) : transactions.length > 0 ? (
+                  <div className="space-y-4">
+                    {transactions.map((transaction) => {
+                      const display = formatTransactionDisplay(transaction);
+                      return (
+                        <div key={transaction.transactionId} className="flex items-center justify-between border-b pb-4">
+                          <div>
+                            <div className="font-medium">{display.title}</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(transaction.creationDate)}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium">{display.amount}</div>
+                            <div className={`text-sm ${display.className}`}>{display.value}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Pagination Controls */}
+                    {pagination.pages > 1 && (
+                      <div className="flex items-center justify-between pt-4">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {transactions.length} of {pagination.total} transactions
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={pagination.page <= 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <div className="text-sm">
+                            Page {pagination.page} of {pagination.pages}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={pagination.page >= pagination.pages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <div>
-                      <div className="font-medium">Deposited SGD</div>
-                      <div className="text-sm text-muted-foreground">Mar 10, 2025</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">+1,000 SGD</div>
-                      <div className="text-sm text-green-500">$1,000.00</div>
-                    </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <p>No transactions found</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">Swapped SGD to USDT</div>
-                      <div className="text-sm text-muted-foreground">Mar 8, 2025</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">+500 USDT</div>
-                      <div className="text-sm text-muted-foreground">$500.00</div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -243,4 +366,3 @@ export default function DashboardPage() {
       </div>
   )
 }
-

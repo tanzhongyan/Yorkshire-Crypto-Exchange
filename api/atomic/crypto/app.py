@@ -540,6 +540,42 @@ class CryptoHoldingExecute(Resource):
             db.session.rollback()
             holding_ns.abort(400, f"Failed to execute order: {str(e)}")
 
+@holding_ns.route('/rollback')
+class CryptoHoldingRollback(Resource):
+    @holding_ns.expect(amount_change_model, validate=True)
+    def post(self):
+        """Roll back an executed order by increasing actual balance only"""
+        data = request.json
+        userId = data.get('userId')
+        tokenId = data.get('tokenId')
+        amountChanged = data.get('amountChanged', 0.0)
+        
+        if not userId or not tokenId:
+            holding_ns.abort(400, "userId and tokenId are required in the request body")
+        
+        if amountChanged <= 0:
+            holding_ns.abort(400, "amountChanged must be positive for rollbacks")
+        
+        holding = CryptoHolding.query.filter_by(user_id=userId, token_id=tokenId).first_or_404(
+            description=f'Holding not found for user {userId} and token {tokenId}'
+        )
+        
+        # Increase only the actual balance (not the available balance)
+        holding.actual_balance += amountChanged
+        
+        try:
+            db.session.commit()
+            return {
+                'message': f'Successfully rolled back {amountChanged} tokens to actual balance',
+                'userId': userId,
+                'tokenId': tokenId,
+                'actualBalance': holding.actual_balance,
+                'availableBalance': holding.available_balance
+            }, 200
+        except Exception as e:
+            db.session.rollback()
+            holding_ns.abort(400, f"Failed to roll back tokens: {str(e)}")
+
 @holding_ns.route('/withdraw')
 class CryptoHoldingWithdraw(Resource):
     @holding_ns.expect(amount_change_model, validate=True)

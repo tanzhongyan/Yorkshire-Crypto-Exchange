@@ -205,6 +205,30 @@ services:
     expose:
       - "5000"
 
+  market-service:
+    container_name: market-service
+    build:
+      context: ./api/composite/market
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+
+
+  # rabbitmq:
+  #   image: rabbitmq:management
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   volumes:
+  #     - rabbitmq_data:/var/lib/rabbitmq
   rabbitmq:
     image: rabbitmq:management
     hostname: yorkshire-rabbit

@@ -1,10 +1,18 @@
 import requests
+import logging
 import amqp_lib
 import pika
 import json
 import decimal
 from decimal import Decimal
 
+# logger
+# Configure logging at the application startup
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG during testing
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(name)
 
 # RabbitMQ
 rabbit_host = "rabbitmq"

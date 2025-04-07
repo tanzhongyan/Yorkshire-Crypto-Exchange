@@ -267,10 +267,10 @@ services:
     networks:
       - kong-net
 
-  order-initiation-service:
-    container_name: order-initiation-service
+  initiate-service:
+    container_name: initiate-service
     build:
-      context: ./api/composite/order-initiation
+      context: ./api/composite/initiate
       dockerfile: Dockerfile
     ports:
       - "5009:5000"
@@ -287,10 +287,10 @@ services:
     expose:
       - "5000"
 
-  order-completion-service:
-    container_name: order-completion-service
+  complete-service:
+    container_name: complete-service
     build:
-      context: ./api/composite/order-completion
+      context: ./api/composite/complete
       dockerfile: Dockerfile
     ports:
       - "5010:5000"

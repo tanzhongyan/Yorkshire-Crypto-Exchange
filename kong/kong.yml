@@ -141,22 +141,22 @@ services:
         plugins:
           - name: jwt
 
-  - name: order-initiation-service
-    url: http://order-initiation-service:5000
+  - name: initiate-service
+    url: http://initiate-service:5000
     routes:
-      - name: order-initiation-route
+      - name: initiate-route
         paths:
           - /api/v1/order
         strip_path: false
         plugins:
           - name: jwt
 
-  - name: order-completion-service
-    url: http://order-completion-service:5000
+  - name: complete-service
+    url: http://complete-service:5000
     routes:
-      - name: order-completion-route
+      - name: complete-route
         paths:
-          - /api/v1/order-completion
+          - /api/v1/complete
         strip_path: false
         plugins:
           - name: jwt

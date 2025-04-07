@@ -11,9 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// API key for exchange rate
-const EXCHANGE_RATE_API_KEY = "35cbaa1f18ca3a26bcd96cec";
-
 // Define available currencies with their symbols
 const FIAT_CURRENCIES = [
   {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$"},
@@ -47,22 +44,18 @@ export default function RampPage() {
   // Fetch all exchange rates once (USD based)
   const fetchAllExchangeRates = useCallback(async () => {
     try {
-      const response = await fetch(`https://v6.exchangerate-api.com/v6/${EXCHANGE_RATE_API_KEY}/latest/USD`);
+      // Use axios to call our API endpoint instead of direct fetch with API key
+      const response = await axios.get('/api/v1/market/fiatrates');
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.result === "success") {
-          // Add USD to USD rate (1.0)
-          const rates = { 
-            ...data.conversion_rates, 
-            USD: 1.0 // Ensure USD to USD is 1.0
-          };
-          setExchangeRates(rates);
-        } else {
-          console.error("Failed to fetch exchange rates:", data);
-        }
+      if (response.status === 200 && response.data) {
+        // Add USD to USD rate (1.0) if not already present
+        const rates = { 
+          ...response.data.conversion_rates, 
+          USD: 1.0 // Ensure USD to USD is 1.0
+        };
+        setExchangeRates(rates);
       } else {
-        console.error("Failed to fetch exchange rates, status:", response.status);
+        console.error("Failed to fetch exchange rates:", response.data);
       }
     } catch (error) {
       console.error("Error fetching exchange rates:", error);

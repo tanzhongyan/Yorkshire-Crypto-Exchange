@@ -149,3 +149,24 @@ services:
         strip_path: false
         plugins:
           - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: order-initiation-service
+    url: http://order-initiation-service:5000  # Internal URL of the transaction service
+    routes:
+      - name: order-initiation-route
+        paths:
+          - /api/v1/order-initiation
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+
+  - name: market-service
+    url: http://market-service:5000
+    routes:
+      - name: market-route
+        paths:
+          - /api/v1/market
+        strip_path: false
+        plugins:
+          - name: jwt  # Explicitly apply JWT without anonymous
+    

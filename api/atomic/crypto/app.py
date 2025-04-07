@@ -313,6 +313,21 @@ class CryptoHoldingList(Resource):
             db.session.rollback()
             holding_ns.abort(400, f"Failed to create holding: {str(e)}")
 
+# New route to get all holdings for a specific user
+@holding_ns.route('/<string:userId>')
+@holding_ns.param('userId', 'The user ID')
+class UserCryptoHoldingList(Resource):
+    @holding_ns.marshal_list_with(holding_output_model)
+    def get(self, userId):
+        """Get all crypto holdings for a specific user"""
+        # Check if user exists
+        wallet = CryptoWallet.query.get_or_404(userId, f'Wallet not found for user {userId}')
+        
+        # Get all holdings for this user
+        holdings = CryptoHolding.query.filter_by(user_id=userId).all()
+        
+        return holdings
+
 @holding_ns.route('/<string:userId>/<string:tokenId>')
 @holding_ns.param('userId', 'The user ID')
 @holding_ns.param('tokenId', 'The token ID')
@@ -525,6 +540,42 @@ class CryptoHoldingExecute(Resource):
             db.session.rollback()
             holding_ns.abort(400, f"Failed to execute order: {str(e)}")
 
+@holding_ns.route('/rollback')
+class CryptoHoldingRollback(Resource):
+    @holding_ns.expect(amount_change_model, validate=True)
+    def post(self):
+        """Roll back an executed order by increasing actual balance only"""
+        data = request.json
+        userId = data.get('userId')
+        tokenId = data.get('tokenId')
+        amountChanged = data.get('amountChanged', 0.0)
+        
+        if not userId or not tokenId:
+            holding_ns.abort(400, "userId and tokenId are required in the request body")
+        
+        if amountChanged <= 0:
+            holding_ns.abort(400, "amountChanged must be positive for rollbacks")
+        
+        holding = CryptoHolding.query.filter_by(user_id=userId, token_id=tokenId).first_or_404(
+            description=f'Holding not found for user {userId} and token {tokenId}'
+        )
+        
+        # Increase only the actual balance (not the available balance)
+        holding.actual_balance += amountChanged
+        
+        try:
+            db.session.commit()
+            return {
+                'message': f'Successfully rolled back {amountChanged} tokens to actual balance',
+                'userId': userId,
+                'tokenId': tokenId,
+                'actualBalance': holding.actual_balance,
+                'availableBalance': holding.available_balance
+            }, 200
+        except Exception as e:
+            db.session.rollback()
+            holding_ns.abort(400, f"Failed to roll back tokens: {str(e)}")
+
 @holding_ns.route('/withdraw')
 class CryptoHoldingWithdraw(Resource):
     @holding_ns.expect(amount_change_model, validate=True)
@@ -570,81 +621,134 @@ class CryptoHoldingWithdraw(Resource):
 
 # ##### Seeding #####
 # # Provide seed data for all tables
-# def seed_data():
-#     try:
-#         with open("seeddata.json", "r") as file:
-#             data = json.load(file)
+def seed_data():
+    try:
+        # Check if the seeddata.json exists, if not, create it with our data
+        try:
+            with open("seeddata.json", "r") as file:
+                data = json.load(file)
+                print("Loading existing seeddata.json file.")
+        except FileNotFoundError:
+            print("seeddata.json not found. Creating default seed data.")
+            # Define the symbol map for token data
+            symbol_map = {
+                'btc': 'bitcoin',
+                'eth': 'ethereum',
+                'xrp': 'ripple',
+                'usdt': 'tether',
+                'bnb': 'binancecoin',
+                'ada': 'cardano',
+                'sol': 'solana',
+                'doge': 'dogecoin',
+                'dot': 'polkadot',
+                'matic': 'matic-network',
+                'ltc': 'litecoin',
+                'link': 'chainlink',
+                'avax': 'avalanche-2',
+            }
+            
+            # Create the data structure
+            data = {
+                "cryptoWallets": [
+                    {
+                        "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0"
+                    }
+                ],
+                "cryptoTokens": [
+                    {"tokenId": symbol, "tokenName": name.capitalize()} 
+                    for symbol, name in symbol_map.items()
+                ],
+                "cryptoHoldings": [
+                    {
+                        "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+                        "tokenId": "usdt",
+                        "actualBalance": 1000.0,
+                        "availableBalance": 1000.0
+                    }
+                ]
+            }
+            
+            # Save the seed data to a file
+            with open("seeddata.json", "w") as file:
+                json.dump(data, file, indent=2)
+                print("Created seeddata.json with initial data.")
 
-#         # 1) Insert CryptoWallet data
-#         crypto_wallets_data = data.get("cryptoWallets", [])
-#         existing_usernames = {u.user_id for u in CryptoWallet.query.all()}
+        # 1) Insert CryptoWallet data
+        crypto_wallets_data = data.get("cryptoWallets", [])
+        existing_usernames = {u.user_id for u in CryptoWallet.query.all()}
 
-#         for wall in crypto_wallets_data:
-#             # Skip if user already exists
-#             if wall["userId"] in existing_usernames:
-#                 print(f"Skipping user '{wall['userId']}' as it already exists.")
-#                 continue
+        for wallet in crypto_wallets_data:
+            # Skip if user already exists
+            if wallet["userId"] in existing_usernames:
+                print(f"Skipping user '{wallet['userId']}' as it already exists.")
+                continue
 
-#             new_wallet = CryptoWallet(
-#                 user_id=wall["userId"], #gotta fake it for this one
-#                 wallet_id=wall["walletId"],
-#             )
-#             db.session.add(new_wallet)
-#         db.session.commit()
+            new_wallet = CryptoWallet(
+                user_id=wallet["userId"]
+            )
+            db.session.add(new_wallet)
+        db.session.commit()
 
-#         # 2) Insert CryptoToken data
-#         crypto_tokens_data = data.get("cryptoTokens", [])
-#         existing_tokens = {t.token_id for t in CryptoToken.query.all()}
+        # 2) Insert CryptoToken data
+        crypto_tokens_data = data.get("cryptoTokens", [])
+        existing_tokens = {t.token_id for t in CryptoToken.query.all()}
 
-#         for token in crypto_tokens_data:
-#             # Skip if token already exists
-#             if token["token_id"] in existing_tokens:
-#                 print(f"Skipping token '{token['token_id']}' as it already exists.")
-#                 continue
+        for token in crypto_tokens_data:
+            # Skip if token already exists
+            if token["tokenId"] in existing_tokens:
+                print(f"Skipping token '{token['tokenId']}' as it already exists.")
+                continue
 
-#             new_token = CryptoToken(
-#                 token_id=token["token_id"],
-#                 token_name=token["token_name"]
-#             )
-#             db.session.add(new_token)
-#         db.session.commit()
+            new_token = CryptoToken(
+                token_id=token["tokenId"],
+                token_name=token["tokenName"]
+            )
+            db.session.add(new_token)
+        db.session.commit()
 
-#         # 3) Insert CryptoHolding data
-#         crypto_holdings_data = data.get("cryptoHoldings", [])
-#         # Creating a lookup for wallet_id and token_id
-#         wallet_lookup = {w.wallet_id: w for w in CryptoWallet.query.all()}
-#         token_lookup = {t.token_id: t for t in CryptoToken.query.all()}
+        # 3) Insert CryptoHolding data using deposit logic
+        user_id = "a7c396e2-8370-4975-820e-c5ee8e3875c0"
+        token_id = "usdt"
+        amount = 1000.0
+        
+        # Check if user and token exist
+        wallet = CryptoWallet.query.get(user_id)
+        token = CryptoToken.query.get(token_id)
+        
+        if wallet and token:
+            # Check if holding already exists
+            existing_holding = CryptoHolding.query.filter_by(
+                user_id=user_id,
+                token_id=token_id
+            ).first()
+            
+            if existing_holding:
+                print(f"Holding for user '{user_id}' and token '{token_id}' already exists with balance {existing_holding.actual_balance}.")
+            else:
+                # Use deposit logic
+                new_holding = CryptoHolding(
+                    user_id=user_id,
+                    token_id=token_id,
+                    actual_balance=amount,
+                    available_balance=amount
+                )
+                db.session.add(new_holding)
+                db.session.commit()
+                print(f"Successfully deposited {amount} {token_id} to user {user_id}")
+        else:
+            if not wallet:
+                print(f"Cannot deposit: User {user_id} does not exist.")
+            if not token:
+                print(f"Cannot deposit: Token {token_id} does not exist.")
 
-#         for holding in crypto_holdings_data:
-#             wallet_id = holding["walletId"]
-#             token_id = holding["tokenId"]
+        print("Seed data successfully loaded from seeddata.json.")
 
-#             # Skip if wallet or token does not exist
-#             if wallet_id not in wallet_lookup:
-#                 print(f"Skipping holding for unknown wallet '{wallet_id}'")
-#                 continue
-#             if token_id not in token_lookup:
-#                 print(f"Skipping holding for unknown token '{token_id}'")
-#                 continue
-
-#             # Creating new CryptoHolding
-#             new_holding = CryptoHolding(
-#                 wallet_id=wallet_lookup[wallet_id].wallet_id,
-#                 token_id=token_lookup[token_id].token_id,
-#                 actual_balance=holding["actualBalance"],
-#                 available_balance=holding["availableBalance"],
-#                 updated_on=holding["updatedOn"]
-#             )
-#             db.session.add(new_holding)
-#         db.session.commit()
-
-#         print("Seed data successfully loaded from seeddata.json.")
-
-#     except IntegrityError as e:
-#         db.session.rollback()
-#         print(f"Data seeding failed due to integrity error: {e}")
-#     except FileNotFoundError:
-#         print("seeddata.json not found. Skipping seeding.")
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"Data seeding failed due to integrity error: {e}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Data seeding failed with error: {e}")
 
 # Add name spaces into api
 api.add_namespace(token_ns)
@@ -652,6 +756,6 @@ api.add_namespace(wallet_ns)
 api.add_namespace(holding_ns)
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     seed_data()
+    with app.app_context():
+        seed_data()
     app.run(host='0.0.0.0', port=5000, debug=True)

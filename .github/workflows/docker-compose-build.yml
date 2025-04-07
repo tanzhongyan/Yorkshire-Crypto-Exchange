@@ -41,12 +41,25 @@ jobs:
             exit 1
           fi
 
-      - name: 🔍 Detect Failed Containers
+      - name: 🔍 Detect Failed Containers (Ignore Known One-Offs)
         run: |
+          # List containers that exited (non-zero or zero)
           EXITED_CONTAINERS=$(docker ps -a --filter "status=exited" --format "{{.Names}}")
-          if [ ! -z "$EXITED_CONTAINERS" ]; then
-            echo "🚨 The following containers failed:"
-            echo "$EXITED_CONTAINERS"
+          
+          # Containers that are allowed to exit (like init jobs)
+          ALLOWED_EXITED_CONTAINERS=("rabbitmq-setup")
+
+          UNEXPECTED_EXITED=()
+
+          for CONTAINER in $EXITED_CONTAINERS; do
+            if [[ ! " ${ALLOWED_EXITED_CONTAINERS[@]} " =~ " ${CONTAINER} " ]]; then
+              UNEXPECTED_EXITED+=($CONTAINER)
+            fi
+          done
+
+          if [ ${#UNEXPECTED_EXITED[@]} -ne 0 ]; then
+            echo "🚨 Unexpected containers exited:"
+            printf '%s\n' "${UNEXPECTED_EXITED[@]}"
             exit 1
           fi
 

@@ -1,6 +1,11 @@
 networks:
   kong-net:
+    driver: bridge
     external: false
+  rabbit-net:
+    driver: bridge
+    external: false
+
 
 services:
   kong:
@@ -81,6 +86,7 @@ services:
       - crypto_data:/var/lib/crypto_service
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -122,6 +128,7 @@ services:
         condition: service_healthy # wait until postgres healthy
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -149,6 +156,7 @@ services:
       - transaction_data:/var/lib/transaction_service
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
 
@@ -165,9 +173,10 @@ services:
         condition: service_healthy # wait until postgres healthy
     networks:
       - kong-net
+      # - rabbit-net
     expose:
       - "5000"
-      
+
   stripe-cli:
     image: stripe/stripe-cli:latest
     container_name: stripe-cli
@@ -196,13 +205,46 @@ services:
     expose:
       - "5000"
 
-  # rabbitmq:
-  #   image: rabbitmq:management
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-  #   volumes:
-  #     - rabbitmq_data:/var/lib/rabbitmq
+  market-service:
+    container_name: market-service
+    build:
+      context: ./api/composite/market
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+
+  rabbitmq:
+    image: rabbitmq:management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - rabbit-net
+
+  rabbitmq-setup:
+    build:
+      context: ./rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rabbit-net
 
   postgres:
     build: ./database
@@ -225,6 +267,26 @@ services:
     networks:
       - kong-net
 
+  order-initiation-service:
+    container_name: order-initiation-service
+    build:
+      context: ./api/composite/order-initiation
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      - rabbit-net
+    expose:
+      - "5000"
+
   # website:
   #   build:
   #     context: ./website
@@ -240,6 +302,6 @@ volumes:
   fiat_data:
   user_data:
   crypto_data:
-  # rabbitmq_data:
+  rabbitmq_data:
   postgres_data:
   transaction_data:

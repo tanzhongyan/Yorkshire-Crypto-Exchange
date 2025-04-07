@@ -458,7 +458,8 @@ def match_incoming_buy(incoming_order, counterparty_orders):
     # intialise for readability
     buy = incoming_order.copy()
     buy['fromAmount'] = Decimal(str(buy['fromAmount']))
-    buy['limitPrice'] = Decimal(str(buy['limitPrice']))
+    if buy['orderType'] == 'limit':
+        buy['limitPrice'] = Decimal(str(buy['limitPrice']))
     
     sell_orders = []
     for sell in counterparty_orders:
@@ -658,7 +659,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 )
             
     elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
-        description = "Failed to process order in Yokshire Crypto Exchange order book. Market is not liquid enough. Please try again Later"
+        description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
@@ -687,7 +688,8 @@ def match_incoming_sell(incoming_order, counterparty_orders):
     # intialise for readability
     sell = incoming_order.copy()
     sell['fromAmount'] = Decimal(str(sell['fromAmount']))
-    sell['limitPrice'] = Decimal(str(sell['limitPrice']))
+    if sell['orderType'] == 'limit':
+        sell['limitPrice'] = Decimal(str(sell['limitPrice']))
     
     buy_orders = []
     for buy in counterparty_orders:
@@ -886,7 +888,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                 )
             
     elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
-        description = "Failed to process order in Yokshire Crypto Exchange order book. Market is not liquid enough. Please try again Later"
+        description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),

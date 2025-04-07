@@ -718,7 +718,8 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         elif sell.get('orderType') == 'market':
             price_executed = buy.get('limitPrice')
             can_match = True
-            
+        
+        logger.error(f"matching is {can_match}-----------------------------------------------------------------------------")
         if can_match:
             # bring to common quote crypto Id to compare and see which can be maximally fulfilled. Recall terminology used in determine_side function for quote (can refer to comments).
             # to answer
@@ -739,6 +740,8 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
             
             # if step 1 fail: nothing to rollback, updated_all_services is False. stops here and exits this nested if 
+            if 'error' in execute_buy_result:
+                logger.error(f"error in step 1-----------------------------------------------------------------------------")
             # if step 1 success: 
                 # step 2:minus from sell order userId 
             if 'error' not in execute_buy_result:
@@ -746,6 +749,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                 
                 # if step 2 fail: rollback step1, updated_all_services is False. stops here and exits this nested if 
                 if 'error' in execute_sell_result:
+                    logger.error(f"error in step 2-----------------------------------------------------------------------------")
                     rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                 # if step 2 success: 
                     # step 3:add to buy order userId 
@@ -754,6 +758,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                     
                     # if step 3 fail: rollback step1 and step2, updated_all_services is False. stops here and exits this nested if 
                     if 'error' in deposit_buy_result:
+                        logger.error(f"error in step 3-----------------------------------------------------------------------------")
                         rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                         rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                     # if step 3 success: 
@@ -763,6 +768,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
                         if 'error' in deposit_sell_result:
+                            logger.error(f"error in step 4-----------------------------------------------------------------------------")
                             rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                             rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                             rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
@@ -801,6 +807,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 update_book_response = delete_order_in_orderbook(buy.get('transactionId'))
                                 
                             if not update_book_response.get('success'):
+                                logger.error(f"error in step 5 aka update orderbook-----------------------------------------------------------------------------")
                                 # rollback step 1,2,3,4, updated_all_services is False. stops here and exits this nested if
                                 rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
                                 rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)

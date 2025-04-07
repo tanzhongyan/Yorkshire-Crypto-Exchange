@@ -17,7 +17,6 @@ plugins:
         - Content-Type
         - Origin
       credentials: true
-  # JWT plugin without anonymous - it will now properly enforce authentication
   - name: jwt
     config:
       key_claim_name: kid
@@ -25,13 +24,11 @@ plugins:
         - exp
       secret_is_base64: false
 
-# Consumer definition
 consumers:
   - username: app_client
     custom_id: frontend-client
   - username: anonymous_consumer
 
-# JWT credentials
 jwt_secrets:
   - consumer: app_client
     key: "iloveesd"
@@ -42,7 +39,6 @@ services:
   - name: user-service
     url: http://user-service:5000
     routes:
-      # Public login route
       - name: user-login-route
         paths:
           - /api/v1/user/authenticate/login
@@ -52,7 +48,6 @@ services:
             config:
               anonymous: anonymous_consumer
 
-      # Public reset password request
       - name: reset-password-request-route
         paths:
           - /api/v1/user/authenticate/reset-password-request
@@ -62,7 +57,6 @@ services:
             config:
               anonymous: anonymous_consumer
 
-      # Public reset password execution
       - name: reset-password-route
         paths:
           - /api/v1/user/authenticate/reset-password
@@ -72,7 +66,6 @@ services:
             config:
               anonymous: anonymous_consumer
 
-      # Protected route - requires valid JWT
       - name: user-route
         paths:
           - /api/v1/user
@@ -88,7 +81,7 @@ services:
           - /api/v1/fiat
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: crypto-service
     url: http://crypto-service:5000
@@ -98,7 +91,7 @@ services:
           - /api/v1/crypto
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
         
   - name: transaction-service
     url: http://transaction-service:5000
@@ -108,12 +101,11 @@ services:
           - /api/v1/transaction
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: identity-service
     url: http://identity-service:5000
     routes:
-      # Public account creation route
       - name: identity-create-account
         paths:
           - /api/v1/identity/create-account
@@ -122,13 +114,12 @@ services:
           - name: jwt
             config:
               anonymous: anonymous_consumer
-      # Protected identity route
       - name: identity-route
         paths:
           - /api/v1/identity
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: deposit-service
     url: http://deposit-service:5000
@@ -138,7 +129,7 @@ services:
           - /api/v1/deposit
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: ramp-service
     url: http://ramp-service:5000
@@ -148,27 +139,27 @@ services:
           - /api/v1/ramp
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: order-initiation-service
-    url: http://order-initiation-service:5000  # Internal URL of the transaction service
+    url: http://order-initiation-service:5000
     routes:
       - name: order-initiation-route
         paths:
-          - /api/v1/order-initiation
+          - /api/v1/order
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: order-completion-service
-    url: http://order-completion-service:5000  # Internal URL of the transaction service
+    url: http://order-completion-service:5000
     routes:
       - name: order-completion-route
         paths:
           - /api/v1/order-completion
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
+          - name: jwt
 
   - name: market-service
     url: http://market-service:5000
@@ -178,5 +169,10 @@ services:
           - /api/v1/market
         strip_path: false
         plugins:
-          - name: jwt  # Explicitly apply JWT without anonymous
-    
+          - name: jwt
+      - name: orderbook-route 
+        paths:
+          - /api/v1/orderbook
+        strip_path: false
+        plugins:
+          - name: jwt

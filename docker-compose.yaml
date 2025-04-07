@@ -307,6 +307,27 @@ services:
     expose:
       - "5000"
 
+  swagger-docs:
+    container_name: swagger-docs
+    build:
+      context: ./swagger-docs
+      dockerfile: Dockerfile
+    ports:
+      - "3001:5000"
+    networks:
+      - kong-net
+    depends_on:
+      - fiat-service
+      - crypto-service
+      - user-service
+      - transaction-service
+      - identity-service
+      - deposit-service
+      - ramp-service
+      - market-service
+      - initiate-service
+      - complete-service
+
   # website:
   #   build:
   #     context: ./website

@@ -264,21 +264,22 @@ class UserAccountListResource(Resource):
 
 ### Accessing API Documentation
 
-Each microservice hosts its documentation at:
+**Consolidated API documentation**
+Go to [link](http://localhost:3001/swagger-ui) after `docker-compose up -d --build`.
 
-Atomic Microservices:
-- **Fiat Service:** `http://localhost:5001/api/v1/fiat`
-- **Crypto Service:** `http://localhost:5002/api/v1/crypto`
-- **User Service:** `http://localhost:5003/api/v1/user`
-- **transaction Service:** `http://localhost:5005/api/v1/transaction`
-
-Composite Microservices:
-- **identity** `http://localhost:5004/api/v1`
-- **deposit** `http://localhost:5006/api/v1`
-- **ramp** `http://localhost:5007/api/v1`
-- **market** `http://localhost:5008/api/v1`
-- **initiate** `http://localhost:5009/api/v1/`
-- **complete** `http://localhost:5010/api/v1/`
+**Independent API documentation**
+   - **Atomic microservices**
+      - **Fiat Service:** `http://localhost:5001/api/v1/fiat`
+      - **Crypto Service:** `http://localhost:5002/api/v1/crypto`
+      - **User Service:** `http://localhost:5003/api/v1/user`
+      - **transaction Service:** `http://localhost:5005/api/v1/transaction`
+   - **Composite microservices**
+      - **identity** `http://localhost:5004/api/v1`
+      - **deposit** `http://localhost:5006/api/v1`
+      - **ramp** `http://localhost:5007/api/v1`
+      - **market** `http://localhost:5008/api/v1`
+      - **initiate** `http://localhost:5009/api/v1/`
+      - **complete** `http://localhost:5010/api/v1/`
 
 ### Kong Gateway Configuration
 

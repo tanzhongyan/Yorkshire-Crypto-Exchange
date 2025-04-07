@@ -40,37 +40,9 @@ CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
 # Define namespaces to group api calls together
-# Namespaces are essentially folders that group all related API calls
 order_ns = Namespace('order', description='Order related operations')
-# balance_ns = Namespace('balance', description='Balance related operations')
-# transaction_ns = Namespace('transaction', description='Transaction related operations')
 
-##### API Models - flask restx API autodoc #####
-# To use flask restx, you will have to define API models with their input types
-# For all API models, add a comment to the top to signify its importance
-# E.g. Input/Output One/Many user account
-
-# Input from FE for creating order, also needed for checking balance [old]
-# create_order_model = order_ns.model(
-#     "CreateOrder",
-#     {
-#         # Admin details
-#         "userId": fields.String(required=True, description="User ID"),
-
-#         # Order details
-#         "fromTokenId": fields.String(required=True, description="Token ID of quote currency"),
-#         "fromAmount": fields.Float(required=True, description="Total amount of quote currency"),
-
-#         "toTokenId": fields.String(required=True, description="Token ID of base currency"),
-#         "toAmount": fields.Float(required=True, description="Total amount of base currency"),
-#         "limitPrice": fields.Float(required=True, description="Base price at which user is willing to execute"),
-
-#         # "usdtFee": fields.Float(required=True, description="Fee of transaction"),
-#         "orderType": fields.String(required=True, description="Type of Order (Limit/Market)")
-#     },
-# )
-
-# Input from FE for creating order, also needed for checking balance [new]
+# Input from FE for creating order
 create_order_model = order_ns.model(
     "CreateOrder",
     {
@@ -116,13 +88,12 @@ error_response = order_ns.model(
     },
 )
 
-##### AMQP Connection Functions  #####
+##### AMQP Connection Functions #####
 
 def connectAMQP():
     # Use global variables to reduce number of reconnection to RabbitMQ
     global connection
     global channel
-
     print("  Connecting to AMQP broker...")
     try:
         connection, channel = amqp_lib.connect(
@@ -144,19 +115,18 @@ def callback(channel, method, properties, body):
         print(f"Error message: {body}")
     print()
 
-##### Individual helper functions  #####
+##### Individual helper functions #####
 
-# (F1) Check for balance (connects to crypto service)
-def check_crypto_balance(user_id, token_id, required_from_amount):
+# Check for balance (connects to crypto service)
+def check_crypto_balance(user_id, token_id, required_amount):
     try:
         checked_and_updated = True
         error_message = None
         status_code = 200
         short_of = None
 
-        # (F1.1) check for balance
+        # Check for balance
         holding_response = requests.get(f"{CRYPTO_SERVICE_URL}/holdings/{user_id}/{token_id}")
-         # (F1.1.1r) return early if cannot connect: None, error, status_code, short_of
         if holding_response.status_code != 200:
             return None, {
                 "error": "Failed to retrieve holding balance",
@@ -164,17 +134,15 @@ def check_crypto_balance(user_id, token_id, required_from_amount):
             }, holding_response.status_code, None
         
         response_dict = holding_response.json()
-        # (F1.1.2r) return early if bank balance is insufficient: False, no error, status_code, short_of
-        if response_dict["availableBalance"] < required_from_amount:
+        # Return early if balance is insufficient
+        if response_dict["availableBalance"] < required_amount:
             checked_and_updated = False
-            short_of = required_from_amount - response_dict["availableBalance"]
+            short_of = required_amount - response_dict["availableBalance"]
             return checked_and_updated, None, status_code, short_of
         
-        # (F1.2) update holding
-        update_success, update_error_message, update_status_code = update_available_balance(user_id, token_id, required_from_amount)
+        # Update holding (reserve the tokens)
+        update_success, update_error_message, update_status_code = update_available_balance(user_id, token_id, required_amount)
 
-        # (F1.2.1) update return values - if failed, propagate update errors for returning:
-        # False, update_error, status_code, (short_of)
         if update_success == False:
             checked_and_updated = False
             error_message = update_error_message
@@ -185,32 +153,64 @@ def check_crypto_balance(user_id, token_id, required_from_amount):
     except requests.RequestException as e:
         return None, {"error": "Failed to connect to crypto service for checking", "details": str(e)}, 500, None 
 
-# (F2) Post reserve balance to crypto (connects to crypto service)
-def update_available_balance(user_id, token_id, required_from_amount):
+# Reserve balance (connects to crypto service)
+def update_available_balance(user_id, token_id, required_amount):
     try:
         body_for_update = {
             "userId": user_id,
             "tokenId": token_id,
-            "amountChanged": required_from_amount
+            "amountChanged": required_amount
         }
-        json_message = json.dumps(body_for_update)
 
-        update_response = requests.post(f"{CRYPTO_SERVICE_URL}/holdings/reserve", json=json_message)
+        update_response = requests.post(f"{CRYPTO_SERVICE_URL}/holdings/reserve", json=body_for_update)
 
         if update_response.status_code != 200:
-            # (r1) return if unable to connect
             return False, {
                 "error": "Failed to update holding balance",
                 "details": update_response.json() if update_response.content else "No response content"
             }, update_response.status_code
             
-        # (r2) return if successfully updated
         return True, None, 200
     except requests.RequestException as e:
-        # (r3) return if error connecting, exception
         return False, {"error": "Failed to connect to crypto service for reserving balance", "details": str(e)}, 500 
 
-# (F3) Post order to transaction log (connects to transaction logs service)
+# Check if wallet exists and create holding if needed
+def check_or_create_wallet_holding(user_id, token_id):
+    try:
+        # Check if wallet exists
+        wallet_response = requests.get(f"{CRYPTO_SERVICE_URL}/wallet/{user_id}")
+        
+        # If wallet doesn't exist, create it
+        if wallet_response.status_code != 200:
+            wallet_creation = requests.post(f"{CRYPTO_SERVICE_URL}/wallet", json={"userId": user_id})
+            if wallet_creation.status_code != 201:
+                return False, {
+                    "error": "Failed to create wallet",
+                    "details": wallet_creation.json() if wallet_creation.content else "No response content"
+                }, wallet_creation.status_code
+        
+        # Check if holding exists
+        holding_response = requests.get(f"{CRYPTO_SERVICE_URL}/holdings/{user_id}/{token_id}")
+        
+        # If holding doesn't exist, create it
+        if holding_response.status_code != 200:
+            holding_creation = requests.post(f"{CRYPTO_SERVICE_URL}/holdings", json={
+                "userId": user_id,
+                "tokenId": token_id,
+                "actualBalance": 0,
+                "availableBalance": 0
+            })
+            if holding_creation.status_code != 201:
+                return False, {
+                    "error": "Failed to create holding",
+                    "details": holding_creation.json() if holding_creation.content else "No response content"
+                }, holding_creation.status_code
+        
+        return True, None, 200
+    except requests.RequestException as e:
+        return False, {"error": "Failed to connect to crypto service for wallet/holding operations", "details": str(e)}, 500
+
+# Post order to transaction log
 def post_transaction_log(transaction_log_payload):
     try:
         transaction_response = requests.post(f"{TRANSACTION_SERVICE_URL}/crypto/", json=transaction_log_payload)
@@ -224,14 +224,11 @@ def post_transaction_log(transaction_log_payload):
     except requests.RequestException as e:
         return None, {"error": "Failed to connect to transaction service", "details": str(e)}, 500   
 
-##### API actions - flask restx API autodoc #####
-# To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
-
-# Create order service
+##### API actions #####
 @order_ns.route("/create_order")
 class CheckBalance(Resource):
-    @order_ns.expect(create_order_model) # expected input structure
-    @order_ns.response(201, "Order created successfully", success_creation_response) # documents responses from this func
+    @order_ns.expect(create_order_model)
+    @order_ns.response(201, "Order created successfully", success_creation_response)
     @order_ns.response(400, "Order failed (insufficient balance)", insufficient_balance_response)
     @order_ns.response(500, "Internal Server Error", error_response)
     def post(self):
@@ -241,58 +238,63 @@ class CheckBalance(Resource):
         
         data = request.json
 
-        # --- to remove ----
-        # user_id = data.get("userId")
-        # from_token_id = data.get("fromTokenId")
-        # from_token_id = data.get("fromTokenId")
-        # from_amount = data.get("fromAmount")
-        # to_token_id = data.get("toTokenId")
-        # to_amount = data.get("toAmount")
-        # limit_price = data.get("limitPrice")
-        # order_type = "Limit"
-        # order_fee = 0.05 * from_amount
-        # required_from_amount = order_fee + from_amount
-
+        # Process input data
         user_id = data.get("userId")
-        side = data.get("side")
-
-        from_token_id = data.get("quoteTokenId")
-        from_amount = data.get("orderCost") # (!) total cost to be calculated on frontend (if "sell", just qty. if "buy", qty * lim price)
-
-        to_token_id = data.get("baseTokenId")
-        to_amount = data.get("quantity") # quantity of toToken(baseToken) to get
-
+        side = data.get("side").lower()
+        order_type = data.get("orderType").lower()
+        
+        # Ensure all cryptocurrency tokens are lowercase
+        base_token_id = data.get("baseTokenId").lower()
+        quote_token_id = data.get("quoteTokenId").lower()
         limit_price = data.get("limitPrice")
-        order_type = "Limit"
+        quantity = data.get("quantity")
+        order_cost = data.get("orderCost")
 
-        if side == "sell":
-            # (!) if you are selling ETH/USDT, ETH (base) will be used to pay for USDT (quote)
-            from_token_id = data.get("baseTokenId") 
-            to_token_id = data.get("quoteTokenId")
+        # Determine from/to tokens based on side
+        if side == "buy":
+            from_token_id = quote_token_id
+            from_amount = order_cost
+            to_token_id = base_token_id
+            to_amount = quantity
+        elif side =="sell":  # sell
+            from_token_id = base_token_id
+            from_amount = quantity
+            to_token_id = quote_token_id
+            to_amount = order_cost
+        else:
+            return {
+                "error": "Invalid side value. Must be 'buy' or 'sell'."
+            }, 400
 
-        # (1) Check quote crypto balance of user
-        crypto_sufficient_updated, crypto_error, crypto_status_code, shortOf = check_crypto_balance(user_id, from_token_id, from_amount)
+        # 1. Check if from side has sufficient balance
+        crypto_sufficient, crypto_error, crypto_status_code, shortOf = check_crypto_balance(user_id, from_token_id, from_amount)
 
         if crypto_error:
             return crypto_error, crypto_status_code
         
-        if crypto_sufficient_updated == False:
+        if crypto_sufficient == False:
             return {
                 "error": "Insufficient balance to fulfil order",
                 "shortOf": shortOf,
-                    }, 400
+            }, 400
 
-        # (2) Create transaction log
+        # 2. Check if to side has a wallet and holding, create if needed
+        wallet_created, wallet_error, wallet_status_code = check_or_create_wallet_holding(user_id, to_token_id)
+        
+        if wallet_error:
+            return wallet_error, wallet_status_code
+
+        # 3. Create transaction log
         transaction_log_payload = {
             "userId": user_id,
             "status": "pending",
-            "fromTokenId": from_token_id, # cost, (determine above)
+            "fromTokenId": from_token_id,
             "fromAmount": from_amount,
-            "fromAmountActual": 0, # will be increased as order gets fulfilled (if partial)
+            "fromAmountActual": 0,  # will be updated as order gets fulfilled
             "toTokenId": to_token_id,
-            "toAmount": to_amount, # total to be excuted
-            "toAmountActual": 0, # will be increased as order gets fulfilled (if partial)
-            "limitPrice": limit_price, # (!) will be market price for market orders
+            "toAmount": to_amount,
+            "toAmountActual": 0,  # will be updated as order gets fulfilled
+            "limitPrice": limit_price,
             "usdtFee": 0,
             "orderType": order_type,
         }
@@ -305,42 +307,36 @@ class CheckBalance(Resource):
         transaction_id = transaction_response["transactionId"]
         creation = transaction_response["creation"]
         
-        # (3) publish to orderbook service and respond to user
+        # 4. Publish to orderbook service
         message_to_publish = {
             "transactionId": transaction_id,
             "userId": user_id,
             "orderType": order_type, 
             "fromTokenId": from_token_id,
             "toTokenId": to_token_id,
-            "fromAmount": from_amount, # orderCost
-            "limitPrice": limit_price, # 3) limit price or None
+            "fromAmount": from_amount,
+            "limitPrice": limit_price,
             "creation": creation
         }
 
         json_message = json.dumps(message_to_publish)
 
         channel.basic_publish(
-                exchange=exchange_name,
-                routing_key="order.new",
-                body=json_message,
-                properties=pika.BasicProperties(delivery_mode=2),
-                )
+            exchange=exchange_name,
+            routing_key="order.new",
+            body=json_message,
+            properties=pika.BasicProperties(delivery_mode=2),
+        )
 
-        return {"message": "Order created successfully", 
-                "transaction_id": transaction_response["transactionId"],
-                "transaction_status": transaction_response["status"],
-                }, 201
+        return {
+            "message": "Order created successfully", 
+            "transaction_id": transaction_response["transactionId"],
+            "transaction_status": transaction_response["status"],
+        }, 201
 
-# Add name spaces into api
+# Add namespace to api
 api.add_namespace(order_ns)
 
 if __name__ == '__main__':
     connectAMQP()
-    # consumer_thread = threading.Thread(
-    #     target=lambda: amqp_lib.start_consuming(
-    #         rabbit_host, rabbit_port, exchange_name, exchange_type, queue_name, callback
-    #     ),
-    #     daemon=True
-    # )
-    # consumer_thread.start()
-    app.run(host='0.0.0.0', port=5000, debug=True)	
+    app.run(host='0.0.0.0', port=5000, debug=True)

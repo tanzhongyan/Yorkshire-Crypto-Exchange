@@ -287,16 +287,16 @@ services:
     expose:
       - "5000"
 
-  # website:
-  #   build:
-  #     context: ./website
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8080:80"
-  #   depends_on:
-  #     - fiat-service
-  #     - user-service
-  #     - crypto-service
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - fiat-service
+      - user-service
+      - crypto-service
 
 volumes:
   fiat_data:

@@ -487,7 +487,8 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         elif buy.get('orderType') == 'market':
             price_executed = sell.get('limitPrice')
             can_match = True
-            
+        
+        logger.error(f"matching is {can_match}-----------------------------------------------------------------------------")
         if can_match:
             # bring to common quote crypto Id to compare and see which can be maximally fulfilled. Recall terminology used in determine_side function for quote (can refer to comments).
             # to answer
@@ -508,6 +509,8 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             execute_buy_result = update_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
             
             # if step 1 fail: nothing to rollback, updated_all_services is False. stops here and exits this nested if 
+            if 'error' in execute_buy_result:
+                logger.error(f"error in step 1-----------------------------------------------------------------------------")
             # if step 1 success: 
                 # step 2:minus from sell order userId 
             if 'error' not in execute_buy_result:
@@ -515,6 +518,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 
                 # if step 2 fail: rollback step1, updated_all_services is False. stops here and exits this nested if 
                 if 'error' in execute_sell_result:
+                    logger.error(f"error in step 2-----------------------------------------------------------------------------")
                     rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                 # if step 2 success: 
                     # step 3:add to buy order userId 
@@ -523,6 +527,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                     
                     # if step 3 fail: rollback step1 and step2, updated_all_services is False. stops here and exits this nested if 
                     if 'error' in deposit_buy_result:
+                        logger.error(f"error in step 3-----------------------------------------------------------------------------")
                         rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                         rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                     # if step 3 success: 
@@ -532,6 +537,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
 
                         # if step 4 fail: rollback step1, step2 and step3, updated_all_services is False. stops here and exits this nested if
                         if 'error' in deposit_sell_result:
+                            logger.error(f"error in step 4-----------------------------------------------------------------------------")
                             rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], float(quote_qty_traded))
                             rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], float(base_qty_traded))
                             rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], float(base_qty_traded))
@@ -571,6 +577,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                 
                             if not update_book_response.get('success'):
                                 # rollback step 1,2,3,4, updated_all_services is False. stops here and exits this nested if
+                                logger.error(f"error in step 5 aka update orderbook-----------------------------------------------------------------------------")
                                 rollback_execute_buy_result = rollback_from_crypto(buy['userId'], buy['fromTokenId'], quote_qty_traded)
                                 rollback_execute_sell_result = rollback_from_crypto(sell['userId'], sell['fromTokenId'], base_qty_traded)
                                 rollback_deposit_buy_result = rollback_to_crypto(buy['userId'], buy['toTokenId'], base_qty_traded)
@@ -940,6 +947,7 @@ def callback(channel, method, properties, body):
             # if limit, try add to order book for future processing
             if order_type == 'limit':
                 # current description will be retrive counterparty fail or not liquid
+                logger.error(f"adding order to orderbook instead. not liquied/retrive counterparty fail-----------------------------------------------------------------------------")
                 add_to_orderbook_success , add_to_orderbook_error_message = add_to_order_book(incoming_order) 
                 # if successfully added, then will end here. description = ''. will not go beyond here
                 # if fail, current description will be add order to orderbook fail or duplicate order exist
@@ -950,7 +958,7 @@ def callback(channel, method, properties, body):
                 if not add_to_orderbook_success:
                     
                     # current description will be add order to orderbook fail or duplicate order exist
-                        
+                    logger.error(f"failed adding to order book instead. changing status to fail and ending-----------------------------------------------------------------------------")
                     message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'),  
@@ -973,6 +981,8 @@ def callback(channel, method, properties, body):
                     
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
+                logger.error(f"incoming market order but marke not liquid. changing status to fail and ending-----------------------------------------------------------------------------")
+                
                 message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'), 
@@ -999,9 +1009,11 @@ def callback(channel, method, properties, body):
         # counterparty order was able to be obtained. now ready for processsing.
         else:
             if incoming_side == 'buy':
+                logger.error(f"starting matching of incoming buy-----------------------------------------------------------------------------")
                 match_incoming_buy(incoming_order, counterparty_orders)
                 channel.basic_ack(delivery_tag=method.delivery_tag)
             elif incoming_side == 'sell':
+                logger.error(f"starting matching of incoming sell-----------------------------------------------------------------------------")
                 match_incoming_sell(incoming_order, counterparty_orders)
                 channel.basic_ack(delivery_tag=method.delivery_tag)
             

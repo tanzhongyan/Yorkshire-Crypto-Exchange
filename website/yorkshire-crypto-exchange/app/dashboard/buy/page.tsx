@@ -4,6 +4,11 @@ import type React from "react"
 import { useState, useEffect, useCallback } from "react"
 import { ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react"
 import axios from "@/lib/axios"
+import type React from "react";
+import { getCookie } from '@/lib/cookies';
+
+import { useState } from "react"
+import { ArrowUp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +25,7 @@ export default function BuyPage() {
   
   // Order state
   const [orderType, setOrderType] = useState("limit")
-  const [buyPrice, setBuyPrice] = useState("65000.00")
+  const [buyPrice, setBuyPrice] = useState("65000.00") 
   const [buyAmount, setBuyAmount] = useState("")
   const [buyUsdtAmount, setBuyUsdtAmount] = useState("")
   const [buyFeeRate, setBuyFeeRate] = useState(0.05) // 5% default fee

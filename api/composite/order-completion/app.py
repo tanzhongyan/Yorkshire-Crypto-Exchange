@@ -208,7 +208,6 @@ def process_message(message_data):
             'toAmount': current_tx.get('toAmount'),
             'toAmountActual': to_amount_actual,
             'limitPrice': current_tx.get('limitPrice'),
-            'usdtFee': current_tx.get('usdtFee'),
             'orderType': current_tx.get('orderType')
         }
         

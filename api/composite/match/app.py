@@ -135,13 +135,14 @@ def get_counterparty_orders(incoming_order, incoming_side):
         counterparty_orders_details = counterparty_orders_response.json()
         
         # get the standard response fields that is always recieved
-        liquidity = counterparty_orders_details.get('success')
-        counterparty_orders_error_message = counterparty_orders_details.get('errorMessage')
+        result = counterparty_orders_details.get('result', {})
+        liquidity = result.get('success', False)
+        counterparty_orders_error_message = result.get('errorMessage')
         counterparty_orders_success = True
         
         # determine if any counterparty orders returned (sucsessful call still)
         if liquidity:
-            counterparty_orders = counterparty_orders_details.get('orders')
+            counterparty_orders = counterparty_orders_details.get('orders', [])
             
             # sort according to matching order book logic/algo.
             if incoming_side == 'buy':

@@ -282,6 +282,23 @@ services:
       postgres:
         condition: service_healthy # wait until postgres healthy
     networks:
+      - rabbit-net
+  
+  match-service:
+    container_name: match-service
+    build:
+      context: ./api/composite/match
+      dockerfile: Dockerfile
+    ports:
+      - "5011:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
       - kong-net
       - rabbit-net
     expose:

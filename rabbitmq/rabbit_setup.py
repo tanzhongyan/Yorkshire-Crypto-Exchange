@@ -54,7 +54,7 @@ channel = create_exchange(
 create_queue(
     channel=channel,
     exchange_name=exchange_name,
-    queue_name="match_service.orders_creation",
+    queue_name="order_initiation_service.orders_creation",
     routing_key="order.new",
 )
 

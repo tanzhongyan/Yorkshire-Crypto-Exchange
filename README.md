@@ -38,6 +38,10 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
    ```
 
 4. Access API documentation:
+**Consolidated API documentation**
+Go to [link](http://localhost:3001/swagger-ui) after `docker-compose up -d --build`.
+
+**Independent API documentation**
    - **Atomic microservices**
       - **Fiat Service:** `http://localhost:5001/api/v1/fiat`
       - **Crypto Service:** `http://localhost:5002/api/v1/crypto`

@@ -295,7 +295,6 @@ class CheckBalance(Resource):
             "toAmount": to_amount,
             "toAmountActual": 0,  # will be updated as order gets fulfilled
             "limitPrice": limit_price,
-            "usdtFee": 0,
             "orderType": order_type,
         }
 

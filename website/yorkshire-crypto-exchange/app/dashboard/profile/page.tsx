@@ -57,12 +57,6 @@ export default function ProfilePage() {
     confirmPassword: "",
   })
 
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: true,
-    push: false,
-  })
-
   const userId = getCookie("userId")
 
   // Fetch user data on component mount
@@ -112,11 +106,6 @@ export default function ProfilePage() {
   const handleSecurityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setSecurity((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleNotificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target
-    setNotifications((prev) => ({ ...prev, [name]: checked }))
   }
 
   const handlePersonalInfoSubmit = async (e: React.FormEvent) => {
@@ -188,12 +177,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleNotificationsSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, you would call your API to update the user's notification preferences
-    setSuccess("Notification preferences updated successfully!")
-    setTimeout(() => setSuccess(null), 3000)
-  }
 
   const handleDeleteAccount = async () => {
     if (!userId) {
@@ -262,7 +245,6 @@ export default function ProfilePage() {
           <TabsTrigger value="personal">Personal Info</TabsTrigger>
           {/* <TabsTrigger value="address">Address</TabsTrigger> */}
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal">
@@ -497,58 +479,6 @@ export default function ProfilePage() {
                 <Button type="submit" disabled={loading}>
                   <Save className="mr-2 h-4 w-4" />
                   Update Password
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <form onSubmit={handleNotificationsSubmit}>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>Choose how you want to receive notifications</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="email-notifications"
-                    name="email"
-                    checked={notifications.email}
-                    onChange={handleNotificationChange}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="email-notifications">Email Notifications</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="sms-notifications"
-                    name="sms"
-                    checked={notifications.sms}
-                    onChange={handleNotificationChange}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="sms-notifications">SMS Notifications</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="push-notifications"
-                    name="push"
-                    checked={notifications.push}
-                    onChange={handleNotificationChange}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="push-notifications">Push Notifications</Label>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" disabled={loading}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Preferences
                 </Button>
               </CardFooter>
             </form>

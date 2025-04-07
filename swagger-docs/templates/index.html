@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Microservices API Documentation</h1>
+        
+        <div class="services">
+            <div class="service-category">
+                <h2>Atomic Microservices</h2>
+                <div class="service-list">
+                    {% for name, url in atomic_services.items() %}
+                    <div class="service-card">
+                        <h3>{{ name }}</h3>
+                        <div class="buttons">
+                            <a href="{{ url }}/swagger.json" target="_blank" class="btn">View JSON</a>
+                            <a href="{{ url }}/swagger-ui" target="_blank" class="btn primary">Swagger UI</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="service-category">
+                <h2>Composite Microservices</h2>
+                <div class="service-list">
+                    {% for name, url in composite_services.items() %}
+                    <div class="service-card">
+                        <h3>{{ name }}</h3>
+                        <div class="buttons">
+                            <a href="{{ url }}/swagger.json" target="_blank" class="btn">View JSON</a>
+                            <a href="{{ url }}/swagger-ui" target="_blank" class="btn primary">Swagger UI</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="merged-docs">
+            <h2>All Services Documentation</h2>
+            <a href="/merged-swagger-ui" class="btn primary">View Merged Documentation</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -466,12 +466,19 @@ def match_incoming_buy(incoming_order, counterparty_orders):
     # gp through all sell orders and see if can fulfill incoming buy order
     for sell in sell_orders:
         
+        can_match = False
         # limit price fulfillment check. The sell price should be lower or equal to limit price for buy tolerance.
-        if sell.get('limitPrice') <= buy.get('limitPrice') and sell.get('userId') != buy.get('userId'):
-            
+        if buy.get('orderType') == 'limit' and sell.get('limitPrice') <= buy.get('limitPrice') and sell.get('userId') != buy.get('userId'):
             # favour buyer in this case since requester
             price_executed = min(buy.get('limitPrice'), sell.get('limitPrice'))
+            can_match = True
             
+        # if market will always execute for whatever best price
+        elif buy.get('orderType') == 'market':
+            price_executed = sell.get('limitPrice')
+            can_match = True
+            
+        if can_match:
             # bring to common quote crypto Id to compare and see which can be maximally fulfilled. Recall terminology used in determine_side function for quote (can refer to comments).
             # to answer
                     # enough token for exact match?
@@ -534,7 +541,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = Decimal('0.00000000001')
+                            ZERO_THRESHOLD = Decimal('0.00000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             buy['fromAmount'] = buy_from_amount_left
@@ -570,6 +577,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
 
                                 message_to_publish_buy = {
                                                 'transactionId' : buy.get('transactionId'), 
+                                                'userId' : buy.get('userId'),
                                                 'status' : buy_status, 
                                                 'fromAmountActual' : buy_from_amount_actual, 
                                                 'toAmountActual' : buy_to_amount_actual, 
@@ -578,6 +586,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                 
                                 message_to_publish_sell = {
                                                     'transactionId' : sell.get('transactionId'), 
+                                                    'userId' : sell.get('userId'),
                                                     'status' : sell_status, 
                                                     'fromAmountActual' : sell_from_amount_actual, 
                                                     'toAmountActual' : sell_to_amount_actual, 
@@ -612,7 +621,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 continue
             
     # here is out of loop already. search is finished
-    if not fulfilled_incoming_req:
+    if not fulfilled_incoming_req and incoming_order.get('orderType') == 'limit':
         # if incoming order not fully updated, then add to order book for further processing
         add_to_orderbook_success , add_to_orderbook_error_message = add_to_order_book(incoming_order) 
         description = add_to_orderbook_error_message
@@ -623,6 +632,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             # current description will be add order to orderbook fail or duplicate order exist
             message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
+                                                'userId' : incoming_order.get('userId'),
                                                 'status' : 'Fail', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
@@ -638,6 +648,27 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 body=json_message,
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
+            
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
+        description = "Failed to process order in Yokshire Crypto Exchange order book. Market is not liquid enough. Please try again Later"
+        message_to_publish =  {
+                                                'transactionId' : incoming_order.get('transactionId'), 
+                                                'userId' : incoming_order.get('userId'),
+                                                'status' : 'Fail', 
+                                                'fromAmountActual' : 0, 
+                                                'toAmountActual' : 0, 
+                                                'details' : description
+                                            }
+        if connection is None or not amqp_lib.is_connection_open(connection):
+            connectAMQP()
+
+        json_message = json.dumps(message_to_publish)
+        channel.basic_publish(
+            exchange=exchange_name,
+            routing_key=routing_key,
+            body=json_message,
+            properties=pika.BasicProperties(delivery_mode=2),
+            )
 
 def match_incoming_sell(incoming_order, counterparty_orders):
     
@@ -664,12 +695,20 @@ def match_incoming_sell(incoming_order, counterparty_orders):
     # gp through all sell orders and see if can fulfill incoming buy order
     for buy in buy_orders:
         
+        can_match = False
         # limit price fulfillment check. The buy price should be higher or equal to limit price for sell tolerance.
-        if buy.get('limitPrice') >= sell.get('limitPrice') and sell.get('userId') != buy.get('userId'):
+        if sell.get('orderType') == 'limit' and buy.get('limitPrice') >= sell.get('limitPrice') and sell.get('userId') != buy.get('userId'):
             
             # favour seller in this case since requester
             price_executed = max(buy.get('limitPrice'), sell.get('limitPrice'))
+            can_match = True
             
+        # if market will always execute for whatever best price
+        elif sell.get('orderType') == 'market':
+            price_executed = buy.get('limitPrice')
+            can_match = True
+            
+        if can_match:
             # bring to common quote crypto Id to compare and see which can be maximally fulfilled. Recall terminology used in determine_side function for quote (can refer to comments).
             # to answer
                     # enough token for exact match?
@@ -732,7 +771,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = Decimal('0.00000000001')
+                            ZERO_THRESHOLD = Decimal('0.00000001')
                             # find status of orders
                             # adding of incoming sell order to order book to be done last after full iteration
                             sell['fromAmount'] = sell_from_amount_left
@@ -766,6 +805,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 sell_description = f"{sell_from_amount_actual}{sell.get('fromTokenId')} was swapped for {sell_to_amount_actual}{sell.get('toTokenId')}"
                                 message_to_publish_buy = {
                                                 'transactionId' : buy.get('transactionId'), 
+                                                'userId' : buy.get('userId'),
                                                 'status' : buy_status, 
                                                 'fromAmountActual' : buy_from_amount_actual, 
                                                 'toAmountActual' : buy_to_amount_actual, 
@@ -774,6 +814,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 
                                 message_to_publish_sell = {
                                                     'transactionId' : sell.get('transactionId'), 
+                                                    'userId' : sell.get('userId'),
                                                     'status' : sell_status, 
                                                     'fromAmountActual' : sell_from_amount_actual, 
                                                     'toAmountActual' : sell_to_amount_actual, 
@@ -808,7 +849,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                 continue
     
     # here is out of loop already. search is finished
-    if not fulfilled_incoming_req:
+    if not fulfilled_incoming_req and incoming_order.get('orderType') == 'limit':
         # if incoming order not fully updated, then add to order book for further processing
         add_to_orderbook_success , add_to_orderbook_error_message = add_to_order_book(incoming_order) 
         description = add_to_orderbook_error_message
@@ -818,7 +859,8 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
             message_to_publish = {
-                                                'transactionId' : incoming_order.get('transactionId'), 
+                                                'transactionId' : incoming_order.get('transactionId'),
+                                                'userId' : incoming_order.get('userId'), 
                                                 'status' : 'Fail', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
@@ -834,6 +876,27 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                 body=json_message,
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
+            
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
+        description = "Failed to process order in Yokshire Crypto Exchange order book. Market is not liquid enough. Please try again Later"
+        message_to_publish =  {
+                                                'transactionId' : incoming_order.get('transactionId'), 
+                                                'userId' : incoming_order.get('userId'),
+                                                'status' : 'Fail', 
+                                                'fromAmountActual' : 0, 
+                                                'toAmountActual' : 0, 
+                                                'details' : description
+                                            }
+        if connection is None or not amqp_lib.is_connection_open(connection):
+            connectAMQP()
+
+        json_message = json.dumps(message_to_publish)
+        channel.basic_publish(
+            exchange=exchange_name,
+            routing_key=routing_key,
+            body=json_message,
+            properties=pika.BasicProperties(delivery_mode=2),
+            )
 
 
 
@@ -870,7 +933,8 @@ def callback(channel, method, properties, body):
                     # current description will be add order to orderbook fail or duplicate order exist
                         
                     message_to_publish = {
-                                                        'transactionId' : incoming_order.get('transactionId'), 
+                                                        'transactionId' : incoming_order.get('transactionId'),
+                                                        'userId' : incoming_order.get('userId'),  
                                                         'status' : 'Fail', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
@@ -890,7 +954,8 @@ def callback(channel, method, properties, body):
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
                 message_to_publish = {
-                                                        'transactionId' : incoming_order.get('transactionId'), 
+                                                        'transactionId' : incoming_order.get('transactionId'),
+                                                        'userId' : incoming_order.get('userId'), 
                                                         'status' : 'Fail', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 

@@ -50,23 +50,40 @@ order_ns = Namespace('order', description='Order related operations')
 # For all API models, add a comment to the top to signify its importance
 # E.g. Input/Output One/Many user account
 
-# Input from FE for creating order, also needed for checking balance
+# Input from FE for creating order, also needed for checking balance [old]
+# create_order_model = order_ns.model(
+#     "CreateOrder",
+#     {
+#         # Admin details
+#         "userId": fields.String(required=True, description="User ID"),
+
+#         # Order details
+#         "fromTokenId": fields.String(required=True, description="Token ID of quote currency"),
+#         "fromAmount": fields.Float(required=True, description="Total amount of quote currency"),
+
+#         "toTokenId": fields.String(required=True, description="Token ID of base currency"),
+#         "toAmount": fields.Float(required=True, description="Total amount of base currency"),
+#         "limitPrice": fields.Float(required=True, description="Base price at which user is willing to execute"),
+
+#         # "usdtFee": fields.Float(required=True, description="Fee of transaction"),
+#         "orderType": fields.String(required=True, description="Type of Order (Limit/Market)")
+#     },
+# )
+
+# Input from FE for creating order, also needed for checking balance [new]
 create_order_model = order_ns.model(
-    "CreateAccount",
+    "CreateOrder",
     {
-        # Admin details
         "userId": fields.String(required=True, description="User ID"),
+        "orderType": fields.String(required=True, description="Type of Order (Limit/Market)"),
+        "side": fields.String(required=True, description="Type of Order (Buy/Sell)"),
 
-        # Order details
-        "fromTokenId": fields.String(required=True, description="Token ID of quote currency"),
-        "fromAmount": fields.Float(required=True, description="Total amount of quote currency"),
+        "baseTokenId": fields.String(required=True, description="Token ID of base currency"),
+        "quoteTokenId": fields.String(required=True, description="Token ID of quote currency"),
+        "limitPrice": fields.Float(required=True, description="Price at which user is willing to buy base asset"),
 
-        "toTokenId": fields.String(required=True, description="Token ID of base currency"),
-        "toAmount": fields.Float(required=True, description="Total amount of base currency"),
-        "limitPrice": fields.Float(required=True, description="Base price at which user is willing to execute"),
-
-        # "usdtFee": fields.Float(required=True, description="Fee of transaction"),
-        "orderType": fields.String(required=True, description="Type of Order (Limit/Market)")
+        "quantity": fields.Float(required=True, description="Total amount of base currency to be bought/sold"),
+        "orderCost": fields.Float(required=True, description="Total amount of quote to pay with, computed frontend")
     },
 )
 
@@ -96,30 +113,6 @@ error_response = order_ns.model(
     {
         "error": fields.String(description="Error message"),
         "details": fields.String(description="Error details"),
-    },
-)
-# Output to FE upon fulfillment of order (partial/full)
-# order_update_response = order_ns.model(
-#     "OrderUpdateResponse",
-#     {
-#         "message": fields.String(description="Order update message"),
-#         "transactionId": fields.String(attribute='transaction_id', description="Tranaction ID for updated order"),
-#     },
-# )
-
-# Output to orderbook_service
-order_publish_model = order_ns.model(
-    "PublishOrder",
-    {
-        "message": fields.String(description="Order publishing message"),
-        "transactionId": fields.String(attribute='transaction_id'),
-        "userId": fields.String(attribute='user_id', description="User ID (wallet) associated with order"),
-        "type": fields.String(attribute='type', description="Order type - buy or sell"),
-        "fromTokenId": fields.String(attribute='from_token_id', description="Token ID for crypto buying with (quote)"),
-        "toTokenId": fields.String(attribute='to_token_id', description="Token ID for crypto being bought (base)"),
-        "fromAmount": fields.Float(attribute='from_amount', description="Amount being bought with from(quote) Token (i.e Amount of XRP from BTC/XRP that you are willing to pay for the given price of BTC)"),
-        "price": fields.Float(attribute='price', description="Price of to(base) Token (i.e BTC with limit price of 100,000 for BTC/XRP)"),
-        "creation": fields.DateTime
     },
 )
 
@@ -156,7 +149,14 @@ def callback(channel, method, properties, body):
 # (F1) Check for balance (connects to crypto service)
 def check_crypto_balance(user_id, token_id, required_from_amount):
     try:
+        checked_and_updated = True
+        error_message = None
+        status_code = 200
+        short_of = None
+
+        # (F1.1) check for balance
         holding_response = requests.get(f"{CRYPTO_SERVICE_URL}/holdings/{user_id}/{token_id}")
+         # (F1.1.1r) return early if cannot connect: None, error, status_code, short_of
         if holding_response.status_code != 200:
             return None, {
                 "error": "Failed to retrieve holding balance",
@@ -164,18 +164,53 @@ def check_crypto_balance(user_id, token_id, required_from_amount):
             }, holding_response.status_code, None
         
         response_dict = holding_response.json()
-        is_sufficient = True
-        short_of = None
+        # (F1.1.2r) return early if bank balance is insufficient: False, no error, status_code, short_of
         if response_dict["availableBalance"] < required_from_amount:
-            is_sufficient = False
+            checked_and_updated = False
             short_of = required_from_amount - response_dict["availableBalance"]
+            return checked_and_updated, None, status_code, short_of
         
-        return is_sufficient, None, 200, short_of
+        # (F1.2) update holding
+        update_success, update_error_message, update_status_code = update_available_balance(user_id, token_id, required_from_amount)
 
+        # (F1.2.1) update return values - if failed, propagate update errors for returning:
+        # False, update_error, status_code, (short_of)
+        if update_success == False:
+            checked_and_updated = False
+            error_message = update_error_message
+            status_code = update_status_code
+
+        return checked_and_updated, error_message, status_code, short_of
+    
     except requests.RequestException as e:
-        return None, {"error": "Failed to connect to crypto service", "details": str(e)}, 500, None 
+        return None, {"error": "Failed to connect to crypto service for checking", "details": str(e)}, 500, None 
 
-# (F2) Post order to transaction log (connects to transaction logs service)
+# (F2) Post reserve balance to crypto (connects to crypto service)
+def update_available_balance(user_id, token_id, required_from_amount):
+    try:
+        body_for_update = {
+            "userId": user_id,
+            "tokenId": token_id,
+            "amountChanged": required_from_amount
+        }
+        json_message = json.dumps(body_for_update)
+
+        update_response = requests.post(f"{CRYPTO_SERVICE_URL}/holdings/reserve", json=json_message)
+
+        if update_response.status_code != 200:
+            # (r1) return if unable to connect
+            return False, {
+                "error": "Failed to update holding balance",
+                "details": update_response.json() if update_response.content else "No response content"
+            }, update_response.status_code
+            
+        # (r2) return if successfully updated
+        return True, None, 200
+    except requests.RequestException as e:
+        # (r3) return if error connecting, exception
+        return False, {"error": "Failed to connect to crypto service for reserving balance", "details": str(e)}, 500 
+
+# (F3) Post order to transaction log (connects to transaction logs service)
 def post_transaction_log(transaction_log_payload):
     try:
         transaction_response = requests.post(f"{TRANSACTION_SERVICE_URL}/crypto/", json=transaction_log_payload)
@@ -192,7 +227,7 @@ def post_transaction_log(transaction_log_payload):
 ##### API actions - flask restx API autodoc #####
 # To use flask restx, you will also have to seperate the CRUD actions from the DB table classes
 
-# Create account service
+# Create order service
 @order_ns.route("/create_order")
 class CheckBalance(Resource):
     @order_ns.expect(create_order_model) # expected input structure
@@ -206,23 +241,42 @@ class CheckBalance(Resource):
         
         data = request.json
 
-        user_id = data.get("userId")
-        from_token_id = data.get("fromTokenId")
-        from_amount = data.get("fromAmount")
-        to_token_id = data.get("toTokenId")
-        to_amount = data.get("toAmount")
-        limit_price = data.get("limitPrice")
-        order_type = data.get("orderType") # limited to limit order rn
-        order_fee = 0.05 * from_amount # usually just 0.05% for takers (taking base crypto out of pool)
-        required_from_amount = order_fee + from_amount
+        # --- to remove ----
+        # user_id = data.get("userId")
+        # from_token_id = data.get("fromTokenId")
+        # from_token_id = data.get("fromTokenId")
+        # from_amount = data.get("fromAmount")
+        # to_token_id = data.get("toTokenId")
+        # to_amount = data.get("toAmount")
+        # limit_price = data.get("limitPrice")
+        # order_type = "Limit"
+        # order_fee = 0.05 * from_amount
+        # required_from_amount = order_fee + from_amount
 
-        # (1) Check quote (from/paying) crypto balance of user (BTC/XRP -> XRP)
-        crypto_sufficient, crypto_error, crypto_status_code, shortOf = check_crypto_balance(user_id, from_token_id, required_from_amount)
+        user_id = data.get("userId")
+        side = data.get("side")
+
+        from_token_id = data.get("quoteTokenId")
+        from_amount = data.get("orderCost") # (!) total cost to be calculated on frontend (if "sell", just qty. if "buy", qty * lim price)
+
+        to_token_id = data.get("baseTokenId")
+        to_amount = data.get("quantity") # quantity of toToken(baseToken) to get
+
+        limit_price = data.get("limitPrice")
+        order_type = "Limit"
+
+        if side == "sell":
+            # (!) if you are selling ETH/USDT, ETH (base) will be used to pay for USDT (quote)
+            from_token_id = data.get("baseTokenId") 
+            to_token_id = data.get("quoteTokenId")
+
+        # (1) Check quote crypto balance of user
+        crypto_sufficient_updated, crypto_error, crypto_status_code, shortOf = check_crypto_balance(user_id, from_token_id, from_amount)
 
         if crypto_error:
             return crypto_error, crypto_status_code
         
-        if crypto_sufficient == False:
+        if crypto_sufficient_updated == False:
             return {
                 "error": "Insufficient balance to fulfil order",
                 "shortOf": shortOf,
@@ -232,15 +286,15 @@ class CheckBalance(Resource):
         transaction_log_payload = {
             "userId": user_id,
             "status": "pending",
-            "fromTokenId": from_token_id,
+            "fromTokenId": from_token_id, # cost, (determine above)
             "fromAmount": from_amount,
-            "fromAmountActual": 0, 
+            "fromAmountActual": 0, # will be increased as order gets fulfilled (if partial)
             "toTokenId": to_token_id,
-            "toAmount": to_amount,
-            "toAmountActual": 0, 
+            "toAmount": to_amount, # total to be excuted
+            "toAmountActual": 0, # will be increased as order gets fulfilled (if partial)
             "limitPrice": limit_price, # (!) will be market price for market orders
-            "usdtFee": order_fee, 
-            "orderType": "order_type",
+            "usdtFee": 0,
+            "orderType": order_type,
         }
 
         transaction_response, transaction_error, transaction_status_code = post_transaction_log(transaction_log_payload)
@@ -255,10 +309,10 @@ class CheckBalance(Resource):
         message_to_publish = {
             "transactionId": transaction_id,
             "userId": user_id,
-            "orderType": order_type,
+            "orderType": order_type, 
             "fromTokenId": from_token_id,
             "toTokenId": to_token_id,
-            "fromAmount": from_amount,
+            "fromAmount": from_amount, # orderCost
             "limitPrice": limit_price, # 3) limit price or None
             "creation": creation
         }

@@ -2,13 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
-import { ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react"
+import { RefreshCw, X, Info } from "lucide-react"
 import axios from "@/lib/axios"
-import type React from "react";
-import { getCookie } from '@/lib/cookies';
-
-import { useState } from "react"
-import { ArrowUp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getCookie } from "@/lib/cookies"
 
 export default function BuyPage() {
@@ -25,13 +21,12 @@ export default function BuyPage() {
   
   // Order state
   const [orderType, setOrderType] = useState("limit")
-  const [buyPrice, setBuyPrice] = useState("65000.00") 
+  const [buyPrice, setBuyPrice] = useState("65000.00")
   const [buyAmount, setBuyAmount] = useState("")
   const [buyUsdtAmount, setBuyUsdtAmount] = useState("")
-  const [buyFeeRate, setBuyFeeRate] = useState(0.05) // 5% default fee
   const [sellPrice, setSellPrice] = useState("65100.00")
   const [sellAmount, setSellAmount] = useState("")
-  const [sellFeeRate, setSellFeeRate] = useState(0.05) // 5% default fee
+  const [sellUsdtAmount, setSellUsdtAmount] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   
   // Notification state
@@ -58,10 +53,6 @@ export default function BuyPage() {
   // Calculate totals
   const buyTotal = buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
   const sellTotal = sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
-  
-  // Calculate fees
-  const buyFee = buyPrice && buyAmount ? (Number.parseFloat(buyTotal) * buyFeeRate).toFixed(2) : "0.00"
-  const sellFee = sellPrice && sellAmount ? (Number.parseFloat(sellTotal) * sellFeeRate).toFixed(2) : "0.00"
 
   // Show notification
   const showNotification = (message, type = "success") => {
@@ -91,11 +82,24 @@ export default function BuyPage() {
         const formattedRate = rate.toFixed(2)
         setBuyPrice(formattedRate)
         setSellPrice(formattedRate)
+        
+        // Update market order calculations if needed
+        if (orderType === "market") {
+          if (buyUsdtAmount) {
+            const tokenAmount = Number.parseFloat(buyUsdtAmount) / rate
+            setBuyAmount(tokenAmount.toFixed(6))
+          }
+          
+          if (sellAmount) {
+            const usdtAmount = Number.parseFloat(sellAmount) * rate
+            setSellUsdtAmount(usdtAmount.toFixed(2))
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to fetch exchange rate:", error)
     }
-  }, [])
+  }, [orderType, buyUsdtAmount, sellAmount])
 
   // Fetch available tokens
   const fetchAvailableTokens = useCallback(async () => {
@@ -234,6 +238,12 @@ export default function BuyPage() {
     const newToken = token.toLowerCase()
     setCurrentToken(newToken)
     fetchExchangeRate(newToken)
+    
+    // Reset form values
+    setBuyAmount("")
+    setBuyUsdtAmount("")
+    setSellAmount("")
+    setSellUsdtAmount("")
   }
 
   // Handle buy price change
@@ -254,8 +264,9 @@ export default function BuyPage() {
     setBuyUsdtAmount(newUsdtAmount)
     
     // Calculate token amount based on USDT and price
-    if (newUsdtAmount && buyPrice) {
-      const tokenAmount = Number.parseFloat(newUsdtAmount) / Number.parseFloat(buyPrice)
+    if (newUsdtAmount) {
+      let price = orderType === "market" ? currentPrice : Number.parseFloat(buyPrice || 1)
+      const tokenAmount = Number.parseFloat(newUsdtAmount) / price
       setBuyAmount(tokenAmount.toFixed(6))
     } else {
       setBuyAmount("")
@@ -268,11 +279,54 @@ export default function BuyPage() {
     setBuyAmount(newAmount)
     
     // Calculate USDT amount based on token amount and price
-    if (newAmount && buyPrice) {
-      const usdtAmount = Number.parseFloat(newAmount) * Number.parseFloat(buyPrice)
+    if (newAmount) {
+      let price = orderType === "market" ? currentPrice : Number.parseFloat(buyPrice || 1)
+      const usdtAmount = Number.parseFloat(newAmount) * price
       setBuyUsdtAmount(usdtAmount.toFixed(2))
     } else {
       setBuyUsdtAmount("")
+    }
+  }
+  
+  // Handle sell price change
+  const handleSellPriceChange = (e) => {
+    const newPrice = e.target.value
+    setSellPrice(newPrice)
+    
+    // If token amount is set, recalculate USDT amount
+    if (sellAmount) {
+      const usdtAmount = Number.parseFloat(sellAmount) * Number.parseFloat(newPrice || 1)
+      setSellUsdtAmount(usdtAmount.toFixed(2))
+    }
+  }
+  
+  // Handle sell amount change
+  const handleSellAmountChange = (e) => {
+    const newAmount = e.target.value
+    setSellAmount(newAmount)
+    
+    // Calculate USDT amount based on token amount and price
+    if (newAmount) {
+      let price = orderType === "market" ? currentPrice : Number.parseFloat(sellPrice || 1)
+      const usdtAmount = Number.parseFloat(newAmount) * price
+      setSellUsdtAmount(usdtAmount.toFixed(2))
+    } else {
+      setSellUsdtAmount("")
+    }
+  }
+  
+  // Handle sell USDT amount change
+  const handleSellUsdtAmountChange = (e) => {
+    const newUsdtAmount = e.target.value
+    setSellUsdtAmount(newUsdtAmount)
+    
+    // Calculate token amount based on USDT and price
+    if (newUsdtAmount) {
+      let price = orderType === "market" ? currentPrice : Number.parseFloat(sellPrice || 1)
+      const tokenAmount = Number.parseFloat(newUsdtAmount) / price
+      setSellAmount(tokenAmount.toFixed(6))
+    } else {
+      setSellAmount("")
     }
   }
 
@@ -286,25 +340,26 @@ export default function BuyPage() {
     
     setIsProcessing(true)
     
-    const buyTotalAmount = Number.parseFloat(buyUsdtAmount || buyTotal)
     const tokenAmount = Number.parseFloat(buyAmount)
-    const price = Number.parseFloat(buyPrice)
+    const usdtAmount = Number.parseFloat(buyUsdtAmount || buyTotal)
+    const price = orderType === "market" ? currentPrice : Number.parseFloat(buyPrice)
     
     const orderData = {
       userId: userId,
-      fromTokenId: 'usdt',               // Buy: from USDT
-      fromAmount: buyTotalAmount,        // Total USDT amount
-      toTokenId: currentToken,           // Buy: to the selected token
-      toAmount: tokenAmount,             // Amount of tokens to buy
-      limitPrice: price,                 // Price per token
-      orderType: orderType               // Limit or Market
+      orderType: orderType,               // "limit" or "market"
+      side: "buy",                        // Buy side
+      baseTokenId: currentToken,          // Selected token (crypto)
+      quoteTokenId: "usdt",               // Quote token is always USDT
+      limitPrice: price,                  // Price per token
+      quantity: tokenAmount,              // Amount of tokens to buy
+      orderCost: usdtAmount               // Total USDT amount to spend
     }
     
     try {
       const response = await axios.post('/api/v1/order/create_order', orderData)
       
       // Show success notification instead of alert
-      showNotification(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()} at $${buyPrice}`)
+      showNotification(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
       
       setBuyAmount("")
       setBuyUsdtAmount("")
@@ -334,26 +389,28 @@ export default function BuyPage() {
     setIsProcessing(true)
     
     const tokenAmount = Number.parseFloat(sellAmount)
-    const usdtAmount = Number.parseFloat(sellTotal)
-    const price = Number.parseFloat(sellPrice)
+    const usdtAmount = Number.parseFloat(sellUsdtAmount || sellTotal)
+    const price = orderType === "market" ? currentPrice : Number.parseFloat(sellPrice)
     
     const orderData = {
       userId: userId,
-      fromTokenId: currentToken,         // Sell: from the selected token
-      fromAmount: tokenAmount,           // Amount of tokens to sell
-      toTokenId: 'usdt',                 // Sell: to USDT
-      toAmount: usdtAmount,              // Total USDT amount
-      limitPrice: price,                 // Price per token
-      orderType: orderType               // Limit or Market
+      orderType: orderType,               // "limit" or "market"
+      side: "sell",                       // Sell side
+      baseTokenId: currentToken,          // Selected token (crypto)
+      quoteTokenId: "usdt",               // Quote token is always USDT
+      limitPrice: price,                  // Price per token
+      quantity: tokenAmount,              // Amount of tokens to sell
+      orderCost: usdtAmount               // Total USDT amount to receive
     }
     
     try {
       const response = await axios.post('/api/v1/order/create_order', orderData)
       
       // Show success notification instead of alert
-      showNotification(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()} at $${sellPrice}`)
+      showNotification(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
       
       setSellAmount("")
+      setSellUsdtAmount("")
       
       // Refresh data
       fetchBalances()
@@ -368,6 +425,22 @@ export default function BuyPage() {
       setIsProcessing(false)
     }
   }
+  
+  // Reset form values when order type changes
+  useEffect(() => {
+    if (orderType === "market") {
+      // For market orders, use current price from BTC/USDT card
+      if (buyUsdtAmount) {
+        const tokenAmount = Number.parseFloat(buyUsdtAmount) / currentPrice
+        setBuyAmount(tokenAmount.toFixed(6))
+      }
+      
+      if (sellAmount) {
+        const usdtAmount = Number.parseFloat(sellAmount) * currentPrice
+        setSellUsdtAmount(usdtAmount.toFixed(2))
+      }
+    }
+  }, [orderType, currentPrice, buyUsdtAmount, sellAmount])
 
   // Initialize data
   useEffect(() => {
@@ -385,13 +458,13 @@ export default function BuyPage() {
     }
   }, [currentToken, fetchOrderBook, fetchRecentTrades, fetchBalances, fetchTransactions])
 
-  // Periodic data refresh - refresh every 5 seconds
+  // Periodic data refresh - refresh every 10 seconds (changed from 5 seconds)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchOrderBook()
       fetchRecentTrades()
       fetchExchangeRate(currentToken)
-    }, 5000)
+    }, 10000) // Changed from 5000 to 10000 ms
     
     return () => clearInterval(interval)
   }, [fetchOrderBook, fetchRecentTrades, fetchExchangeRate, currentToken])
@@ -656,10 +729,9 @@ export default function BuyPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="buy">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="buy">Buy</TabsTrigger>
                 <TabsTrigger value="sell">Sell</TabsTrigger>
-                <TabsTrigger value="fee">Fee</TabsTrigger>
               </TabsList>
               
               <TabsContent value="buy" className="space-y-4 pt-4">
@@ -709,15 +781,29 @@ export default function BuyPage() {
                       <div className="text-sm">
                         <div className="text-muted-foreground">Total Order</div>
                         <div className="font-medium">{(buyUsdtAmount || buyTotal)} USDT</div>
-                        <div className="text-muted-foreground mt-1">Fee (5%)</div>
-                        <div className="font-medium">{buyFee} USDT</div>
                       </div>
                       
                       <div className="text-xs text-right">
-                        <div className="text-muted-foreground">Available Balance</div>
-                        <div>{usdtBalance.available.toFixed(2)} USDT</div>
-                        <div className="text-muted-foreground mt-1">Actual Balance</div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-muted-foreground">Total Balance</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="ml-1 inline-flex items-center justify-center text-muted-foreground">
+                                  <Info className="h-3 w-3" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="w-[200px] text-xs">
+                                  Total Balance is your full balance. Available Balance is what you can use for trading (after pending orders).
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <div>{usdtBalance.actual.toFixed(2)} USDT</div>
+                        <div className="text-muted-foreground mt-1">Available Balance</div>
+                        <div>{usdtBalance.available.toFixed(2)} USDT</div>
                       </div>
                     </div>
                     
@@ -750,11 +836,12 @@ export default function BuyPage() {
                           type="number"
                           step="0.01"
                           value={sellPrice}
-                          onChange={(e) => setSellPrice(e.target.value)}
+                          onChange={handleSellPriceChange}
                           required
                         />
                       </div>
                     )}
+                    
                     <div className="space-y-2">
                       <Label htmlFor="sell-amount">Amount of {currentToken.toUpperCase()} to Sell</Label>
                       <Input
@@ -763,25 +850,52 @@ export default function BuyPage() {
                         step="0.0001"
                         placeholder="0.00"
                         value={sellAmount}
-                        onChange={(e) => setSellAmount(e.target.value)}
+                        onChange={handleSellAmountChange}
                         required
                       />
                     </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="sell-usdt-amount">USDT Amount to Receive</Label>
+                      <Input
+                        id="sell-usdt-amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={sellUsdtAmount}
+                        onChange={handleSellUsdtAmountChange}
+                      />
+                    </div>
+                    
                     <Separator />
                     
                     <div className="flex justify-between items-center">
                       <div className="text-sm">
                         <div className="text-muted-foreground">Total Order</div>
-                        <div className="font-medium">{sellTotal} USDT</div>
-                        <div className="text-muted-foreground mt-1">Fee (5%)</div>
-                        <div className="font-medium">{sellFee} USDT</div>
+                        <div className="font-medium">{sellUsdtAmount || sellTotal} USDT</div>
                       </div>
                       
                       <div className="text-xs text-right">
-                        <div className="text-muted-foreground">Available Balance</div>
-                        <div>{tokenBalance.available.toFixed(6)} {currentToken.toUpperCase()}</div>
-                        <div className="text-muted-foreground mt-1">Actual Balance</div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-muted-foreground">Total Balance</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="ml-1 inline-flex items-center justify-center text-muted-foreground">
+                                  <Info className="h-3 w-3" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="w-[200px] text-xs">
+                                  Total Balance is your full balance. Available Balance is what you can use for trading (after pending orders).
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <div>{tokenBalance.actual.toFixed(6)} {currentToken.toUpperCase()}</div>
+                        <div className="text-muted-foreground mt-1">Available Balance</div>
+                        <div>{tokenBalance.available.toFixed(6)} {currentToken.toUpperCase()}</div>
                       </div>
                     </div>
                     
@@ -801,39 +915,6 @@ export default function BuyPage() {
                     </Button>
                   </div>
                 </form>
-              </TabsContent>
-              
-              <TabsContent value="fee" className="pt-4">
-                <div className="space-y-4">
-                  <div className="text-sm space-y-2">
-                    <h3 className="font-medium">Fee Structure</h3>
-                    <p>Our standard trading fee is <strong>5%</strong> of the transaction value.</p>
-                    
-                    <div className="mt-4">
-                      <div className="grid grid-cols-2 gap-2 text-sm border-b pb-2">
-                        <div className="font-medium">Trade Type</div>
-                        <div className="font-medium text-right">Fee Rate</div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm py-2 border-b">
-                        <div>Buy Orders</div>
-                        <div className="text-right">5%</div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm py-2 border-b">
-                        <div>Sell Orders</div>
-                        <div className="text-right">5%</div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm py-2">
-                        <div>Market Orders</div>
-                        <div className="text-right">5%</div>
-                      </div>
-                    </div>
-                    
-                    <p className="mt-4 text-xs text-muted-foreground">
-                      Fees are automatically calculated and included in your order total.
-                      Higher trading volumes may qualify for reduced fees.
-                    </p>
-                  </div>
-                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

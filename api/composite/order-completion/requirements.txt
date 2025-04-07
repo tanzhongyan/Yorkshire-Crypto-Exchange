@@ -3,3 +3,4 @@ flask-cors
 flask-restx
 requests
 pika
+dotenv

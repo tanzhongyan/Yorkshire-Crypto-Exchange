@@ -287,6 +287,26 @@ services:
     expose:
       - "5000"
 
+  order-completion-service:
+    container_name: order-completion-service
+    build:
+      context: ./api/composite/order-completion
+      dockerfile: Dockerfile
+    ports:
+      - "5010:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      - rabbit-net
+    expose:
+      - "5000"
+
   # website:
   #   build:
   #     context: ./website

@@ -3,8 +3,6 @@ import logging
 import amqp_lib
 import pika
 import json
-import decimal
-from decimal import Decimal
 
 # logger
 # Configure logging at the application startup
@@ -24,17 +22,6 @@ routing_key = "order.executed"
 
 connection = None 
 channel = None
-
-# Set the precision context for all decimal operations
-decimal.getcontext().prec = 18  # Common in crypto (Ethereum uses 18 decimals)
-decimal.getcontext().rounding = decimal.ROUND_HALF_UP  # Standard financial rounding
-
-# for sending messages, to prevent TypeError: Object of type 'Decimal' is not JSON serializable
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
 
 # Environment variables for microservice
 # Environment variables for microservice URLs
@@ -63,7 +50,7 @@ def connectAMQP():
 
 
 ##### Individual helper functions  #####
-
+    
 def determine_side(incoming_order):
     '''
     this helper function is meant to check if the incoming order is on the buy or sell side.
@@ -458,15 +445,15 @@ def match_incoming_buy(incoming_order, counterparty_orders):
     
     # intialise for readability
     buy = incoming_order.copy()
-    buy['fromAmount'] = Decimal(str(buy['fromAmount']))
+    buy['fromAmount'] = float(str(buy['fromAmount']))
     if buy['orderType'] == 'limit':
-        buy['limitPrice'] = Decimal(str(buy['limitPrice']))
+        buy['limitPrice'] = float(str(buy['limitPrice']))
     
     sell_orders = []
     for sell in counterparty_orders:
         sell_copy = sell.copy()
-        sell_copy['fromAmount'] = Decimal(str(sell['fromAmount']))
-        sell_copy['limitPrice'] = Decimal(str(sell['limitPrice']))
+        sell_copy['fromAmount'] = float(str(sell['fromAmount']))
+        sell_copy['limitPrice'] = float(str(sell['limitPrice']))
         sell_orders.append(sell_copy)
     
     # to keep track and use for updating crypto
@@ -557,7 +544,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = Decimal('0.00000001')
+                            ZERO_THRESHOLD = float('0.00000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             buy['fromAmount'] = buy_from_amount_left
@@ -611,8 +598,10 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                                 }            
                                 if connection is None or not amqp_lib.is_connection_open(connection):
                                     connectAMQP()
+                                    
+                                
                     
-                                json_message = json.dumps(message_to_publish_buy, cls=DecimalEncoder)
+                                json_message = json.dumps(message_to_publish_buy)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -620,7 +609,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                     properties=pika.BasicProperties(delivery_mode=2),
                                     )
                                 
-                                json_message2 = json.dumps(message_to_publish_sell, cls=DecimalEncoder)
+                                json_message2 = json.dumps(message_to_publish_sell)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -657,8 +646,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                             }
             if connection is None or not amqp_lib.is_connection_open(connection):
                 connectAMQP()
-
-            json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+            json_message = json.dumps(message_to_publish)
             channel.basic_publish(
                 exchange=exchange_name,
                 routing_key=routing_key,
@@ -679,7 +667,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         if connection is None or not amqp_lib.is_connection_open(connection):
             connectAMQP()
 
-        json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+        json_message = json.dumps(message_to_publish)
         channel.basic_publish(
             exchange=exchange_name,
             routing_key=routing_key,
@@ -695,15 +683,15 @@ def match_incoming_sell(incoming_order, counterparty_orders):
     
     # intialise for readability
     sell = incoming_order.copy()
-    sell['fromAmount'] = Decimal(str(sell['fromAmount']))
+    sell['fromAmount'] = float(str(sell['fromAmount']))
     if sell['orderType'] == 'limit':
-        sell['limitPrice'] = Decimal(str(sell['limitPrice']))
+        sell['limitPrice'] = float(str(sell['limitPrice']))
     
     buy_orders = []
     for buy in counterparty_orders:
         buy_copy = buy.copy()
-        buy_copy['fromAmount'] = Decimal(str(buy['fromAmount']))
-        buy_copy['limitPrice'] = Decimal(str(buy['limitPrice']))
+        buy_copy['fromAmount'] = float(str(buy['fromAmount']))
+        buy_copy['limitPrice'] = float(str(buy['limitPrice']))
         buy_orders.append(buy_copy)
     
     # to keep track and use for updating crypto
@@ -795,7 +783,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = Decimal('0.00000001')
+                            ZERO_THRESHOLD = float('0.00000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             sell['fromAmount'] = sell_from_amount_left
@@ -850,7 +838,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 if connection is None or not amqp_lib.is_connection_open(connection):
                                     connectAMQP()
                     
-                                json_message = json.dumps(message_to_publish_buy, cls=DecimalEncoder)
+                                json_message = json.dumps(message_to_publish_buy)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -858,7 +846,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                     properties=pika.BasicProperties(delivery_mode=2),
                                     )
                                 
-                                json_message2 = json.dumps(message_to_publish_sell, cls=DecimalEncoder)
+                                json_message2 = json.dumps(message_to_publish_sell)
                                 channel.basic_publish(
                                     exchange=exchange_name,
                                     routing_key=routing_key,
@@ -896,7 +884,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             if connection is None or not amqp_lib.is_connection_open(connection):
                 connectAMQP()
             
-            json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+            json_message = json.dumps(message_to_publish)
             channel.basic_publish(
                 exchange=exchange_name,
                 routing_key=routing_key,
@@ -917,7 +905,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         if connection is None or not amqp_lib.is_connection_open(connection):
             connectAMQP()
 
-        json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+        json_message = json.dumps(message_to_publish)
         channel.basic_publish(
             exchange=exchange_name,
             routing_key=routing_key,
@@ -969,10 +957,11 @@ def callback(channel, method, properties, body):
                                                         'toAmountActual' : 0, 
                                                         'details' : description
                                                     }
+                    
                     if connection is None or not amqp_lib.is_connection_open(connection):
                         connectAMQP()
                     
-                    json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+                    json_message = json.dumps(message_to_publish)
                     channel.basic_publish(
                         exchange=exchange_name,
                         routing_key=routing_key,
@@ -997,7 +986,7 @@ def callback(channel, method, properties, body):
                 if connection is None or not amqp_lib.is_connection_open(connection):
                     connectAMQP()
                     
-                json_message = json.dumps(message_to_publish, cls=DecimalEncoder)
+                json_message = json.dumps(message_to_publish)
 
                 channel.basic_publish(
                     exchange=exchange_name,

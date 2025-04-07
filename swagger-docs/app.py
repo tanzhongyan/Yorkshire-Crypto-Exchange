@@ -11,7 +11,7 @@ atomic_services = {
     },
     "Crypto Service": {
         "url": "http://localhost:5002/api/v1/crypto",
-        "description": "Handles cryptocurrency transactions"
+        "description": "Handles crypto currency operations"
     },
     "User Service": {
         "url": "http://localhost:5003/api/v1/user",
@@ -19,34 +19,34 @@ atomic_services = {
     },
     "Transaction Service": {
         "url": "http://localhost:5005/api/v1/transaction",
-        "description": "Processes all transaction records"
+        "description": "Transaction records for fiat, fiattocrypto, crypto, and aggregated transactions"
     }
 }
 
 composite_services = {
     "Identity": {
         "url": "http://localhost:5004/api/v1",
-        "description": "Identity verification and management"
+        "description": "Identity, wallet and account creation/deletion"
     },
     "Deposit": {
         "url": "http://localhost:5006/api/v1",
-        "description": "Manages deposit operations"
+        "description": "Manages fiat deposit operations"
     },
     "Ramp": {
         "url": "http://localhost:5007/api/v1",
-        "description": "On/off ramp services"
+        "description": "Fiat to crypto ramp services"
     },
     "Market": {
         "url": "http://localhost:5008/api/v1",
-        "description": "Market data and trading operations"
+        "description": "Coingecko, exchangerate, orderbook, and executions data"
     },
     "Initiate": {
         "url": "http://localhost:5009/api/v1",
-        "description": "Initiates transaction processes"
+        "description": "Initiates crypto order processes"
     },
     "Complete": {
         "url": "http://localhost:5010/api/v1",
-        "description": "Completes and finalizes transactions"
+        "description": "Completes and finalizes crypto order transactions"
     }
 }
 

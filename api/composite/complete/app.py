@@ -31,7 +31,7 @@ CORS(app)
 
 blueprint = Blueprint('api', __name__, url_prefix=API_ROOT)
 api = Api(blueprint, version=API_VERSION, title='Notification Management Service API',
-          description='Service for transaction updates and sending notifications')
+          description='Consumes message from queue and executes transaction update and notifications. APIs provided for testing.', )
 app.register_blueprint(blueprint)
 
 notification_ns = Namespace('notification', description='Notification endpoints')

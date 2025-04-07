@@ -654,7 +654,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
             
-    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and fail_incoming_req:
         description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
@@ -892,7 +892,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
             
-    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market':
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and fail_incoming_req:
         description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 

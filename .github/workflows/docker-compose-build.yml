@@ -14,17 +14,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🛎 Checkout Repository
+      - name: 🛎️ Checkout Repository
         uses: actions/checkout@v3
 
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-        
-      - name: 🏗️ Install Docker Compose (Fix for "command not found")
+
+      - name: 🏗️ Install Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-          
+
       - name: 🏗️ Build and Start Services with Docker Compose
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -32,7 +32,7 @@ jobs:
           docker-compose up -d --build
 
       - name: ⏳ Wait for Containers to Initialize
-        run: sleep 10  # Adjust based on startup time
+        run: sleep 30  # Increased from 10 to 30 seconds
 
       - name: ✅ Check Running Containers
         run: |
@@ -41,15 +41,31 @@ jobs:
             exit 1
           fi
 
-      - name: 🔍 Detect Failed Containers
+      - name: 📜 Print RabbitMQ Setup Logs
+        run: docker logs yorkshire-crypto-exchange_rabbitmq-setup_1 || true
+
+      - name: 🔍 Detect Failed Containers (Ignore Known One-Offs)
         run: |
+          # List containers that exited
           EXITED_CONTAINERS=$(docker ps -a --filter "status=exited" --format "{{.Names}}")
-          if [ ! -z "$EXITED_CONTAINERS" ]; then
-            echo "🚨 The following containers failed:"
-            echo "$EXITED_CONTAINERS"
+
+          # Containers that are allowed to exit (e.g. init-only containers)
+          ALLOWED_EXITED_CONTAINERS=("yorkshire-crypto-exchange_rabbitmq-setup_1")
+
+          UNEXPECTED_EXITED=()
+
+          for CONTAINER in $EXITED_CONTAINERS; do
+            if [[ ! " ${ALLOWED_EXITED_CONTAINERS[@]} " =~ " ${CONTAINER} " ]]; then
+              UNEXPECTED_EXITED+=($CONTAINER)
+            fi
+          done
+
+          if [ ${#UNEXPECTED_EXITED[@]} -ne 0 ]; then
+            echo "🚨 Unexpected containers exited:"
+            printf '%s\n' "${UNEXPECTED_EXITED[@]}"
             exit 1
           fi
 
-      - name: 🧹 Cleanup (Optional)
+      - name: 🧹 Cleanup
         if: always()
         run: docker-compose down

@@ -287,16 +287,36 @@ services:
     expose:
       - "5000"
 
-  website:
+  order-completion-service:
+    container_name: order-completion-service
     build:
-      context: ./website
+      context: ./api/composite/order-completion
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "5010:5000"
     depends_on:
-      - fiat-service
-      - user-service
-      - crypto-service
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      - rabbit-net
+    expose:
+      - "5000"
+
+  # website:
+  #   build:
+  #     context: ./website
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - fiat-service
+  #     - user-service
+  #     - crypto-service
 
 volumes:
   fiat_data:

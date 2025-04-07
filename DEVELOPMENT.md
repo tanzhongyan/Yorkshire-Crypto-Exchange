@@ -277,6 +277,8 @@ Composite Microservices:
 - **deposit** `http://localhost:5006/api/v1`
 - **ramp** `http://localhost:5007/api/v1`
 - **market** `http://localhost:5008/api/v1`
+- **order-initiation** `http://localhost:5009/api/v1/`
+- **order-completion** `http://localhost:5010/api/v1/`
 
 ### Kong Gateway Configuration
 

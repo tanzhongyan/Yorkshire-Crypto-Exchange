@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.DEBUG,  # Set to DEBUG during testing
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 # RabbitMQ
 rabbit_host = "rabbitmq"

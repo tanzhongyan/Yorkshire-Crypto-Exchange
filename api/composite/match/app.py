@@ -560,7 +560,11 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             ZERO_THRESHOLD = Decimal('0.00000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
+                            # here both are updated
+                            # buy scope is within loop so if any issues, then it will die as copy and incoming preserved
+                            # incoming will be preserved and updated once success only
                             buy['fromAmount'] = buy_from_amount_left
+                            incoming_order['fromAmount'] = buy_from_amount_left
                             if buy_from_amount_left > ZERO_THRESHOLD:
                                 buy_status = 'Partially filled'
                             else:
@@ -797,8 +801,13 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             
                             ZERO_THRESHOLD = Decimal('0.00000001')
                             # find status of orders
-                            # adding of incoming sell order to order book to be done last after full iteration
+                            # adding of incoming buy order to order book to be done last after full iteration
+                            # here both are updated
+                            # sell scope is within loop so if any issues, then it will die as copy and incoming preserved
+                            # incoming will be preserved and updated once success only
                             sell['fromAmount'] = sell_from_amount_left
+                            incoming_order['fromAmount'] = sell_from_amount_left
+                            
                             if sell_from_amount_left > ZERO_THRESHOLD:
                                 sell_status = 'Partially filled'
                             else:

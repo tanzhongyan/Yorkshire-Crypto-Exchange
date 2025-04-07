@@ -1,70 +1,344 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { ArrowUp } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { ArrowUp, ArrowDown, RefreshCw } from "lucide-react"
+import axios from "@/lib/axios"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-
-// Mock order book data
-const asks = [
-  { price: 65250.0, amount: 0.5, total: 32625.0 },
-  { price: 65200.0, amount: 0.8, total: 52160.0 },
-  { price: 65150.0, amount: 1.2, total: 78180.0 },
-  { price: 65100.0, amount: 0.3, total: 19530.0 },
-  { price: 65050.0, amount: 0.7, total: 45535.0 },
-]
-
-const bids = [
-  { price: 65000.0, amount: 0.4, total: 26000.0 },
-  { price: 64950.0, amount: 0.6, total: 38970.0 },
-  { price: 64900.0, amount: 1.0, total: 64900.0 },
-  { price: 64850.0, amount: 0.2, total: 12970.0 },
-  { price: 64800.0, amount: 0.9, total: 58320.0 },
-]
-
-// Mock recent trades
-const recentTrades = [
-  { price: 65100.0, amount: 0.12, time: "14:45:32", type: "buy" },
-  { price: 65050.0, amount: 0.08, time: "14:44:15", type: "sell" },
-  { price: 65100.0, amount: 0.25, time: "14:43:22", type: "buy" },
-  { price: 65000.0, amount: 0.15, time: "14:42:10", type: "sell" },
-  { price: 64950.0, amount: 0.3, time: "14:41:05", type: "sell" },
-]
+import { getCookie } from "@/lib/cookies"
 
 export default function BuyPage() {
+  // User state
+  const userId = getCookie("userId") || ""
+  
+  // Order state
   const [orderType, setOrderType] = useState("limit")
   const [buyPrice, setBuyPrice] = useState("65000.00")
   const [buyAmount, setBuyAmount] = useState("")
+  const [buyUsdtAmount, setBuyUsdtAmount] = useState("")
   const [sellPrice, setSellPrice] = useState("65100.00")
   const [sellAmount, setSellAmount] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
+  
+  // Market data state
+  const [availableTokens, setAvailableTokens] = useState([])
   const [selectedPair, setSelectedPair] = useState("BTC/USDT")
+  const [currentToken, setCurrentToken] = useState("btc")
+  const [orderBook, setOrderBook] = useState({ asks: [], bids: [] })
+  const [recentTrades, setRecentTrades] = useState([])
+  const [currentPrice, setCurrentPrice] = useState(65100)
+  
+  // Balance state
+  const [usdtBalance, setUsdtBalance] = useState({ available: 0, actual: 0 })
+  const [tokenBalance, setTokenBalance] = useState({ available: 0, actual: 0 })
+  
+  // Transactions state
+  const [transactions, setTransactions] = useState([])
+  const [loadingTransactions, setLoadingTransactions] = useState(true)
 
-  const buyTotal =
-    buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
-  const sellTotal =
-    sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
+  // Calculate totals
+  const buyTotal = buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
+  const sellTotal = sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
 
-  const handleBuySubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, you would call your API to place the buy order
-    alert(`Buy order placed: ${buyAmount} BTC at $${buyPrice}`)
-    setBuyAmount("")
+  // Fetch exchange rate for current token - fixed to properly handle token case
+  const fetchExchangeRate = useCallback(async (token) => {
+    if (!token) return
+    
+    try {
+      // Use lowercase for API request as standardized in backend
+      const tokenLower = token.toLowerCase()
+      const response = await axios.get(`/api/v1/market/exchangerate?tokens=${tokenLower}`)
+      
+      // Check if response contains rates for the token (in lowercase)
+      if (response.data && response.data.rates && response.data.rates[tokenLower] !== undefined) {
+        const rate = response.data.rates[tokenLower]
+        setCurrentPrice(rate)
+        
+        // Update buy/sell prices with latest rate
+        const formattedRate = rate.toFixed(2)
+        setBuyPrice(formattedRate)
+        setSellPrice(formattedRate)
+      }
+    } catch (error) {
+      console.error("Failed to fetch exchange rate:", error)
+    }
+  }, [])
+
+  // Fetch available tokens
+  const fetchAvailableTokens = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/v1/crypto/token')
+      const tokens = response.data.filter(token => token.tokenId.toLowerCase() !== 'usdt')
+      setAvailableTokens(tokens)
+      
+      // Set default token if none selected yet
+      if (!currentToken && tokens.length > 0) {
+        const defaultToken = tokens[0].tokenId.toLowerCase()
+        setCurrentToken(defaultToken)
+        setSelectedPair(`${tokens[0].tokenId.toUpperCase()}/USDT`)
+        fetchExchangeRate(defaultToken)
+      }
+    } catch (error) {
+      console.error("Failed to fetch tokens:", error)
+    }
+  }, [currentToken, fetchExchangeRate])
+
+  // Fetch order book data
+  const fetchOrderBook = useCallback(async () => {
+    if (!currentToken) return
+    
+    try {
+      const response = await axios.get(`/api/v1/orderbook/sortedorders?token=${currentToken.toLowerCase()}`)
+      setOrderBook({
+        asks: response.data.sell || [],
+        bids: response.data.buy || []
+      })
+    } catch (error) {
+      console.error("Failed to fetch order book:", error)
+    }
+  }, [currentToken])
+
+  // Fetch recent trades
+  const fetchRecentTrades = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/v1/orderbook/recentorders')
+      
+      // Filter for current token if needed
+      const filteredTrades = response.data.orders.filter(order => 
+        (order.fromTokenId.toLowerCase() === currentToken.toLowerCase() && order.toTokenId.toLowerCase() === 'usdt') ||
+        (order.fromTokenId.toLowerCase() === 'usdt' && order.toTokenId.toLowerCase() === currentToken.toLowerCase())
+      )
+      
+      // Format trades data
+      const formattedTrades = filteredTrades.map(order => ({
+        price: order.limitPrice,
+        amount: order.fromTokenId.toLowerCase() === 'usdt' 
+          ? order.toAmount || order.fromAmount / order.limitPrice
+          : order.fromAmount || order.toAmount / order.limitPrice,
+        time: new Date(order.creation).toLocaleTimeString(),
+        type: order.fromTokenId.toLowerCase() === 'usdt' ? 'buy' : 'sell'
+      }))
+      
+      // Limit to 12 trades as requested
+      setRecentTrades(formattedTrades.slice(0, 12))
+    } catch (error) {
+      console.error("Failed to fetch recent trades:", error)
+    }
+  }, [currentToken])
+
+  // Fetch balances
+  const fetchBalances = useCallback(async () => {
+    if (!userId) return
+    
+    try {
+      // Fetch USDT balance
+      const usdtResponse = await axios.get(`/api/v1/crypto/holdings/${userId}/usdt`)
+      setUsdtBalance({
+        available: usdtResponse.data.availableBalance,
+        actual: usdtResponse.data.actualBalance
+      })
+      
+      // Fetch selected token balance if not USDT
+      if (currentToken !== 'usdt') {
+        const tokenResponse = await axios.get(`/api/v1/crypto/holdings/${userId}/${currentToken}`)
+        setTokenBalance({
+          available: tokenResponse.data.availableBalance,
+          actual: tokenResponse.data.actualBalance
+        })
+      }
+    } catch (error) {
+      console.error("Failed to fetch balances:", error)
+      // Set default values if balance not found
+      if (error.response && error.response.status === 404) {
+        if (currentToken !== 'usdt') {
+          setTokenBalance({ available: 0, actual: 0 })
+        }
+      }
+    }
+  }, [userId, currentToken])
+
+  // Fetch transactions
+  const fetchTransactions = useCallback(async () => {
+    if (!userId) return
+    
+    setLoadingTransactions(true)
+    try {
+      const response = await axios.get(`/api/v1/transaction/crypto/user/${userId}`)
+      
+      // Filter transactions for the current trading pair
+      const filteredTransactions = response.data.filter(tx => 
+        (tx.fromTokenId.toLowerCase() === currentToken.toLowerCase() && tx.toTokenId.toLowerCase() === 'usdt') ||
+        (tx.fromTokenId.toLowerCase() === 'usdt' && tx.toTokenId.toLowerCase() === currentToken.toLowerCase())
+      )
+      
+      setTransactions(filteredTransactions)
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error)
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }, [userId, currentToken])
+
+  // Handle pair change
+  const handlePairChange = (newPair) => {
+    const [token] = newPair.split('/')
+    setSelectedPair(newPair)
+    const newToken = token.toLowerCase()
+    setCurrentToken(newToken)
+    fetchExchangeRate(newToken)
   }
 
-  const handleSellSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, you would call your API to place the sell order
-    alert(`Sell order placed: ${sellAmount} BTC at $${sellPrice}`)
-    setSellAmount("")
+  // Handle buy price change
+  const handleBuyPriceChange = (e) => {
+    const newPrice = e.target.value
+    setBuyPrice(newPrice)
+    
+    // If USDT amount is set, recalculate token amount
+    if (buyUsdtAmount) {
+      const tokenAmount = Number.parseFloat(buyUsdtAmount) / Number.parseFloat(newPrice || 1)
+      setBuyAmount(tokenAmount.toFixed(6))
+    }
   }
+  
+  // Handle buy USDT amount change
+  const handleBuyUsdtAmountChange = (e) => {
+    const newUsdtAmount = e.target.value
+    setBuyUsdtAmount(newUsdtAmount)
+    
+    // Calculate token amount based on USDT and price
+    if (newUsdtAmount && buyPrice) {
+      const tokenAmount = Number.parseFloat(newUsdtAmount) / Number.parseFloat(buyPrice)
+      setBuyAmount(tokenAmount.toFixed(6))
+    } else {
+      setBuyAmount("")
+    }
+  }
+  
+  // Handle buy amount change
+  const handleBuyAmountChange = (e) => {
+    const newAmount = e.target.value
+    setBuyAmount(newAmount)
+    
+    // Calculate USDT amount based on token amount and price
+    if (newAmount && buyPrice) {
+      const usdtAmount = Number.parseFloat(newAmount) * Number.parseFloat(buyPrice)
+      setBuyUsdtAmount(usdtAmount.toFixed(2))
+    } else {
+      setBuyUsdtAmount("")
+    }
+  }
+
+  // Place buy order
+  const handleBuySubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!userId || !buyAmount || Number.parseFloat(buyAmount) <= 0) {
+      return
+    }
+    
+    setIsProcessing(true)
+    
+    const orderData = {
+      userId: userId,
+      fromTokenId: 'usdt',
+      fromAmount: Number.parseFloat(buyUsdtAmount || buyTotal),
+      toTokenId: currentToken,
+      toAmount: Number.parseFloat(buyAmount),
+      limitPrice: Number.parseFloat(buyPrice),
+      orderType: orderType
+    }
+    
+    try {
+      const response = await axios.post('/api/v1/order/create_order', orderData)
+      
+      alert(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()} at $${buyPrice}`)
+      setBuyAmount("")
+      setBuyUsdtAmount("")
+      
+      // Refresh data
+      fetchBalances()
+      fetchOrderBook()
+      fetchRecentTrades()
+      fetchTransactions()
+    } catch (error) {
+      console.error("Buy order failed:", error)
+      alert(`Buy order failed: ${error.response?.data?.error || "Unknown error"}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Place sell order
+  const handleSellSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!userId || !sellAmount || Number.parseFloat(sellAmount) <= 0) {
+      return
+    }
+    
+    setIsProcessing(true)
+    
+    const orderData = {
+      userId: userId,
+      fromTokenId: currentToken,
+      fromAmount: Number.parseFloat(sellAmount),
+      toTokenId: 'usdt',
+      toAmount: Number.parseFloat(sellTotal),
+      limitPrice: Number.parseFloat(sellPrice),
+      orderType: orderType
+    }
+    
+    try {
+      const response = await axios.post('/api/v1/order/create_order', orderData)
+      
+      alert(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()} at $${sellPrice}`)
+      setSellAmount("")
+      
+      // Refresh data
+      fetchBalances()
+      fetchOrderBook()
+      fetchRecentTrades()
+      fetchTransactions()
+    } catch (error) {
+      console.error("Sell order failed:", error)
+      alert(`Sell order failed: ${error.response?.data?.error || "Unknown error"}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Initialize data
+  useEffect(() => {
+    fetchAvailableTokens()
+  }, [fetchAvailableTokens])
+
+  // Update data when token changes
+  useEffect(() => {
+    if (currentToken) {
+      fetchOrderBook()
+      fetchRecentTrades()
+      fetchBalances()
+      fetchTransactions()
+    }
+  }, [currentToken, fetchOrderBook, fetchRecentTrades, fetchBalances, fetchTransactions])
+
+  // Periodic data refresh - refresh every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrderBook()
+      fetchRecentTrades()
+      fetchExchangeRate(currentToken)
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [fetchOrderBook, fetchRecentTrades, fetchExchangeRate, currentToken])
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -73,27 +347,25 @@ export default function BuyPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>BTC/USDT</CardTitle>
-                <CardDescription>Bitcoin to Tether</CardDescription>
+                <CardTitle>{selectedPair}</CardTitle>
+                <CardDescription>{currentToken.toUpperCase()} to Tether</CardDescription>
               </div>
-              <Select value={selectedPair} onValueChange={setSelectedPair}>
+              <Select value={selectedPair} onValueChange={handlePairChange}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Select pair" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
-                  <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
-                  <SelectItem value="BNB/USDT">BNB/USDT</SelectItem>
+                  {availableTokens.map((token) => (
+                    <SelectItem key={token.tokenId} value={`${token.tokenId.toUpperCase()}/USDT`}>
+                      {token.tokenId.toUpperCase()}/USDT
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$65,100.00</div>
-            <div className="flex items-center text-green-500 text-sm">
-              <ArrowUp className="mr-1 h-4 w-4" />
-              2.5% (24h)
-            </div>
+            <div className="text-2xl font-bold">${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
           </CardContent>
         </Card>
 
@@ -107,31 +379,39 @@ export default function BuyPage() {
                 <div>
                   <div className="grid grid-cols-3 text-xs font-medium text-muted-foreground mb-2">
                     <div>Price (USDT)</div>
-                    <div className="text-right">Amount (BTC)</div>
+                    <div className="text-right">Amount ({currentToken.toUpperCase()})</div>
                     <div className="text-right">Total (USDT)</div>
                   </div>
                   <div className="space-y-1">
-                    {asks.map((ask, index) => (
-                      <div key={index} className="grid grid-cols-3 text-xs text-red-500">
-                        <div>{ask.price.toFixed(2)}</div>
-                        <div className="text-right">{ask.amount.toFixed(2)}</div>
-                        <div className="text-right">{ask.total.toFixed(2)}</div>
-                      </div>
-                    ))}
+                    {orderBook.asks.length > 0 ? (
+                      orderBook.asks.map((ask, index) => (
+                        <div key={index} className="grid grid-cols-3 text-xs text-red-500">
+                          <div>{ask.limitPrice?.toFixed(2) || 0}</div>
+                          <div className="text-right">{ask.fromAmount?.toFixed(6) || 0}</div>
+                          <div className="text-right">{(ask.limitPrice * ask.fromAmount)?.toFixed(2) || 0}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-xs text-muted-foreground py-2">No sell orders</div>
+                    )}
                   </div>
                 </div>
 
-                <div className="py-2 text-center font-bold text-lg">$65,100.00</div>
+                <div className="py-2 text-center font-bold text-lg">${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
 
                 <div>
                   <div className="space-y-1">
-                    {bids.map((bid, index) => (
-                      <div key={index} className="grid grid-cols-3 text-xs text-green-500">
-                        <div>{bid.price.toFixed(2)}</div>
-                        <div className="text-right">{bid.amount.toFixed(2)}</div>
-                        <div className="text-right">{bid.total.toFixed(2)}</div>
-                      </div>
-                    ))}
+                    {orderBook.bids.length > 0 ? (
+                      orderBook.bids.map((bid, index) => (
+                        <div key={index} className="grid grid-cols-3 text-xs text-green-500">
+                          <div>{bid.limitPrice?.toFixed(2) || 0}</div>
+                          <div className="text-right">{bid.toAmount?.toFixed(6) || (bid.fromAmount / bid.limitPrice)?.toFixed(6) || 0}</div>
+                          <div className="text-right">{bid.fromAmount?.toFixed(2) || 0}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-xs text-muted-foreground py-2">No buy orders</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -146,27 +426,80 @@ export default function BuyPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground mb-2">
                   <div>Price (USDT)</div>
-                  <div className="text-right">Amount (BTC)</div>
+                  <div className="text-right">Amount ({currentToken.toUpperCase()})</div>
                   <div className="text-right">Total (USDT)</div>
                   <div className="text-right">Time</div>
                 </div>
                 <div className="space-y-2">
-                  {recentTrades.map((trade, index) => (
-                    <div
-                      key={index}
-                      className={`grid grid-cols-4 text-xs ${trade.type === "buy" ? "text-green-500" : "text-red-500"}`}
-                    >
-                      <div>{trade.price.toFixed(2)}</div>
-                      <div className="text-right">{trade.amount.toFixed(2)}</div>
-                      <div className="text-right">{(trade.price * trade.amount).toFixed(2)}</div>
-                      <div className="text-right">{trade.time}</div>
-                    </div>
-                  ))}
+                  {recentTrades.length > 0 ? (
+                    recentTrades.map((trade, index) => (
+                      <div
+                        key={index}
+                        className={`grid grid-cols-4 text-xs ${trade.type === "buy" ? "text-green-500" : "text-red-500"}`}
+                      >
+                        <div>{trade.price.toFixed(2)}</div>
+                        <div className="text-right">{trade.amount.toFixed(6)}</div>
+                        <div className="text-right">{(trade.price * trade.amount).toFixed(2)}</div>
+                        <div className="text-right">{trade.time}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-xs text-muted-foreground py-2">No recent trades</div>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaction History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingTransactions ? (
+              <div className="flex justify-center py-4">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : transactions.length > 0 ? (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {transactions.map((tx) => (
+                  <div key={tx.transactionId} className="border rounded-md p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-sm font-medium">
+                        {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
+                      </div>
+                      <div className={`text-xs px-2 py-1 rounded-full ${tx.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {tx.status}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 text-xs gap-1">
+                      <div>
+                        <div className="text-muted-foreground">Amount</div>
+                        <div>{tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toAmount : tx.fromAmount} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Price</div>
+                        <div>${tx.limitPrice.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Total</div>
+                        <div>${tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount.toFixed(2) : tx.toAmount.toFixed(2)}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(tx.creation).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No transactions for this trading pair
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div>
@@ -207,34 +540,62 @@ export default function BuyPage() {
                           type="number"
                           step="0.01"
                           value={buyPrice}
-                          onChange={(e) => setBuyPrice(e.target.value)}
+                          onChange={handleBuyPriceChange}
                           required
                         />
                       </div>
                     )}
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="buy-amount">Amount (BTC)</Label>
+                      <Label htmlFor="buy-usdt-amount">USDT Amount</Label>
+                      <Input
+                        id="buy-usdt-amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={buyUsdtAmount}
+                        onChange={handleBuyUsdtAmountChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="buy-amount">Amount ({currentToken.toUpperCase()})</Label>
                       <Input
                         id="buy-amount"
                         type="number"
                         step="0.0001"
                         placeholder="0.00"
                         value={buyAmount}
-                        onChange={(e) => setBuyAmount(e.target.value)}
+                        onChange={handleBuyAmountChange}
                         required
                       />
                     </div>
                     <Separator />
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Total</span>
-                      <span>{buyTotal} USDT</span>
+                      <span>{buyUsdtAmount || buyTotal} USDT</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Available</span>
-                      <span>1,000.00 USDT</span>
+                      <span>{usdtBalance.available.toFixed(2)} USDT</span>
                     </div>
-                    <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-                      Buy BTC
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Actual Balance</span>
+                      <span>{usdtBalance.actual.toFixed(2)} USDT</span>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={isProcessing || !buyAmount || Number.parseFloat(buyAmount) <= 0 || 
+                              Number.parseFloat(buyUsdtAmount || buyTotal) > usdtBalance.available}
+                    >
+                      {isProcessing ? (
+                        <div className="flex items-center">
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                        </div>
+                      ) : (
+                        `Buy ${currentToken.toUpperCase()}`
+                      )}
                     </Button>
                   </div>
                 </form>
@@ -256,7 +617,7 @@ export default function BuyPage() {
                       </div>
                     )}
                     <div className="space-y-2">
-                      <Label htmlFor="sell-amount">Amount (BTC)</Label>
+                      <Label htmlFor="sell-amount">Amount ({currentToken.toUpperCase()})</Label>
                       <Input
                         id="sell-amount"
                         type="number"
@@ -274,10 +635,25 @@ export default function BuyPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Available</span>
-                      <span>0.05 BTC</span>
+                      <span>{tokenBalance.available.toFixed(6)} {currentToken.toUpperCase()}</span>
                     </div>
-                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-                      Sell BTC
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Actual Balance</span>
+                      <span>{tokenBalance.actual.toFixed(6)} {currentToken.toUpperCase()}</span>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-red-600 hover:bg-red-700"
+                      disabled={isProcessing || !sellAmount || Number.parseFloat(sellAmount) <= 0 || 
+                                Number.parseFloat(sellAmount) > tokenBalance.available}
+                    >
+                      {isProcessing ? (
+                        <div className="flex items-center">
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                        </div>
+                      ) : (
+                        `Sell ${currentToken.toUpperCase()}`
+                      )}
                     </Button>
                   </div>
                 </form>
@@ -289,4 +665,3 @@ export default function BuyPage() {
     </div>
   )
 }
-

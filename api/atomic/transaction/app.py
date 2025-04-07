@@ -107,7 +107,6 @@ class TransactionCrypto(db.Model):
     to_amount = db.Column(db.Numeric(18, 8), nullable=False)
     to_amount_actual = db.Column(db.Numeric(18, 8), nullable=True)
     limit_price = db.Column(db.Numeric(18, 8), nullable=True)
-    usdt_fee = db.Column(db.Numeric(18, 8), nullable=False)
     creation = db.Column(db.DateTime(timezone=True), server_default=func.now())
     completion = db.Column(db.DateTime(timezone=True), nullable=True, onupdate=func.now())
     order_type = db.Column(db.String(10), nullable=False)
@@ -183,7 +182,6 @@ crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
     'toAmount': fields.Float(attribute='to_amount', required=True),
     'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'creation': fields.DateTime,
     'completion': fields.DateTime,
     'orderType': fields.String(attribute='order_type', required=True)
@@ -199,7 +197,6 @@ crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
     'toAmount': fields.Float(attribute='to_amount', required=True),
     'toAmountActual': fields.Float(attribute='to_amount_actual'),
     'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'usdtFee': fields.Float(attribute='usdt_fee', required=True),
     'orderType': fields.String(attribute='order_type', required=True)
 })
 
@@ -227,7 +224,6 @@ transaction_log_output_model = transaction_log_ns.model('TransactionLogOutput', 
     'fromAmountActual': fields.Float(attribute='from_amount_actual', required=False),
     'toTokenId': fields.String(attribute='to_token_id', required=False),
     'toAmountActual': fields.Float(attribute='to_amount_actual', required=False),
-    'usdtFee': fields.Float(attribute='usdt_fee', required=False),
     'orderType': fields.String(attribute='order_type', required=False),
     'completion': fields.DateTime(required=False)
 })
@@ -424,7 +420,6 @@ class CryptoTransactionList(Resource):
             to_amount=data.get('toAmount'),
             to_amount_actual=data.get('toAmountActual'),
             limit_price=data.get('limitPrice'),
-            usdt_fee=data.get('usdtFee'),
             order_type=data.get('orderType')
         )
         try:
@@ -460,7 +455,6 @@ class CryptoTransactionResource(Resource):
                 'toAmount': 'to_amount',
                 'toAmountActual': 'to_amount_actual',
                 'limitPrice': 'limit_price',
-                'usdtFee': 'usdt_fee',
                 'orderType': 'order_type'
             }
             
@@ -598,7 +592,6 @@ class TransactionLogList(Resource):
                 'to_amount': float(txn.to_amount),
                 'to_amount_actual': float(txn.to_amount_actual) if txn.to_amount_actual else None,
                 'limit_price': float(txn.limit_price) if txn.limit_price else None,
-                'usdt_fee': float(txn.usdt_fee),
                 'completion': txn.completion,
                 'order_type': txn.order_type
             })

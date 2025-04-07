@@ -267,10 +267,10 @@ services:
     networks:
       - kong-net
 
-  order-initiation-service:
-    container_name: order-initiation-service
+  initiate-service:
+    container_name: initiate-service
     build:
-      context: ./api/composite/order-initiation
+      context: ./api/composite/initiate
       dockerfile: Dockerfile
     ports:
       - "5009:5000"
@@ -288,6 +288,26 @@ services:
     container_name: match-service
     build:
       context: ./api/composite/match
+      dockerfile: Dockerfile
+    ports:
+      - "5010:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_started # wait until rabbitmq healthy
+      rabbitmq-setup:
+        condition: service_started # wait until rabbitmq healthy
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    networks:
+      - kong-net
+      - rabbit-net
+    expose:
+      - "5000"
+
+  complete-service:
+    container_name: complete-service
+    build:
+      context: ./api/composite/complete
       dockerfile: Dockerfile
     ports:
       - "5010:5000"

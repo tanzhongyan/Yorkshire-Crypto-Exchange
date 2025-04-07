@@ -934,7 +934,8 @@ def callback(channel, method, properties, body):
                 # if successfully added, then will end here. description = ''. will not go beyond here
                 # if fail, current description will be add order to orderbook fail or duplicate order exist
                 description = add_to_orderbook_error_message
-                
+                if add_to_orderbook_success:
+                    channel.basic_ack(delivery_tag=method.delivery_tag)
                 # in the case that adding to orderbook failed 
                 if not add_to_orderbook_success:
                     
@@ -958,6 +959,7 @@ def callback(channel, method, properties, body):
                         body=json_message,
                         properties=pika.BasicProperties(delivery_mode=2),
                         )
+                    channel.basic_ack(delivery_tag=method.delivery_tag)
                     
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
@@ -981,19 +983,21 @@ def callback(channel, method, properties, body):
                     body=json_message,
                     properties=pika.BasicProperties(delivery_mode=2),
                     )
+                channel.basic_ack(delivery_tag=method.delivery_tag)
                 
         
         # counterparty order was able to be obtained. now ready for processsing.
         else:
             if incoming_side == 'buy':
                 match_incoming_buy(incoming_order, counterparty_orders)
+                channel.basic_ack(delivery_tag=method.delivery_tag)
             elif incoming_side == 'sell':
                 match_incoming_sell(incoming_order, counterparty_orders)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
+                channel.basic_ack(delivery_tag=method.delivery_tag)
+            
     except Exception as e:
-        print(f"Unable to parse JSON: {e=}")
-        print(f"Error message: {body}")
-        print()
+        logger.error(f"Unable to parse JSON: {e=}")
+        logger.error(f"Error message: {body}")
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 if __name__ == '__main__':

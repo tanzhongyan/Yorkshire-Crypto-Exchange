@@ -50,19 +50,19 @@ channel = create_exchange(
     exchange_type=exchange_type,
 )
 
-# (1) order management service publishes, orderbook service consumes
+# (1) order initiaion service publishes, match service consumes
 create_queue(
     channel=channel,
     exchange_name=exchange_name,
-    queue_name="order_initiation_service.orders_creation",
+    queue_name="match_service.orders_creation",
     routing_key="order.new",
 )
 
-# (2) NIL orderbook service publishes, order management service consumes
+# (2) orderbook service publishes, order completion service consumes
 create_queue(
     channel=channel,
     exchange_name=exchange_name,
-    queue_name="orderbook_service.orders_placed",
+    queue_name="order_completion_service.orders_placed",
     routing_key="order.executed",
 )
 
@@ -70,6 +70,6 @@ create_queue(
 # create_queue(
 #     channel=channel,
 #     exchange_name=exchange_name,
-#     queue_name="order_completion_service.orders_placed",
+#     queue_name="notification_service.orders_placed",
 #     routing_key="order.executed",
 # )

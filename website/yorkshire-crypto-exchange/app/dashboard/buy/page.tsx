@@ -1,6 +1,7 @@
 "use client"
 
-import type React from "react"
+import type React from "react";
+import { getCookie } from '@/lib/cookies';
 
 import { useState } from "react"
 import { ArrowUp } from "lucide-react"
@@ -41,7 +42,7 @@ const recentTrades = [
 
 export default function BuyPage() {
   const [orderType, setOrderType] = useState("limit")
-  const [buyPrice, setBuyPrice] = useState("65000.00")
+  const [buyPrice, setBuyPrice] = useState("65000.00") 
   const [buyAmount, setBuyAmount] = useState("")
   const [sellPrice, setSellPrice] = useState("65100.00")
   const [sellAmount, setSellAmount] = useState("")
@@ -52,13 +53,30 @@ export default function BuyPage() {
   const sellTotal =
     sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
 
+  // (1) Buy - sends form to backend for processing
   const handleBuySubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log(e.target)
+
+    const fromTokenId = selectedPair.split("/")[0]
+    const toTokenId = selectedPair.split("/")[1]
+    const userId = getCookie('userId')
+
+    const data = {
+      "userId": userId,
+      "fromTokenId": fromTokenId,
+      "toTokenId": toTokenId,
+      "fromAmount": buyAmount,
+      "limitPrice": buyPrice,
+      "orderType": orderType,
+    }
+    console.log("data", data)
     // In a real app, you would call your API to place the buy order
-    alert(`Buy order placed: ${buyAmount} BTC at $${buyPrice}`)
+    // alert(`Buy order placed: ${buyAmount} BTC at $${buyPrice}`)
     setBuyAmount("")
   }
 
+  // (2) Sell (ignored)
   const handleSellSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // In a real app, you would call your API to place the sell order
@@ -201,6 +219,7 @@ export default function BuyPage() {
                   <div className="space-y-4">
                     {orderType === "limit" && (
                       <div className="space-y-2">
+                        {/* to be dynamic */}
                         <Label htmlFor="buy-price">Price (USDT)</Label>
                         <Input
                           id="buy-price"
@@ -213,7 +232,8 @@ export default function BuyPage() {
                       </div>
                     )}
                     <div className="space-y-2">
-                      <Label htmlFor="buy-amount">Amount (BTC)</Label>
+                      {/* to be static */}
+                      <Label htmlFor="buy-amount">Amount (BTC)</Label> 
                       <Input
                         id="buy-amount"
                         type="number"

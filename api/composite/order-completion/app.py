@@ -10,9 +10,17 @@ import requests
 import smtplib
 from dotenv import load_dotenv
 import amqp_lib
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging at the application startup
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG during testing
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Config
 API_VERSION = 'v1'
@@ -36,6 +44,10 @@ EXCHANGE_NAME = "order_topic"
 EXCHANGE_TYPE = "topic"
 QUEUE_NAME = "notification_service.orders_executed"
 ROUTING_KEY = "order.executed"
+
+# Global variables for AMQP connection
+connection = None
+channel = None
 
 # API URLs
 SMU_SMS_URL = "https://smuedu-dev.outsystemsenterprise.com/SMULab_Notification/rest/Notification/SendSMS"
@@ -72,6 +84,25 @@ email_model = notification_ns.model('EmailRequest', {
     'body': fields.String(required=True, description='Email content')
 })
 
+# Connect to AMQP broker
+def connect_amqp():
+    """Connect to the AMQP broker"""
+    global connection
+    global channel
+
+    try:
+        connection, channel = amqp_lib.connect(
+            hostname=AMQP_HOST,
+            port=AMQP_PORT,
+            exchange_name=EXCHANGE_NAME,
+            exchange_type=EXCHANGE_TYPE
+        )
+        logger.info("Connected to AMQP broker")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to connect to AMQP broker: {e}")
+        return False
+
 # Functions for email and SMS
 def send_email(to_email, subject, body):
     """Send an email using Gmail SMTP"""
@@ -79,12 +110,12 @@ def send_email(to_email, subject, body):
     sender_password = os.getenv("GMAIL_PASSWORD")
     
     if not sender_email or not sender_password:
-        print("Gmail credentials not provided in environment variables.")
+        logger.warning("Gmail credentials not provided in environment variables.")
         return False
     
     try:
         msg = MIMEMultipart()
-        msg["From"] = sender_email
+        msg["From"] = f"{EMAIL_SENDER_NAME} <{sender_email}>"
         msg["To"] = to_email
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain"))
@@ -92,10 +123,10 @@ def send_email(to_email, subject, body):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, to_email, msg.as_string())
-        print(f"Email sent to {to_email}")
+        logger.info(f"Email sent to {to_email}")
         return True
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        logger.error(f"Failed to send email: {e}")
         return False
 
 def send_sms(phone_number, message):
@@ -107,9 +138,10 @@ def send_sms(phone_number, message):
         }
         response = requests.post(SMU_SMS_URL, json=payload)
         response.raise_for_status()
+        logger.info(f"SMS sent to {phone_number}")
         return response.json()
     except Exception as e:
-        print(f"Failed to send SMS: {e}")
+        logger.error(f"Failed to send SMS: {e}")
         return None
 
 def get_user_info(user_id):
@@ -118,64 +150,66 @@ def get_user_info(user_id):
         response = requests.get(f"{USER_API_URL}/account/{user_id}")
         response.raise_for_status()
         user_data = response.json()
+        logger.debug(f"Retrieved user info for {user_id}: {user_data}")
         return {
             "email": user_data.get("email"),
             "phone": user_data.get("phone")
         }
     except Exception as e:
-        print(f"Failed to get user info: {e}")
+        logger.error(f"Failed to get user info: {e}")
+        return None
+
+def get_transaction(transaction_id):
+    """Get transaction details by ID"""
+    try:
+        response = requests.get(f"{TRANSACTION_API_URL}/crypto/{transaction_id}")
+        response.raise_for_status()
+        transaction_data = response.json()
+        logger.debug(f"Retrieved transaction {transaction_id}: {transaction_data}")
+        return transaction_data
+    except Exception as e:
+        logger.error(f"Failed to get transaction: {e}")
         return None
 
 def update_transaction(transaction_id, update_data):
     """Update crypto transaction log"""
     try:
-        # Based on the transaction swagger, updating a crypto transaction
+        logger.info(f"Updating transaction {transaction_id} with {update_data}")
         response = requests.put(f"{TRANSACTION_API_URL}/crypto/{transaction_id}", json=update_data)
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Failed to update transaction: {e}")
+        logger.error(f"Failed to update transaction: {e}")
         return None
 
-# Create a rabbitmq module for compatibility with the original app.py
-class RabbitMQ:
-    def __init__(self):
-        """Initialize RabbitMQ interface"""
-        pass
+def process_message(message_data):
+    """Process an order execution message"""
+    transaction_id = message_data.get('transactionId')
+    user_id = message_data.get('userId')
+    status = message_data.get('status')
+    from_amount_actual = message_data.get('fromAmountActual')
+    to_amount_actual = message_data.get('toAmountActual')
+    details = message_data.get('details', '')
     
-    def process_message(self, message_data):
-        """Process an order execution message"""
-        transaction_id = message_data.get('transactionId')
-        user_id = message_data.get('userId')
-        status = message_data.get('status')
-        from_amount_actual = message_data.get('fromAmountActual')
-        to_amount_actual = message_data.get('toAmountActual')
-        details = message_data.get('details', '')
-        
-        print(f"Processing message for transaction {transaction_id}")
-        
-        # Get the current transaction to preserve existing fields
-        try:
-            current_tx = requests.get(f"{TRANSACTION_API_URL}/crypto/{transaction_id}").json()
-        except Exception as e:
-            print(f"Could not retrieve current transaction: {e}")
-            current_tx = {}
-        
-        # Update only the fields provided in the AMQP message
+    logger.info(f"Processing message for transaction {transaction_id}")
+    
+    # Get the current transaction data
+    current_tx = get_transaction(transaction_id)
+    
+    if current_tx:
+        # Create the update data, preserving existing fields
         update_data = {
             'userId': user_id,
             'status': status,
+            'fromTokenId': current_tx.get('fromTokenId'),
+            'fromAmount': current_tx.get('fromAmount'),
             'fromAmountActual': from_amount_actual,
+            'toTokenId': current_tx.get('toTokenId'),
+            'toAmount': current_tx.get('toAmount'),
             'toAmountActual': to_amount_actual,
-            
-            # Preserve existing fields from the current transaction
-            'fromTokenId': current_tx.get('fromTokenId', ''),
-            'fromAmount': current_tx.get('fromAmount', 0),
-            'toTokenId': current_tx.get('toTokenId', ''),
-            'toAmount': current_tx.get('toAmount', 0),
-            'limitPrice': current_tx.get('limitPrice', 0),
-            'usdtFee': current_tx.get('usdtFee', 0),
-            'orderType': current_tx.get('orderType', '')
+            'limitPrice': current_tx.get('limitPrice'),
+            'usdtFee': current_tx.get('usdtFee'),
+            'orderType': current_tx.get('orderType')
         }
         
         update_result = update_transaction(transaction_id, update_data)
@@ -192,16 +226,16 @@ class RabbitMQ:
                 # Format notification messages
                 email_subject = f"Transaction Update - {transaction_id}"
                 email_body = f"""
-                Dear Customer,
-                
-                Your transaction {transaction_id} has been {status}.
-                
-                From amount: {from_amount_actual}
-                To amount: {to_amount_actual}
-                
-                {details}
-                
-                Thank you for using Yorkshire Crypto Exchange.
+Dear Customer,
+
+Your transaction {transaction_id} has been {status}.
+
+From amount: {from_amount_actual}
+To amount: {to_amount_actual}
+
+{details}
+
+Thank you for using Yorkshire Crypto Exchange.
                 """
                 
                 sms_message = f"Yorkshire Crypto: Your transaction {transaction_id} has been {status}. Login to your account for details."
@@ -209,35 +243,45 @@ class RabbitMQ:
                 # Send email
                 if email:
                     email_sent = send_email(email, email_subject, email_body.strip())
-                    print(f"Email notification {'sent' if email_sent else 'failed'} for transaction {transaction_id}")
+                    logger.info(f"Email notification {'sent' if email_sent else 'failed'} for transaction {transaction_id}")
                 
                 # Send SMS
                 if phone:
                     sms_result = send_sms(phone, sms_message)
-                    print(f"SMS notification result for transaction {transaction_id}: {sms_result}")
-    
-    def start_consumer(self):
-        """Start consuming messages from RabbitMQ"""
-        def callback(ch, method, properties, body):
-            """AMQP callback function"""
-            try:
-                message_data = json.loads(body)
-                self.process_message(message_data)
-            except Exception as e:
-                print(f"Error processing AMQP message: {e}")
-        
-        amqp_lib.start_consuming(
-            hostname=AMQP_HOST,
-            port=AMQP_PORT,
-            exchange_name=EXCHANGE_NAME,
-            exchange_type=EXCHANGE_TYPE,
-            queue_name=QUEUE_NAME,
-            callback=callback,
-            routing_key=ROUTING_KEY
-        )
-    
-    def send_notification(self, data):
-        """Send a test notification"""
+                    logger.info(f"SMS notification sent for transaction {transaction_id}")
+    else:
+        logger.error(f"Could not find transaction {transaction_id} for update")
+
+def amqp_callback(ch, method, properties, body):
+    """AMQP callback function"""
+    try:
+        message_data = json.loads(body)
+        logger.debug(f"Received AMQP message: {message_data}")
+        process_message(message_data)
+    except Exception as e:
+        logger.error(f"Error processing AMQP message: {e}")
+
+def start_consumer():
+    """Start consuming messages from RabbitMQ"""
+    logger.info("Starting AMQP consumer")
+    amqp_lib.start_consuming(
+        hostname=AMQP_HOST,
+        port=AMQP_PORT,
+        exchange_name=EXCHANGE_NAME,
+        exchange_type=EXCHANGE_TYPE,
+        queue_name=QUEUE_NAME,
+        callback=amqp_callback,
+        routing_key=ROUTING_KEY
+    )
+
+# API routes
+@notification_ns.route('/test-notify')
+class TestNotify(Resource):
+    @notification_ns.expect(notification_model)
+    @notification_ns.doc(description="Test endpoint to manually trigger notification")
+    def post(self):
+        """Test endpoint to manually trigger notification"""
+        data = request.json
         transaction_id = data.get('transactionId')
         user_id = data.get('userId')
         
@@ -251,20 +295,7 @@ class RabbitMQ:
             'details': 'Test notification'
         }
         
-        self.process_message(mock_message)
-
-# Instantiate RabbitMQ interface
-rabbitmq = RabbitMQ()
-
-# API routes
-@notification_ns.route('/test-notify')
-class TestNotify(Resource):
-    @notification_ns.expect(notification_model)
-    @notification_ns.doc(description="Test endpoint to manually trigger notification")
-    def post(self):
-        """Test endpoint to manually trigger notification"""
-        data = request.json
-        rabbitmq.send_notification(data)
+        process_message(mock_message)
         return {"message": "Notification sent"}, 200
 
 @notification_ns.route('/sms')
@@ -296,6 +327,12 @@ api.add_namespace(notification_ns)
 api.add_namespace(transaction_ns)
 
 if __name__ == '__main__':
-    # Start AMQP consumer in a separate thread
-    threading.Thread(target=rabbitmq.start_consumer, daemon=True).start()
+    # Connect to RabbitMQ
+    if connect_amqp():
+        # Start AMQP consumer in a separate thread
+        threading.Thread(target=start_consumer, daemon=True).start()
+    else:
+        logger.warning("Could not connect to RabbitMQ. Notification service will run without messaging capability.")
+    
+    # Start Flask app
     app.run(host='0.0.0.0', port=5000, debug=True)

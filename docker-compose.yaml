@@ -285,10 +285,10 @@ services:
       - kong-net
       - rabbit-net
   
-  order-match-service:
-    container_name: order-match-service
+  match-service:
+    container_name: match-service
     build:
-      context: ./api/composite/order-match
+      context: ./api/composite/match
       dockerfile: Dockerfile
     ports:
       - "5011:5000"

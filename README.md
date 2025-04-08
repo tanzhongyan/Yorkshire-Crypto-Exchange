@@ -37,7 +37,7 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
    docker-compose up -d --build
    ```
 
-4. Access API documentation:
+### Access API documentation:
 **Consolidated API documentation**
 Go to [link](http://localhost:3001/swagger-ui) after `docker-compose up -d --build`.
 

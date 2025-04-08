@@ -49,6 +49,11 @@ export default function BuyPage() {
   const [allTransactions, setAllTransactions] = useState([])
   const [loadingTransactions, setLoadingTransactions] = useState(true)
   const [loadingAllTransactions, setLoadingAllTransactions] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
+
+  // Track user modifications
+  const [buyPriceModified, setBuyPriceModified] = useState(false)
+  const [sellPriceModified, setSellPriceModified] = useState(false)
 
   // Calculate totals
   const buyTotal = buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
@@ -88,8 +93,15 @@ export default function BuyPage() {
         
         // Update buy/sell prices with latest rate
         const formattedRate = rate.toFixed(2)
-        setBuyPrice(formattedRate)
-        setSellPrice(formattedRate)
+
+        // Only update input fields if user hasn't modified them
+        if (!buyPriceModified) {
+          setBuyPrice(formattedRate)
+        }
+        
+        if (!sellPriceModified) {
+          setSellPrice(formattedRate)
+        }
         
         // Update market order calculations if needed
         if (orderType === "market") {
@@ -107,7 +119,7 @@ export default function BuyPage() {
     } catch (error) {
       console.error("Failed to fetch exchange rate:", error)
     }
-  }, [orderType, buyUsdtAmount, sellAmount])
+  }, [orderType, buyUsdtAmount, sellAmount, buyPriceModified, sellPriceModified])
 
   // Fetch available tokens
   const fetchAvailableTokens = useCallback(async () => {
@@ -224,10 +236,14 @@ export default function BuyPage() {
   }, [userId, currentToken])
 
   // Fetch transactions for current pair
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (isInitialLoad = false) => {
     if (!userId || !currentToken) return
     
-    setLoadingTransactions(true)
+    // Only show loading indicator on initial load or token change
+    if (isInitialLoad) {
+      setLoadingTransactions(true)
+    }
+    
     try {
       const response = await axios.get(`/api/v1/transaction/crypto/user/${userId}`)
       
@@ -246,15 +262,21 @@ export default function BuyPage() {
     } catch (error) {
       console.error("Failed to fetch transactions:", error)
     } finally {
-      setLoadingTransactions(false)
+      if (isInitialLoad) {
+        setLoadingTransactions(false)
+      }
     }
   }, [userId, currentToken])
   
   // Fetch all transactions
-  const fetchAllTransactions = useCallback(async () => {
+  const fetchAllTransactions = useCallback(async (isInitialLoad = false) => {
     if (!userId) return
     
-    setLoadingAllTransactions(true)
+    // Only show loading indicator on initial load
+    if (isInitialLoad) {
+      setLoadingAllTransactions(true)
+    }
+    
     try {
       const response = await axios.get(`/api/v1/transaction/crypto/user/${userId}`)
       
@@ -267,7 +289,9 @@ export default function BuyPage() {
     } catch (error) {
       console.error("Failed to fetch all transactions:", error)
     } finally {
-      setLoadingAllTransactions(false)
+      if (isInitialLoad) {
+        setLoadingAllTransactions(false)
+      }
     }
   }, [userId])
 
@@ -284,12 +308,20 @@ export default function BuyPage() {
     setBuyUsdtAmount("");
     setSellAmount("");
     setSellUsdtAmount("");
+
+    // Reset price modification flags to get fresh prices for new token
+    setBuyPriceModified(false);
+    setSellPriceModified(false);
+    
+    // Set loading true for transaction display when changing token
+    setLoadingTransactions(true);
   }
 
   // Handle buy price change
   const handleBuyPriceChange = (e) => {
     const newPrice = e.target.value
     setBuyPrice(newPrice)
+    setBuyPriceModified(true) // Flag that user has modified this value
     
     // If USDT amount is set, recalculate token amount
     if (buyUsdtAmount) {
@@ -332,6 +364,7 @@ export default function BuyPage() {
   const handleSellPriceChange = (e) => {
     const newPrice = e.target.value
     setSellPrice(newPrice)
+    setSellPriceModified(true) // Flag that user has modified this value
     
     // If token amount is set, recalculate USDT amount
     if (sellAmount) {
@@ -400,8 +433,12 @@ export default function BuyPage() {
     try {
       const response = await axios.post('/api/v1/order/create_order', orderData)
       
-      // Show success notification instead of alert
-      showNotification(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
+      // Show success notification - different for market vs limit orders
+      if (orderType === "market") {
+        showNotification(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()}`)
+      } else {
+        showNotification(`Buy order placed successfully: ${buyAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
+      }
       
       setBuyAmount("")
       setBuyUsdtAmount("")
@@ -410,13 +447,17 @@ export default function BuyPage() {
       fetchBalances()
       fetchOrderBook()
       fetchRecentTrades()
-      fetchTransactions()
+      // Set loading for transactions after placing order
+      setLoadingTransactions(true)
+      fetchTransactions(true)
       fetchAllTransactions()
     } catch (error) {
       console.error("Buy order failed:", error)
       showNotification(`Buy order failed: ${error.response?.data?.error || "Unknown error"}`, "error")
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
+      setBuyPriceModified(false);
+      setSellPriceModified(false);
     }
   }
 
@@ -450,8 +491,12 @@ export default function BuyPage() {
     try {
       const response = await axios.post('/api/v1/order/create_order', orderData)
       
-      // Show success notification instead of alert
-      showNotification(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
+      // Show success notification - different for market vs limit orders
+      if (orderType === "market") {
+        showNotification(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()}`)
+      } else {
+        showNotification(`Sell order placed successfully: ${sellAmount} ${currentToken.toUpperCase()} at $${price.toFixed(2)}`)
+      }
       
       setSellAmount("")
       setSellUsdtAmount("")
@@ -460,19 +505,27 @@ export default function BuyPage() {
       fetchBalances()
       fetchOrderBook()
       fetchRecentTrades()
-      fetchTransactions()
+      // Set loading for transactions after placing order
+      setLoadingTransactions(true)
+      fetchTransactions(true)
       fetchAllTransactions()
     } catch (error) {
       console.error("Sell order failed:", error)
       showNotification(`Sell order failed: ${error.response?.data?.error || "Unknown error"}`, "error")
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
+      setBuyPriceModified(false);
+      setSellPriceModified(false);
     }
   }
   
   // Reset form values when order type changes
   useEffect(() => {
     if (orderType === "market") {
+      // Reset flags when switching to market orders
+      setBuyPriceModified(false);
+      setSellPriceModified(false);
+      
       // For market orders, use current price from BTC/USDT card
       if (buyUsdtAmount) {
         const tokenAmount = Number.parseFloat(buyUsdtAmount) / currentPrice
@@ -489,7 +542,8 @@ export default function BuyPage() {
   // Initialize data
   useEffect(() => {
     fetchAvailableTokens()
-    fetchAllTransactions()
+    fetchAllTransactions(true)
+    setInitialLoad(true)
   }, [fetchAvailableTokens, fetchAllTransactions])
 
   // Update data when token changes
@@ -498,9 +552,12 @@ export default function BuyPage() {
       fetchOrderBook()
       fetchRecentTrades()
       fetchBalances()
-      fetchTransactions()
+      fetchTransactions(initialLoad)
+      if (initialLoad) {
+        setInitialLoad(false)
+      }
     }
-  }, [currentToken, fetchOrderBook, fetchRecentTrades, fetchBalances, fetchTransactions])
+  }, [currentToken, fetchOrderBook, fetchRecentTrades, fetchBalances, fetchTransactions, initialLoad])
 
   // Periodic data refresh
   useEffect(() => {
@@ -511,8 +568,9 @@ export default function BuyPage() {
       fetchRecentTrades();
       fetchExchangeRate(currentToken);
       fetchBalances();
-      fetchTransactions();
-      fetchAllTransactions();
+      // Pass false to avoid showing loading state during auto-refresh
+      fetchTransactions(false);
+      fetchAllTransactions(false);
     };
     
     // Set up interval
@@ -687,15 +745,15 @@ export default function BuyPage() {
                     <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : transactions.length > 0 ? (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                  <div className="space-y-4 max-h-120 overflow-y-auto">
                     {transactions.map((tx) => (
-                      <div key={tx.transactionId} className="border rounded-md p-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="text-sm font-medium">
+                      <div key={tx.transactionId} className="border rounded-md p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="text-base font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
-                            <span className="ml-2 text-xs text-muted-foreground">{tx.orderType || 'limit'} order</span>
+                            <span className="ml-2 text-sm text-muted-foreground">{tx.orderType || 'limit'} order</span>
                           </div>
-                          <div className={`text-xs px-2 py-1 rounded-full ${
+                          <div className={`text-sm px-3 py-1 rounded-full ${
                             tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
@@ -704,10 +762,10 @@ export default function BuyPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1 mb-1">
+                        <div className="grid grid-cols-2 text-sm gap-2 mb-2">
                           <div>
                             <div className="text-muted-foreground">Order Amount</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromTokenId.toLowerCase() === 'usdt' 
                                 ? `${tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
                                 : `${tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
@@ -715,7 +773,7 @@ export default function BuyPage() {
                           </div>
                           <div>
                             <div className="text-muted-foreground">Fulfilled</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromTokenId.toLowerCase() === 'usdt' 
                                 ? `${tx.toAmountActual || tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
                                 : `${tx.fromAmountActual || tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
@@ -723,40 +781,40 @@ export default function BuyPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1">
+                        <div className="grid grid-cols-2 text-sm gap-2">
                           <div>
                             <div className="text-muted-foreground">Paid</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromAmountActual || tx.fromAmount} {tx.fromTokenId.toUpperCase()}
                             </div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">Received</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.toAmountActual || tx.toAmount} {tx.toTokenId.toUpperCase()}
                             </div>
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1 mt-1">
+                        <div className="grid grid-cols-2 text-sm gap-2 mt-2">
                           <div>
-                            <div className="text-muted-foreground">Price</div>
-                            <div>${tx.limitPrice.toFixed(2)}</div>
+                            <div className="text-muted-foreground">Limit Price</div>
+                            <div className="font-medium">${tx.limitPrice.toFixed(2)}</div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">Total Value</div>
-                            <div>${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
+                            <div className="font-medium">${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
                           </div>
                         </div>
                         
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-2">
                           {new Date(tx.creation).toLocaleString()}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-10 text-muted-foreground text-base">
                     No transactions for this trading pair
                   </div>
                 )}
@@ -768,15 +826,15 @@ export default function BuyPage() {
                     <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : allTransactions.length > 0 ? (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                  <div className="space-y-4 max-h-120 overflow-y-auto">
                     {allTransactions.map((tx) => (
-                      <div key={tx.transactionId} className="border rounded-md p-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="text-sm font-medium">
+                      <div key={tx.transactionId} className="border rounded-md p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="text-base font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
-                            <span className="ml-2 text-xs text-muted-foreground">{tx.orderType || 'limit'} order</span>
+                            <span className="ml-2 text-sm text-muted-foreground">{tx.orderType || 'limit'} order</span>
                           </div>
-                          <div className={`text-xs px-2 py-1 rounded-full ${
+                          <div className={`text-sm px-3 py-1 rounded-full ${
                             tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
@@ -785,10 +843,10 @@ export default function BuyPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1 mb-1">
+                        <div className="grid grid-cols-2 text-sm gap-2 mb-2">
                           <div>
                             <div className="text-muted-foreground">Order Amount</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromTokenId.toLowerCase() === 'usdt' 
                                 ? `${tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
                                 : `${tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
@@ -796,7 +854,7 @@ export default function BuyPage() {
                           </div>
                           <div>
                             <div className="text-muted-foreground">Fulfilled</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromTokenId.toLowerCase() === 'usdt' 
                                 ? `${tx.toAmountActual || tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
                                 : `${tx.fromAmountActual || tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
@@ -804,40 +862,40 @@ export default function BuyPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1">
+                        <div className="grid grid-cols-2 text-sm gap-2">
                           <div>
                             <div className="text-muted-foreground">Paid</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.fromAmountActual || tx.fromAmount} {tx.fromTokenId.toUpperCase()}
                             </div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">Received</div>
-                            <div>
+                            <div className="font-medium">
                               {tx.toAmountActual || tx.toAmount} {tx.toTokenId.toUpperCase()}
                             </div>
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 text-xs gap-1 mt-1">
+                        <div className="grid grid-cols-2 text-sm gap-2 mt-2">
                           <div>
-                            <div className="text-muted-foreground">Price</div>
-                            <div>${tx.limitPrice.toFixed(2)}</div>
+                            <div className="text-muted-foreground">Limit Price</div>
+                            <div className="font-medium">${tx.limitPrice.toFixed(2)}</div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">Total Value</div>
-                            <div>${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
+                            <div className="font-medium">${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
                           </div>
                         </div>
                         
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-2">
                           {new Date(tx.creation).toLocaleString()}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-10 text-muted-foreground text-base">
                     No transactions found
                   </div>
                 )}

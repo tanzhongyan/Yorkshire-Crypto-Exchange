@@ -21,10 +21,10 @@ export default function BuyPage() {
   
   // Order state
   const [orderType, setOrderType] = useState("limit")
-  const [buyPrice, setBuyPrice] = useState("65000.00")
+  const [buyPrice, setBuyPrice] = useState("")
   const [buyAmount, setBuyAmount] = useState("")
   const [buyUsdtAmount, setBuyUsdtAmount] = useState("")
-  const [sellPrice, setSellPrice] = useState("65100.00")
+  const [sellPrice, setSellPrice] = useState("")
   const [sellAmount, setSellAmount] = useState("")
   const [sellUsdtAmount, setSellUsdtAmount] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -34,11 +34,11 @@ export default function BuyPage() {
   
   // Market data state
   const [availableTokens, setAvailableTokens] = useState([])
-  const [selectedPair, setSelectedPair] = useState("BTC/USDT")
-  const [currentToken, setCurrentToken] = useState("btc")
+  const [selectedPair, setSelectedPair] = useState("")
+  const [currentToken, setCurrentToken] = useState("")
   const [orderBook, setOrderBook] = useState({ asks: [], bids: [] })
   const [recentTrades, setRecentTrades] = useState([])
-  const [currentPrice, setCurrentPrice] = useState(65100)
+  const [currentPrice, setCurrentPrice] = useState(0)
   
   // Balance state
   const [usdtBalance, setUsdtBalance] = useState({ available: 0, actual: 0 })
@@ -54,8 +54,13 @@ export default function BuyPage() {
   const buyTotal = buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
   const sellTotal = sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
 
-  // Convert to title case
-  const toTitleCase = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  // Function to update URL with token
+  const updateUrlWithToken = (token) => {
+    if (!token) return;
+    const url = new URL(window.location);
+    url.searchParams.set('token', token);
+    window.history.pushState({}, '', url);
+  };
 
   // Show notification
   const showNotification = (message, type = "success") => {
@@ -67,7 +72,7 @@ export default function BuyPage() {
     }, 5000)
   }
 
-  // Fetch exchange rate for current token - fixed to properly handle token case
+  // Fetch exchange rate for current token
   const fetchExchangeRate = useCallback(async (token) => {
     if (!token) return
     
@@ -111,11 +116,29 @@ export default function BuyPage() {
       const tokens = response.data.filter(token => token.tokenId.toLowerCase() !== 'usdt')
       setAvailableTokens(tokens)
       
-      // Set default token if none selected yet
+      // Check URL for token parameter
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('token');
+      
+      if (tokenParam && tokens.length > 0) {
+        // If token parameter exists in URL
+        const token = tokenParam.toLowerCase();
+        const matchingToken = tokens.find(t => t.tokenId.toLowerCase() === token);
+        
+        if (matchingToken) {
+          setCurrentToken(token);
+          setSelectedPair(`${matchingToken.tokenId.toUpperCase()}/USDT`);
+          fetchExchangeRate(token);
+          return;
+        }
+      }
+      
+      // Set default token if none in URL and none selected yet
       if (!currentToken && tokens.length > 0) {
         const defaultToken = tokens[0].tokenId.toLowerCase()
         setCurrentToken(defaultToken)
         setSelectedPair(`${tokens[0].tokenId.toUpperCase()}/USDT`)
+        updateUrlWithToken(defaultToken)
         fetchExchangeRate(defaultToken)
       }
     } catch (error) {
@@ -139,38 +162,39 @@ export default function BuyPage() {
   }, [currentToken])
 
   // Fetch recent trades
-// Fetch recent trades
-const fetchRecentTrades = useCallback(async (token = currentToken) => {
-  try {
-    const response = await axios.get(`/api/v1/orderbook/recentorders?token=${token.toLowerCase()}`);
+  const fetchRecentTrades = useCallback(async (tokenToFetch = null) => {
+    const token = tokenToFetch || currentToken;
+    if (!token) return;
     
-    // Filter for current token if needed
-    const filteredTrades = response.data.orders.filter(order => 
-      (order.fromTokenId.toLowerCase() === token.toLowerCase() && order.toTokenId.toLowerCase() === 'usdt') || 
-      (order.fromTokenId.toLowerCase() === 'usdt' && order.toTokenId.toLowerCase() === token.toLowerCase())
-    );
-    
-    // Format trades data
-    const formattedTrades = filteredTrades.map(order => ({
-      price: order.limitPrice,
-      amount: order.fromTokenId.toLowerCase() === 'usdt' 
-        ? order.toAmount || order.fromAmount / order.limitPrice 
-        : order.fromAmount || order.toAmount / order.limitPrice,
-      time: new Date(order.creation).toLocaleTimeString(),
-      type: order.fromTokenId.toLowerCase() === 'usdt' ? 'buy' : 'sell'
-    }));
-    
-    // Limit to 12 trades as requested
-    setRecentTrades(formattedTrades.slice(0, 12));
-  } catch (error) {
-    console.error("Failed to fetch recent trades:", error);
-  }
-}, []);
-
+    try {
+      const response = await axios.get(`/api/v1/orderbook/recentorders?token=${token.toLowerCase()}`);
+      
+      // Filter for current token
+      const filteredTrades = response.data.orders.filter(order => 
+        (order.fromTokenId.toLowerCase() === token.toLowerCase() && order.toTokenId.toLowerCase() === 'usdt') || 
+        (order.fromTokenId.toLowerCase() === 'usdt' && order.toTokenId.toLowerCase() === token.toLowerCase())
+      );
+      
+      // Format trades data
+      const formattedTrades = filteredTrades.map(order => ({
+        price: order.limitPrice,
+        amount: order.fromTokenId.toLowerCase() === 'usdt' 
+          ? order.toAmount || order.fromAmount / order.limitPrice 
+          : order.fromAmount || order.toAmount / order.limitPrice,
+        time: new Date(order.creation).toLocaleTimeString(),
+        type: order.fromTokenId.toLowerCase() === 'usdt' ? 'buy' : 'sell'
+      }));
+      
+      // Limit to 12 trades as requested
+      setRecentTrades(formattedTrades.slice(0, 12));
+    } catch (error) {
+      console.error("Failed to fetch recent trades:", error);
+    }
+  }, [currentToken]);
 
   // Fetch balances
   const fetchBalances = useCallback(async () => {
-    if (!userId) return
+    if (!userId || !currentToken) return
     
     try {
       // Fetch USDT balance
@@ -201,7 +225,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
 
   // Fetch transactions for current pair
   const fetchTransactions = useCallback(async () => {
-    if (!userId) return
+    if (!userId || !currentToken) return
     
     setLoadingTransactions(true)
     try {
@@ -253,8 +277,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
     setSelectedPair(newPair);
     const newToken = token.toLowerCase();
     setCurrentToken(newToken);
-    fetchExchangeRate(newToken);
-    fetchRecentTrades(newToken);
+    updateUrlWithToken(newToken); // Update URL
     
     // Reset form values
     setBuyAmount("");
@@ -262,8 +285,6 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
     setSellAmount("");
     setSellUsdtAmount("");
   }
-
-
 
   // Handle buy price change
   const handleBuyPriceChange = (e) => {
@@ -483,15 +504,30 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
 
   // Periodic data refresh
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!currentToken) return;
+    
+    const refreshAllData = () => {
       fetchOrderBook();
-      fetchRecentTrades(currentToken);
+      fetchRecentTrades();
       fetchExchangeRate(currentToken);
-    }, 10000);
+      fetchBalances();
+      fetchTransactions();
+      fetchAllTransactions();
+    };
+    
+    // Set up interval
+    const interval = setInterval(refreshAllData, 2000);
     
     return () => clearInterval(interval);
-  }, [fetchOrderBook, fetchRecentTrades, fetchExchangeRate, currentToken]);
-
+  }, [
+    currentToken, 
+    fetchOrderBook, 
+    fetchRecentTrades, 
+    fetchExchangeRate, 
+    fetchBalances, 
+    fetchTransactions, 
+    fetchAllTransactions
+  ]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -522,7 +558,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>{selectedPair}</CardTitle>
-                <CardDescription>{currentToken.toUpperCase()} to Tether</CardDescription>
+                <CardDescription>{currentToken ? `${currentToken.toUpperCase()} to Tether` : 'Loading...'}</CardDescription>
               </div>
               <Select value={selectedPair} onValueChange={handlePairChange}>
                 <SelectTrigger className="w-[140px]">
@@ -539,7 +575,11 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">
+              {currentPrice > 0 ? 
+                `$${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 
+                'Loading...'}
+            </div>
           </CardContent>
         </Card>
 
@@ -553,7 +593,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                 <div>
                   <div className="grid grid-cols-3 text-xs font-medium text-muted-foreground mb-2">
                     <div>Price (USDT)</div>
-                    <div className="text-right">Amount ({currentToken.toUpperCase()})</div>
+                    <div className="text-right">Amount {currentToken ? `(${currentToken.toUpperCase()})` : ''}</div>
                     <div className="text-right">Total (USDT)</div>
                   </div>
                   <div className="space-y-1">
@@ -571,7 +611,11 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                   </div>
                 </div>
 
-                <div className="py-2 text-center font-bold text-lg">${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <div className="py-2 text-center font-bold text-lg">
+                  {currentPrice > 0 ? 
+                    `$${currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 
+                    'Loading...'}
+                </div>
 
                 <div>
                   <div className="space-y-1">
@@ -600,7 +644,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
               <div className="space-y-4">
                 <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground mb-2">
                   <div>Price (USDT)</div>
-                  <div className="text-right">Amount ({currentToken.toUpperCase()})</div>
+                  <div className="text-right">Amount {currentToken ? `(${currentToken.toUpperCase()})` : ''}</div>
                   <div className="text-right">Total (USDT)</div>
                   <div className="text-right">Time</div>
                 </div>
@@ -649,29 +693,62 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                         <div className="flex justify-between items-center mb-2">
                           <div className="text-sm font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
+                            <span className="ml-2 text-xs text-muted-foreground">{tx.orderType || 'limit'} order</span>
                           </div>
                           <div className={`text-xs px-2 py-1 rounded-full ${
                             tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {toTitleCase(tx.status)}
+                            {tx.status}
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 text-xs gap-1">
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1 mb-1">
                           <div>
-                            <div className="text-muted-foreground">Amount</div>
-                            <div>{tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toAmount : tx.fromAmount} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}</div>
+                            <div className="text-muted-foreground">Order Amount</div>
+                            <div>
+                              {tx.fromTokenId.toLowerCase() === 'usdt' 
+                                ? `${tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
+                                : `${tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
+                            </div>
                           </div>
+                          <div>
+                            <div className="text-muted-foreground">Fulfilled</div>
+                            <div>
+                              {tx.fromTokenId.toLowerCase() === 'usdt' 
+                                ? `${tx.toAmountActual || tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
+                                : `${tx.fromAmountActual || tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1">
+                          <div>
+                            <div className="text-muted-foreground">Paid</div>
+                            <div>
+                              {tx.fromAmountActual || tx.fromAmount} {tx.fromTokenId.toUpperCase()}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Received</div>
+                            <div>
+                              {tx.toAmountActual || tx.toAmount} {tx.toTokenId.toUpperCase()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1 mt-1">
                           <div>
                             <div className="text-muted-foreground">Price</div>
                             <div>${tx.limitPrice.toFixed(2)}</div>
                           </div>
                           <div>
-                            <div className="text-muted-foreground">Total</div>
-                            <div>${tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount.toFixed(2) : tx.toAmount.toFixed(2)}</div>
+                            <div className="text-muted-foreground">Total Value</div>
+                            <div>${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
                           </div>
                         </div>
+                        
                         <div className="text-xs text-muted-foreground mt-1">
                           {new Date(tx.creation).toLocaleString()}
                         </div>
@@ -697,29 +774,62 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                         <div className="flex justify-between items-center mb-2">
                           <div className="text-sm font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
+                            <span className="ml-2 text-xs text-muted-foreground">{tx.orderType || 'limit'} order</span>
                           </div>
                           <div className={`text-xs px-2 py-1 rounded-full ${
                             tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {toTitleCase(tx.status)}
+                            {tx.status}
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 text-xs gap-1">
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1 mb-1">
                           <div>
-                            <div className="text-muted-foreground">Amount</div>
-                            <div>{tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toAmount : tx.fromAmount} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}</div>
+                            <div className="text-muted-foreground">Order Amount</div>
+                            <div>
+                              {tx.fromTokenId.toLowerCase() === 'usdt' 
+                                ? `${tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
+                                : `${tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
+                            </div>
                           </div>
+                          <div>
+                            <div className="text-muted-foreground">Fulfilled</div>
+                            <div>
+                              {tx.fromTokenId.toLowerCase() === 'usdt' 
+                                ? `${tx.toAmountActual || tx.toAmount} ${tx.toTokenId.toUpperCase()}` 
+                                : `${tx.fromAmountActual || tx.fromAmount} ${tx.fromTokenId.toUpperCase()}`}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1">
+                          <div>
+                            <div className="text-muted-foreground">Paid</div>
+                            <div>
+                              {tx.fromAmountActual || tx.fromAmount} {tx.fromTokenId.toUpperCase()}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Received</div>
+                            <div>
+                              {tx.toAmountActual || tx.toAmount} {tx.toTokenId.toUpperCase()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 text-xs gap-1 mt-1">
                           <div>
                             <div className="text-muted-foreground">Price</div>
                             <div>${tx.limitPrice.toFixed(2)}</div>
                           </div>
                           <div>
-                            <div className="text-muted-foreground">Total</div>
-                            <div>${tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount.toFixed(2) : tx.toAmount.toFixed(2)}</div>
+                            <div className="text-muted-foreground">Total Value</div>
+                            <div>${(tx.fromTokenId.toLowerCase() === 'usdt' ? tx.fromAmount : tx.toAmount).toFixed(2)}</div>
                           </div>
                         </div>
+                        
                         <div className="text-xs text-muted-foreground mt-1">
                           {new Date(tx.creation).toLocaleString()}
                         </div>
@@ -771,7 +881,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                   <div className="space-y-4">
                     {orderType === "limit" && (
                       <div className="space-y-2">
-                        <Label htmlFor="buy-price">Price per {currentToken.toUpperCase()} (USDT)</Label>
+                        <Label htmlFor="buy-price">Price per {currentToken ? currentToken.toUpperCase() : ''} (USDT)</Label>
                         <Input
                           id="buy-price"
                           type="number"
@@ -796,7 +906,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="buy-amount">Amount of {currentToken.toUpperCase()} to Buy</Label>
+                      <Label htmlFor="buy-amount">Amount of {currentToken ? currentToken.toUpperCase() : ''} to Buy</Label>
                       <Input
                         id="buy-amount"
                         type="number"
@@ -850,7 +960,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                           <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
                         </div>
                       ) : (
-                        `Buy ${currentToken.toUpperCase()}`
+                        `Buy ${currentToken ? currentToken.toUpperCase() : ''}`
                       )}
                     </Button>
                   </div>
@@ -862,7 +972,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                   <div className="space-y-4">
                     {orderType === "limit" && (
                       <div className="space-y-2">
-                        <Label htmlFor="sell-price">Price per {currentToken.toUpperCase()} (USDT)</Label>
+                        <Label htmlFor="sell-price">Price per {currentToken ? currentToken.toUpperCase() : ''} (USDT)</Label>
                         <Input
                           id="sell-price"
                           type="number"
@@ -875,7 +985,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                     )}
                     
                     <div className="space-y-2">
-                      <Label htmlFor="sell-amount">Amount of {currentToken.toUpperCase()} to Sell</Label>
+                      <Label htmlFor="sell-amount">Amount of {currentToken ? currentToken.toUpperCase() : ''} to Sell</Label>
                       <Input
                         id="sell-amount"
                         type="number"
@@ -925,9 +1035,9 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <div>{tokenBalance.actual.toFixed(6)} {currentToken.toUpperCase()}</div>
+                        <div>{tokenBalance.actual.toFixed(6)} {currentToken ? currentToken.toUpperCase() : ''}</div>
                         <div className="text-muted-foreground mt-1">Available Balance</div>
-                        <div>{tokenBalance.available.toFixed(6)} {currentToken.toUpperCase()}</div>
+                        <div>{tokenBalance.available.toFixed(6)} {currentToken ? currentToken.toUpperCase() : ''}</div>
                       </div>
                     </div>
                     
@@ -942,7 +1052,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                           <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
                         </div>
                       ) : (
-                        `Sell ${currentToken.toUpperCase()}`
+                        `Sell ${currentToken ? currentToken.toUpperCase() : ''}`
                       )}
                     </Button>
                   </div>

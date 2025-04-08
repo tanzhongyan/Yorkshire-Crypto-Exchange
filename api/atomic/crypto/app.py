@@ -728,40 +728,44 @@ def seed_data():
             db.session.add(new_token)
         db.session.commit()
 
-        # 3) Insert CryptoHolding data using deposit logic
-        user_id = "a7c396e2-8370-4975-820e-c5ee8e3875c0"
-        token_id = "usdt"
-        amount = 1000.0
+        # 3) Insert CryptoHolding data for all holdings
+        crypto_holdings_data = data.get("cryptoHoldings", [])
         
-        # Check if user and token exist
-        wallet = CryptoWallet.query.get(user_id)
-        token = CryptoToken.query.get(token_id)
-        
-        if wallet and token:
-            # Check if holding already exists
-            existing_holding = CryptoHolding.query.filter_by(
-                user_id=user_id,
-                token_id=token_id
-            ).first()
+        for holding in crypto_holdings_data:
+            user_id = holding["userId"]
+            token_id = holding["tokenId"]
+            actual_balance = holding.get("actualBalance", 0.0)
+            available_balance = holding.get("availableBalance", 0.0)
             
-            if existing_holding:
-                print(f"Holding for user '{user_id}' and token '{token_id}' already exists with balance {existing_holding.actual_balance}.")
-            else:
-                # Use deposit logic
-                new_holding = CryptoHolding(
+            # Check if user and token exist
+            wallet = CryptoWallet.query.get(user_id)
+            token = CryptoToken.query.get(token_id)
+            
+            if wallet and token:
+                # Check if holding already exists
+                existing_holding = CryptoHolding.query.filter_by(
                     user_id=user_id,
-                    token_id=token_id,
-                    actual_balance=amount,
-                    available_balance=amount
-                )
-                db.session.add(new_holding)
-                db.session.commit()
-                print(f"Successfully deposited {amount} {token_id} to user {user_id}")
-        else:
-            if not wallet:
-                print(f"Cannot deposit: User {user_id} does not exist.")
-            if not token:
-                print(f"Cannot deposit: Token {token_id} does not exist.")
+                    token_id=token_id
+                ).first()
+                
+                if existing_holding:
+                    print(f"Holding for user '{user_id}' and token '{token_id}' already exists with balance {existing_holding.actual_balance}.")
+                else:
+                    # Create new holding
+                    new_holding = CryptoHolding(
+                        user_id=user_id,
+                        token_id=token_id,
+                        actual_balance=actual_balance,
+                        available_balance=available_balance
+                    )
+                    db.session.add(new_holding)
+                    db.session.commit()
+                    print(f"Successfully created holding with {actual_balance} {token_id} for user {user_id}")
+            else:
+                if not wallet:
+                    print(f"Cannot create holding: User {user_id} does not exist.")
+                if not token:
+                    print(f"Cannot create holding: Token {token_id} does not exist.")
 
         print("Seed data successfully loaded from seeddata.json.")
 

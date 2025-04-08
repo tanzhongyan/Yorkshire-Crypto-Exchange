@@ -208,7 +208,12 @@ export default function BuyPage() {
         (tx.fromTokenId.toLowerCase() === 'usdt' && tx.toTokenId.toLowerCase() === currentToken.toLowerCase())
       )
       
-      setTransactions(filteredTransactions)
+      // Sort transactions by creation date (newest first)
+      const sortedTransactions = filteredTransactions.sort((a, b) => 
+        new Date(b.creation) - new Date(a.creation)
+      )
+      
+      setTransactions(sortedTransactions)
     } catch (error) {
       console.error("Failed to fetch transactions:", error)
     } finally {
@@ -223,7 +228,13 @@ export default function BuyPage() {
     setLoadingAllTransactions(true)
     try {
       const response = await axios.get(`/api/v1/transaction/crypto/user/${userId}`)
-      setAllTransactions(response.data)
+      
+      // Sort transactions by creation date (newest first)
+      const sortedTransactions = response.data.sort((a, b) => 
+        new Date(b.creation) - new Date(a.creation)
+      )
+      
+      setAllTransactions(sortedTransactions)
     } catch (error) {
       console.error("Failed to fetch all transactions:", error)
     } finally {
@@ -341,8 +352,10 @@ export default function BuyPage() {
     setIsProcessing(true)
     
     const tokenAmount = Number.parseFloat(buyAmount)
-    const usdtAmount = Number.parseFloat(buyUsdtAmount || buyTotal)
     const price = orderType === "market" ? currentPrice : Number.parseFloat(buyPrice)
+    
+    // Always calculate the orderCost as price * tokenAmount
+    const usdtAmount = price * tokenAmount
     
     const orderData = {
       userId: userId,
@@ -389,8 +402,10 @@ export default function BuyPage() {
     setIsProcessing(true)
     
     const tokenAmount = Number.parseFloat(sellAmount)
-    const usdtAmount = Number.parseFloat(sellUsdtAmount || sellTotal)
     const price = orderType === "market" ? currentPrice : Number.parseFloat(sellPrice)
+    
+    // Always calculate the orderCost as price * tokenAmount
+    const usdtAmount = price * tokenAmount
     
     const orderData = {
       userId: userId,
@@ -626,7 +641,11 @@ export default function BuyPage() {
                           <div className="text-sm font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
                           </div>
-                          <div className={`text-xs px-2 py-1 rounded-full ${tx.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          <div className={`text-xs px-2 py-1 rounded-full ${
+                            tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
                             {tx.status}
                           </div>
                         </div>
@@ -670,7 +689,11 @@ export default function BuyPage() {
                           <div className="text-sm font-medium">
                             {tx.fromTokenId.toLowerCase() === 'usdt' ? 'Buy' : 'Sell'} {tx.fromTokenId.toLowerCase() === 'usdt' ? tx.toTokenId.toUpperCase() : tx.fromTokenId.toUpperCase()}
                           </div>
-                          <div className={`text-xs px-2 py-1 rounded-full ${tx.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          <div className={`text-xs px-2 py-1 rounded-full ${
+                            tx.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
                             {tx.status}
                           </div>
                         </div>

@@ -608,7 +608,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = float('0.00000001')
+                            ZERO_THRESHOLD = float('0.000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             buy['fromAmount'] = buy_from_amount_left
@@ -884,7 +884,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             buy_from_amount_left = buy.get('fromAmount') - quote_qty_traded
                             sell_from_amount_left = sell.get('fromAmount') - base_qty_traded
                             
-                            ZERO_THRESHOLD = float('0.00000001')
+                            ZERO_THRESHOLD = float('0.000001')
                             # find status of orders
                             # adding of incoming buy order to order book to be done last after full iteration
                             sell['fromAmount'] = sell_from_amount_left

@@ -997,11 +997,11 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         # partial market
     elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and not fail_incoming_req:
         logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
-        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), buy.get('fromAmount')) #not amount to release is only hte amount left over
+        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), sell.get('fromAmount')) #not amount to release is only hte amount left over
         # only update again if release fail so that notification sent to user. status is still partially filled
         if 'error' in release_result:
             logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
-            description = f"Failed to release {incoming_order.get('fromAmount')} {buy.get('fromAmount')}. Contact admins."
+            description = f"Failed to release {incoming_order.get('fromAmount')} {sell.get('fromAmount')}. Contact admins."
             message_to_publish =  {
                                                     'transactionId' : incoming_order.get('transactionId'), 
                                                     'userId' : incoming_order.get('userId'),

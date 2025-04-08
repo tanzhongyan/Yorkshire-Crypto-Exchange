@@ -273,6 +273,40 @@ def deposit_crypto(user_id, token_id, amount):
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
+    
+def release_crypto(user_id, token_id, amount):
+    """
+    release crypto so in available amount. This allows the user to use released amount again.
+    
+    Args:
+        user_id (str): The user ID
+        token_id (str): The token ID
+        amount (float): Amount to release
+        
+    Returns:
+        dict: Response from the API or error details
+    """
+    try:
+        payload = {
+            "userId": user_id,
+            "tokenId": token_id,
+            "amountChanged": amount
+        }
+        response = requests.post(f"{CRYPTO_SERVICE_URL}/holdings/release", json=payload)
+        if response.status_code == 200:
+            return {'message': 'Crypto release successful'}
+        else:
+            return {
+                'error': 'Failed to release crypto', 
+                'message': response.text,
+                'service_response': {
+                    'status_code': response.status_code,
+                    'text': response.text,
+                    'request_payload': payload
+                }
+            }
+    except requests.exceptions.RequestException as e:
+        return {'error': 'Network error', 'message': str(e)}
 
 def update_to_crypto(user_id, to_token_id, amount_changed):
     '''
@@ -636,6 +670,11 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
+            logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+            release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+            if 'error' in release_result:
+                logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+                description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
             message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
@@ -653,9 +692,14 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                 body=json_message,
                 properties=pika.BasicProperties(delivery_mode=2),
                 )
-            
+    # failed market
     elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and fail_incoming_req:
         description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
+        logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+        if 'error' in release_result:
+            logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+            description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
@@ -666,7 +710,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                                             }
         if connection is None or not amqp_lib.is_connection_open(connection):
             connectAMQP()
-
+            
         json_message = json.dumps(message_to_publish)
         channel.basic_publish(
             exchange=exchange_name,
@@ -674,6 +718,33 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             body=json_message,
             properties=pika.BasicProperties(delivery_mode=2),
             )
+    
+    # partial market
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and not fail_incoming_req:
+        logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), buy.get('fromAmount')) #not amount to release is only hte amount left over
+        # only update again if release fail so that notification sent to user. status is still partially filled
+        if 'error' in release_result:
+            logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+            description = f"Failed to release {incoming_order.get('fromAmount')} {buy.get('fromAmount')}. Contact admins."
+            message_to_publish =  {
+                                                    'transactionId' : incoming_order.get('transactionId'), 
+                                                    'userId' : incoming_order.get('userId'),
+                                                    'status' : 'partially filled', 
+                                                    'fromAmountActual' : 0, 
+                                                    'toAmountActual' : 0, 
+                                                    'details' : description
+                                                }
+            if connection is None or not amqp_lib.is_connection_open(connection):
+                connectAMQP()
+
+            json_message = json.dumps(message_to_publish)
+            channel.basic_publish(
+                exchange=exchange_name,
+                routing_key=routing_key,
+                body=json_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+                )
 
 def match_incoming_sell(incoming_order, counterparty_orders):
     
@@ -873,6 +944,11 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
+            logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+            release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+            if 'error' in release_result:
+                logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+                description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
             message_to_publish = {
                                                 'transactionId' : incoming_order.get('transactionId'),
                                                 'userId' : incoming_order.get('userId'), 
@@ -894,6 +970,11 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             
     elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and fail_incoming_req:
         description = "Failed to process order in Yokshire Crypto Exchange order book. Market currently has no matching orders. Please try again Later"
+        logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+        if 'error' in release_result:
+            logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+            description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
@@ -912,6 +993,33 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             body=json_message,
             properties=pika.BasicProperties(delivery_mode=2),
             )
+        
+        # partial market
+    elif not fulfilled_incoming_req and incoming_order.get('orderType') == 'market' and not fail_incoming_req:
+        logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+        release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), buy.get('fromAmount')) #not amount to release is only hte amount left over
+        # only update again if release fail so that notification sent to user. status is still partially filled
+        if 'error' in release_result:
+            logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+            description = f"Failed to release {incoming_order.get('fromAmount')} {buy.get('fromAmount')}. Contact admins."
+            message_to_publish =  {
+                                                    'transactionId' : incoming_order.get('transactionId'), 
+                                                    'userId' : incoming_order.get('userId'),
+                                                    'status' : 'partially filled', 
+                                                    'fromAmountActual' : 0, 
+                                                    'toAmountActual' : 0, 
+                                                    'details' : description
+                                                }
+            if connection is None or not amqp_lib.is_connection_open(connection):
+                connectAMQP()
+
+            json_message = json.dumps(message_to_publish)
+            channel.basic_publish(
+                exchange=exchange_name,
+                routing_key=routing_key,
+                body=json_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+                )
 
 
 
@@ -949,6 +1057,11 @@ def callback(channel, method, properties, body):
                     
                     # current description will be add order to orderbook fail or duplicate order exist
                     logger.error(f"failed adding to order book instead. changing status to fail and ending-----------------------------------------------------------------------------")
+                    logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+                    release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+                    if 'error' in release_result:
+                        logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+                        description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
                     message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'),  
@@ -973,7 +1086,11 @@ def callback(channel, method, properties, body):
             else:
                 # current description will be retrive counterparty fail or not liquid (for market order)
                 logger.error(f"incoming market order but marke not liquid. changing status to fail and ending-----------------------------------------------------------------------------")
-                
+                logger.error(f"Releasing crypto-----------------------------------------------------------------------------")
+                release_result = release_crypto(incoming_order.get('userId'), incoming_order.get('fromTokenId'), incoming_order.get('fromAmount'))
+                if 'error' in release_result:
+                    logger.error(f"failed to release crypto-----------------------------------------------------------------------------")
+                    description = description +  f"Failed to release {incoming_order.get('fromAmount')} {incoming_order.get('fromTokenId')}. Contact admins."
                 message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'), 

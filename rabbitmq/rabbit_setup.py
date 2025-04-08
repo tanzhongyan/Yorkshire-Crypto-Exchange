@@ -59,12 +59,12 @@ create_queue(
 )
 
 # (2) orderbook service publishes, order completion service consumes
-create_queue(
-    channel=channel,
-    exchange_name=exchange_name,
-    queue_name="order_completion_service.orders_placed",
-    routing_key="order.executed",
-)
+# create_queue(
+#     channel=channel,
+#     exchange_name=exchange_name,
+#     queue_name="order_completion_service.orders_placed",
+#     routing_key="order.executed",
+# )
 
 # (3) orderbook service publishes, order completion service consumes
 # create_queue(

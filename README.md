@@ -17,22 +17,18 @@ Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platf
 - **Containerization:** Docker-Compose (Database, APIs, Website, RabbitMQ)
 
 ## 📜 Documentation
-
+- **[QUICKSTART.md](QUICKSTART.md)** - For newcomers to quickly set up
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development setup and coding standards
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines, branching strategy, and PR guide
-- **[CHANGELOG.md](CHANGELOG.md)** - Automatically generated changelog
 
 ## 📥 Installation & Setup
 
+It is recommended to use [QUICKSTART.md](QUICKSTART.md) for new users.
+
 ### Set up docker containers
-1. Install Python dependencies:
-   ```sh
-   pip install -r requirements.txt
-   ```
+1. Get `setup-env.sh` from @tanzhongyan to get .env files required to run the project.
 
-2. Get bash command from @tanzhongyan to get .env files required to run the project.
-
-3. Start the services using Docker Compose:
+2. Start the services using Docker Compose:
    ```sh
    docker-compose up -d --build
    ```
@@ -47,6 +43,7 @@ Go to [link](http://localhost:3001/swagger-ui) after `docker-compose up -d --bui
       - **Crypto Service:** `http://localhost:5002/api/v1/crypto`
       - **User Service:** `http://localhost:5003/api/v1/user`
       - **transaction Service:** `http://localhost:5005/api/v1/transaction`
+      - **orderbook service:** `https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/`
    - **Composite microservices**
       - **identity** `http://localhost:5004/api/v1`
       - **deposit** `http://localhost:5006/api/v1`

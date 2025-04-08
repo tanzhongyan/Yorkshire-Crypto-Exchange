@@ -674,7 +674,7 @@ def seed_data():
                 username="test",
                 fullname="Test User",
                 phone="12345678",
-                email="test@test.com"
+                email="chensang.w@gmail.com"
             )
             db.session.add(test_user)
             db.session.commit()

@@ -85,20 +85,20 @@ docker-compose up -d --build
 
 ### 🔸 Composite Microservices
 
-- **[Manage Identity Service](http://localhost:5004/api/v1)**  
+- **[Manage Identity](http://localhost:5004/api/v1)**  
   Creates/deletes user-linked fiat and crypto accounts.
-- **[Deposit Fiat Service](http://localhost:5006/api/v1)**  
+- **[Deposit Fiat](http://localhost:5006/api/v1)**  
   Allows fiat deposits via Stripe with webhook support.
-- **[Ramp Crypto Service](http://localhost:5007/api/v1)**  
+- **[Ramp Crypto](http://localhost:5007/api/v1)**  
   Facilitates fiat ↔ crypto conversions (on/off ramp).
-- **[Market Aggregator Service](http://localhost:5008/api/v1)**  
+- **[Market Aggregator](http://localhost:5008/api/v1)**  
   Combines data from Coingecko, rates, orderbook, and executions for UI.
-- **[Initiate Order Service](http://localhost:5009/api/v1/)**  
+- **[Initiate Order](http://localhost:5009/api/v1/)**  
   Starts a new crypto order (buy/sell).
-- **Match Order Service**  
+- **Match Order**  
   *No REST endpoint – uses AMQP only*  
   Matches new orders with existing ones in the orderbook.
-- **[Complete Order Service](http://localhost:5010/api/v1/)**  
+- **[Complete Order](http://localhost:5010/api/v1/)**  
   Finalises and confirms crypto trades.
 
 ## ⚠️ Troubleshooting

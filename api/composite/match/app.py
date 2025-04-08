@@ -87,14 +87,44 @@ def determine_side(incoming_order):
         # 2. see what the fromTokenId is 
             # if fromTokenId == base, then side = sell
             # if fromTokenId == quote, then side = buy 
+    # this is to enforce the tokens allowed in the orderbook. single point to change if needed
     PAIR_LOGIC= {
+        
+            'btc/usdt': 'sell', # Sell btc to get usdt
+            'usdt/btc': 'buy',  # Buy btc with usdt
             
             'eth/usdt': 'sell', # Sell eth to get usdt
             'usdt/eth': 'buy',  # Buy eth with usdt
-            'btc/usdt': 'sell', # Sell btc to get usdt
-            'usdt/btc': 'buy',  # Buy btc with usdt
+            
+            'xrp/usdt': 'sell',  # Sell xrp to get usdt
+            'usdt/xrp': 'buy',   # Buy xrp with usdt
+            
             'bnb/usdt': 'sell',  # Sell bnb to get usdt
             'usdt/bnb': 'buy',   # Buy bnb with usdt
+            
+            'ada/usdt': 'sell',  # Sell ada to get usdt
+            'usdt/ada': 'buy',   # Buy ada with usdt
+            
+            'sol/usdt': 'sell',  # Sell sol to get usdt
+            'usdt/sol': 'buy',   # Buy sol with usdt
+            
+            'doge/usdt': 'sell',  # Sell doge to get usdt
+            'usdt/doge': 'buy',   # Buy doge with usdt
+            
+            'dot/usdt': 'sell',  # Sell dot to get usdt
+            'usdt/dot': 'buy',   # Buy dot with usdt
+            
+            'matic/usdt': 'sell',  # Sell matic to get usdt
+            'usdt/matic': 'buy',   # Buy matic with usdt
+            
+            'ltc/usdt': 'sell',  # Sell ltc to get usdt
+            'usdt/ltc': 'buy',   # Buy ltc with usdt
+            
+            'link/usdt': 'sell',  # Sell link to get usdt
+            'usdt/link': 'buy',   # Buy link with usdt
+            
+            'avax/usdt': 'sell',  # Sell avax to get usdt
+            'usdt/avax': 'buy',   # Buy avax with usdt
 
         }
     side = PAIR_LOGIC[pair_raw]

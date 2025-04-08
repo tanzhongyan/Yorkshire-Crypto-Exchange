@@ -54,6 +54,9 @@ export default function BuyPage() {
   const buyTotal = buyPrice && buyAmount ? (Number.parseFloat(buyPrice) * Number.parseFloat(buyAmount)).toFixed(2) : "0.00"
   const sellTotal = sellPrice && sellAmount ? (Number.parseFloat(sellPrice) * Number.parseFloat(sellAmount)).toFixed(2) : "0.00"
 
+  // Convert to title case
+  const toTitleCase = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
   // Show notification
   const showNotification = (message, type = "success") => {
     setNotification({ show: true, message, type })
@@ -652,7 +655,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {tx.status}
+                            {toTitleCase(tx.status)}
                           </div>
                         </div>
                         <div className="grid grid-cols-3 text-xs gap-1">
@@ -700,7 +703,7 @@ const fetchRecentTrades = useCallback(async (token = currentToken) => {
                             tx.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {tx.status}
+                            {toTitleCase(tx.status)}
                           </div>
                         </div>
                         <div className="grid grid-cols-3 text-xs gap-1">

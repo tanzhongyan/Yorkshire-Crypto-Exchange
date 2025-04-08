@@ -35,6 +35,7 @@ COINGECKO_MARKET_CHART_URL = "https://api.coingecko.com/api/v3/coins/{coin}/mark
 COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
 ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
 ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
+TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
 # New Exchange Rate API URL
 EXCHANGE_RATE_API_URL = "https://v6.exchangerate-api.com/v6/{api_key}/latest/USD"
@@ -273,45 +274,89 @@ def get_exchange_rate_api_data(base_currency="USD"):
         return None, f"Error fetching Exchange Rate API data: {str(e)}"
 
 
-# helper function for outsystem order book 5 most recent orders timestamped on order creation
-def get_ten_recent_orders():
+# helper function for outsystem order book 10 most recent completed crypto transactions
+def get_ten_recent_completed_crypto_transactions(token="BTC"):
     """
-    Get 10 most recent orders from OrderBook API
+    Get 10 most recent completed crypto transactions for a specific token from Transaction Service
     
+    Args:
+        token (str): Token identifier (e.g., BTC, ETH) - default: BTC
+        
     Returns:
         tuple: (data_list, error_message)
     """
     try:
-        # make request to OrderBook API in outsystems 
-        response = requests.get(ORDERBOOK_GET_ALL_URL)
+        # request to Transaction Service to get all crypto transactions
+        response = requests.get(f"{TRANSACTION_SERVICE_URL}/crypto/")
         
-        # validation
         if response.status_code == 200:
             data = response.json()
             
-            # check if orders exist in the response
-            if 'orders' in data and isinstance(data['orders'], list):
-
-                # filter such that only limit orders will be sorted 
-                limit_orders = [order for order in data['orders'] if order.get('orderType') == 'limit']
-                # sort orders by creation date (newest first)
-                sorted_orders = sorted(
-                    limit_orders, 
-                    key=lambda x: x.get('creation', ''), 
-                    reverse=True
-                )
+            # ensure data is a list
+            if not isinstance(data, list):
+                return None, f"Unexpected response format from Transaction Service: {type(data)}"
+            
+            # normalize token to lowercase for comparison
+            token_lower = token.lower()
+            
+            print(f"Filtering transactions for token: {token_lower}")
+            
+            # filter for completed transactions involving the specified token
+            filtered_transactions = []
+            for tx in data:
+                from_token = tx.get('fromTokenId', '').lower()
+                to_token = tx.get('toTokenId', '').lower()
+                status = tx.get('status')
                 
-                # get 10 most recent by creation timestamp
-                recent_orders = sorted_orders[:10]
+                print(f"Checking tx: from={from_token}, to={to_token}, status={status}")
                 
-                return recent_orders, None
-            else:
-                return [], None  # return empty list if no orders field
+                if status == "completed" and (from_token == token_lower or to_token == token_lower):
+                    filtered_transactions.append(tx)
+            
+            print(f"Found {len(filtered_transactions)} filtered transactions")
+            
+            # Sort transactions by completion date (newest first)
+            # Handle potential missing 'completion' field
+            def get_completion_time(tx):
+                completion = tx.get('completion')
+                return completion if completion else ""
+                
+            sorted_transactions = sorted(
+                filtered_transactions, 
+                key=get_completion_time, 
+                reverse=True
+            )
+            
+            # Get 10 most recent by completion timestamp
+            recent_transactions = sorted_transactions[:10]
+            
+            # Format transactions to match desired output format
+            formatted_transactions = []
+            for tx in recent_transactions:
+                formatted_tx = {
+                    "transactionId": tx.get('transactionId', ''),
+                    "userId": tx.get('userId', ''),
+                    "orderType": tx.get('orderType', 'limit'),
+                    "fromTokenId": tx.get('fromTokenId', '').lower(),
+                    "toTokenId": tx.get('toTokenId', '').lower(),
+                    "fromAmount": tx.get('fromAmount', 0),
+                    "limitPrice": tx.get('limitPrice', 0),
+                    "creation": tx.get('completion', '')  
+                }
+                formatted_transactions.append(formatted_tx)
+            
+            return formatted_transactions, None
         else:
-            return None, "Failed to fetch data from OrderBook API"
+            error_msg = f"Failed to fetch data from Transaction Service API (Status: {response.status_code})"
+            print(error_msg)
+            return None, error_msg
             
     except Exception as e:
-        return None, f"Error fetching OrderBook data: {str(e)}"
+        import traceback
+        error_msg = f"Error fetching Transaction Service data: {str(e)}"
+        print(error_msg)
+        print(traceback.format_exc())  # Print full stack trace
+        return None, error_msg
     
 # helper function to get sorted orders for a input token
 def get_sorted_orders(token):
@@ -447,35 +492,12 @@ class ExchangeRateResource(Resource):
         return {"rates": rates} # return rates dict
 
 # api endpoint for market/fiatrates
-@market_ns.route('/fiatrates')
-class FiatRatesResource(Resource):
-    @market_ns.doc(
-        responses={
-            200: 'Success',
-            500: 'Server Error'
-        }
-    )
-    
-    @market_ns.marshal_with(exchange_rate_api_response, code=200)
-
-    def get(self):
-        """
-        Retrieve current exchange rates for fiat currencies
-        
-        This endpoint fetches current exchange rates from Exchange Rate API.
-        Returns the base currency and conversion rates for various fiat currencies.
-        """
-        data, error = get_exchange_rate_api_data()
-        
-        if error:
-            return {"error": error}, 500
-        
-        return data
-    
-# api endpoint for /orderbook/recentorders
 @orderbook_ns.route('/recentorders')
 class RecentOrdersResource(Resource):
     @orderbook_ns.doc(
+        params={
+            'token': {'description': 'Token identifier (e.g., BTC, ETH)', 'default': 'BTC'}
+        },
         responses={
             200: 'Success',
             500: 'Server Error'
@@ -483,18 +505,18 @@ class RecentOrdersResource(Resource):
     )
     @orderbook_ns.marshal_with(recent_orders_response, code=200)
     def get(self):
-        """
-        Retrieve 10 most recent orders from the OrderBook
+        # Get token from query parameters
+        token = request.args.get("token", "BTC")
+        print(f"Fetching recent orders for token: {token}")
         
-        This endpoint fetches the 10 most recent orders from the OrderBook service,
-        sorted by creation timestamp (newest first).
-        """
-        recent_orders, error = get_ten_recent_orders()
+        recent_transactions, error = get_ten_recent_completed_crypto_transactions(token)
         
         if error:
+            print(f"Error in recent orders endpoint: {error}")
             return {"error": error}, 500
         
-        return {"orders": recent_orders}
+        # Ensure we return an empty array instead of None
+        return {"orders": recent_transactions if recent_transactions is not None else []}
 
 # api endpoint for /orderbook/sortedorders
 @orderbook_ns.route('/sortedorders')

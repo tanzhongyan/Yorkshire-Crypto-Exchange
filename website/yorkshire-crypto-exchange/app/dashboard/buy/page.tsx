@@ -136,32 +136,34 @@ export default function BuyPage() {
   }, [currentToken])
 
   // Fetch recent trades
-  const fetchRecentTrades = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/v1/orderbook/recentorders')
-      
-      // Filter for current token if needed
-      const filteredTrades = response.data.orders.filter(order => 
-        (order.fromTokenId.toLowerCase() === currentToken.toLowerCase() && order.toTokenId.toLowerCase() === 'usdt') ||
-        (order.fromTokenId.toLowerCase() === 'usdt' && order.toTokenId.toLowerCase() === currentToken.toLowerCase())
-      )
-      
-      // Format trades data
-      const formattedTrades = filteredTrades.map(order => ({
-        price: order.limitPrice,
-        amount: order.fromTokenId.toLowerCase() === 'usdt' 
-          ? order.toAmount || order.fromAmount / order.limitPrice
-          : order.fromAmount || order.toAmount / order.limitPrice,
-        time: new Date(order.creation).toLocaleTimeString(),
-        type: order.fromTokenId.toLowerCase() === 'usdt' ? 'buy' : 'sell'
-      }))
-      
-      // Limit to 12 trades as requested
-      setRecentTrades(formattedTrades.slice(0, 12))
-    } catch (error) {
-      console.error("Failed to fetch recent trades:", error)
-    }
-  }, [currentToken])
+// Fetch recent trades
+const fetchRecentTrades = useCallback(async (token = currentToken) => {
+  try {
+    const response = await axios.get(`/api/v1/orderbook/recentorders?token=${token.toLowerCase()}`);
+    
+    // Filter for current token if needed
+    const filteredTrades = response.data.orders.filter(order => 
+      (order.fromTokenId.toLowerCase() === token.toLowerCase() && order.toTokenId.toLowerCase() === 'usdt') || 
+      (order.fromTokenId.toLowerCase() === 'usdt' && order.toTokenId.toLowerCase() === token.toLowerCase())
+    );
+    
+    // Format trades data
+    const formattedTrades = filteredTrades.map(order => ({
+      price: order.limitPrice,
+      amount: order.fromTokenId.toLowerCase() === 'usdt' 
+        ? order.toAmount || order.fromAmount / order.limitPrice 
+        : order.fromAmount || order.toAmount / order.limitPrice,
+      time: new Date(order.creation).toLocaleTimeString(),
+      type: order.fromTokenId.toLowerCase() === 'usdt' ? 'buy' : 'sell'
+    }));
+    
+    // Limit to 12 trades as requested
+    setRecentTrades(formattedTrades.slice(0, 12));
+  } catch (error) {
+    console.error("Failed to fetch recent trades:", error);
+  }
+}, []);
+
 
   // Fetch balances
   const fetchBalances = useCallback(async () => {
@@ -244,18 +246,21 @@ export default function BuyPage() {
 
   // Handle pair change
   const handlePairChange = (newPair) => {
-    const [token] = newPair.split('/')
-    setSelectedPair(newPair)
-    const newToken = token.toLowerCase()
-    setCurrentToken(newToken)
-    fetchExchangeRate(newToken)
+    const [token] = newPair.split('/');
+    setSelectedPair(newPair);
+    const newToken = token.toLowerCase();
+    setCurrentToken(newToken);
+    fetchExchangeRate(newToken);
+    fetchRecentTrades(newToken);
     
     // Reset form values
-    setBuyAmount("")
-    setBuyUsdtAmount("")
-    setSellAmount("")
-    setSellUsdtAmount("")
+    setBuyAmount("");
+    setBuyUsdtAmount("");
+    setSellAmount("");
+    setSellUsdtAmount("");
   }
+
+
 
   // Handle buy price change
   const handleBuyPriceChange = (e) => {
@@ -473,16 +478,17 @@ export default function BuyPage() {
     }
   }, [currentToken, fetchOrderBook, fetchRecentTrades, fetchBalances, fetchTransactions])
 
-  // Periodic data refresh - refresh every 10 seconds (changed from 5 seconds)
+  // Periodic data refresh
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchOrderBook()
-      fetchRecentTrades()
-      fetchExchangeRate(currentToken)
-    }, 10000) // Changed from 5000 to 10000 ms
+      fetchOrderBook();
+      fetchRecentTrades(currentToken);
+      fetchExchangeRate(currentToken);
+    }, 10000);
     
-    return () => clearInterval(interval)
-  }, [fetchOrderBook, fetchRecentTrades, fetchExchangeRate, currentToken])
+    return () => clearInterval(interval);
+  }, [fetchOrderBook, fetchRecentTrades, fetchExchangeRate, currentToken]);
+
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">

@@ -89,57 +89,79 @@ class CryptoHolding(db.Model):
 
 # CryptoWallet API Models
 wallet_output_model = wallet_ns.model('CryptoWalletOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID')
+    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID', 
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0')
 })
 
 wallet_input_model = wallet_ns.model('CryptoWalletInput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID')
+    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0')
 })
 
 # CryptoToken API Models
 token_output_model = token_ns.model('CryptoTokenOutput', {
-    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID'),
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token'),
-    'created': fields.DateTime(description='When the token was created')
+    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID',
+               example='btc'),
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Bitcoin'),
+    'created': fields.DateTime(description='When the token was created',
+               example='2023-08-15T14:30:00')
 })
 
 token_input_model = token_ns.model('CryptoTokenInput', {
-    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID'),
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token')
+    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID',
+               example='eth'),
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Ethereum')
 })
 
 # For PUT operations on tokens (no tokenId needed since it's in the path)
 token_update_model = token_ns.model('CryptoTokenUpdate', {
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token')
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Ethereum 2.0')
 })
 
 # CryptoHolding API Models
 holding_output_model = holding_ns.model('CryptoHoldingOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
-    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)'),
-    'updatedOn': fields.DateTime(attribute='updated_on', description='When the holding was last updated')
+    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding',
+               example='btc'),
+    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token',
+               example=0.25),
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)',
+               example=0.25),
+    'updatedOn': fields.DateTime(attribute='updated_on', description='When the holding was last updated',
+               example='2023-08-15T14:30:00')
 })
 
 holding_input_model = holding_ns.model('CryptoHoldingInput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
-    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)')
+    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding',
+               example='usdt'),
+    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token',
+               example=1000.0),
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)',
+               example=1000.0)
 })
 
 # Model for updating holdings (only non-primary key fields can be updated)
 holding_update_model = holding_ns.model('CryptoHoldingUpdate', {
-    'actualBalance': fields.Float(attribute='actual_balance', required=False, description='The new actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=False, description='The new available balance of the token')
+    'actualBalance': fields.Float(attribute='actual_balance', required=False, description='The new actual balance of the token',
+               example=1500.0),
+    'availableBalance': fields.Float(attribute='available_balance', required=False, description='The new available balance of the token',
+               example=1500.0)
 })
 
 # Updated model for operations that change amounts - now including userId and tokenId
 amount_change_model = holding_ns.model('CryptoAmountChange', {
-    'userId': fields.String(required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(required=True, description='The token ID associated with the holding'),
-    'amountChanged': fields.Float(required=True, description='The amount to add or subtract')
+    'userId': fields.String(required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(required=True, description='The token ID associated with the holding',
+               example='btc'),
+    'amountChanged': fields.Float(required=True, description='The amount to add or subtract',
+               example=0.05)
 })
 
 ##### API actions - flask restx API autodoc #####

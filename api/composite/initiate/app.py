@@ -46,16 +46,22 @@ order_ns = Namespace('order', description='Order related operations')
 create_order_model = order_ns.model(
     "CreateOrder",
     {
-        "userId": fields.String(required=True, description="User ID"),
-        "orderType": fields.String(required=True, description="Type of Order (Limit/Market)"),
-        "side": fields.String(required=True, description="Type of Order (Buy/Sell)"),
-
-        "baseTokenId": fields.String(required=True, description="Token ID of base currency"),
-        "quoteTokenId": fields.String(required=True, description="Token ID of quote currency"),
-        "limitPrice": fields.Float(required=True, description="Price at which user is willing to buy base asset"),
-
-        "quantity": fields.Float(required=True, description="Total amount of base currency to be bought/sold"),
-        "orderCost": fields.Float(required=True, description="Total amount of quote to pay with, computed frontend")
+        "userId": fields.String(required=True, description="User ID",
+                    example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+        "orderType": fields.String(required=True, description="Type of Order (Limit/Market)",
+                    example="limit"),
+        "side": fields.String(required=True, description="Type of Order (Buy/Sell)",
+                    example="buy"),
+        "baseTokenId": fields.String(required=True, description="Token ID of base currency",
+                    example="btc"),
+        "quoteTokenId": fields.String(required=True, description="Token ID of quote currency",
+                    example="usdt"),
+        "limitPrice": fields.Float(required=True, description="Price at which user is willing to buy base asset",
+                    example=50000.0),
+        "quantity": fields.Float(required=True, description="Total amount of base currency to be bought/sold",
+                    example=0.1),
+        "orderCost": fields.Float(required=True, description="Total amount of quote to pay with, computed frontend",
+                    example=5000.0)
     },
 )
 
@@ -63,10 +69,13 @@ create_order_model = order_ns.model(
 success_creation_response = order_ns.model(
     "SuccessfulTransactionResponse",
     {
-        "message": fields.String(description="Order creation success message"),
+        "message": fields.String(description="Order creation success message",
+                    example="Order created successfully"),
         "transactionId": fields.String(attribute='transaction_id', 
-        description="Created Transaction ID"),
-        "transactionStatus": fields.String,
+                    description="Created Transaction ID",
+                    example="7890abcd-ef12-34gh-5678-ijklmnopqrst"),
+        "transactionStatus": fields.String(
+                    example="pending"),
     },
 )
 
@@ -74,8 +83,10 @@ success_creation_response = order_ns.model(
 insufficient_balance_response = order_ns.model(
     "InsufficientBalanceErrorResponse",
     {
-        "error": fields.String(description="Error message"),
-        "shortOf": fields.Float(description="Amount shortage")
+        "error": fields.String(description="Error message",
+                example="Insufficient balance for this order"),
+        "shortOf": fields.Float(description="Amount shortage",
+                example=1000.0)
     },
 )
 
@@ -83,8 +94,10 @@ insufficient_balance_response = order_ns.model(
 error_response = order_ns.model(
     "ErrorResponse",
     {
-        "error": fields.String(description="Error message"),
-        "details": fields.String(description="Error details"),
+        "error": fields.String(description="Error message",
+                example="Failed to create order"),
+        "details": fields.String(description="Error details",
+                example="Invalid order parameters or service unavailable"),
     },
 )
 

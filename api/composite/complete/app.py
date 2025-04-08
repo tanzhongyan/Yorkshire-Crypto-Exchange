@@ -61,27 +61,39 @@ EMAIL_SENDER_NAME = "Yorkshire Crypto Exchange"
 
 # Define API models
 notification_model = notification_ns.model("NotificationPayload", {
-    "userId": fields.String(required=True, description="User ID"),
-    "transactionId": fields.String(required=True, description="Transaction ID")
+    "userId": fields.String(required=True, description="User ID",
+                example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+    "transactionId": fields.String(required=True, description="Transaction ID",
+                example="f47ac10b-58cc-4372-a567-0e02b2c3d479")
 })
 
 transaction_update_model = transaction_ns.model('TransactionUpdate', {
-    'userId': fields.String(required=True, description='User ID'),
-    'status': fields.String(required=True, description='Transaction status'),
-    'fromAmountActual': fields.Float(required=True, description='Actual from amount'),
-    'toAmountActual': fields.Float(required=True, description='Actual to amount'),
-    'details': fields.String(required=False, description='Additional details')
+    'userId': fields.String(required=True, description='User ID',
+                example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+    'status': fields.String(required=True, description='Transaction status',
+                example="completed"),
+    'fromAmountActual': fields.Float(required=True, description='Actual from amount',
+                example=1000.0),
+    'toAmountActual': fields.Float(required=True, description='Actual to amount',
+                example=0.02345),
+    'details': fields.String(required=False, description='Additional details',
+                example="Transaction processed successfully at market rate")
 })
 
 sms_model = notification_ns.model('SMSRequest', {
-    'mobile': fields.String(required=True, description='Mobile number'),
-    'message': fields.String(required=True, description='SMS message content')
+    'mobile': fields.String(required=True, description='Mobile number',
+                example="+6512345678"),
+    'message': fields.String(required=True, description='SMS message content',
+                example="Your crypto purchase of 0.02345 BTC for 1000.00 USD has been completed. Transaction ID: f47ac10b.")
 })
 
 email_model = notification_ns.model('EmailRequest', {
-    'to': fields.String(required=True, description='Recipient email'),
-    'subject': fields.String(required=True, description='Email subject'),
-    'body': fields.String(required=True, description='Email content')
+    'to': fields.String(required=True, description='Recipient email',
+                example="test@test.com"),
+    'subject': fields.String(required=True, description='Email subject',
+                example="Crypto Transaction Confirmation - Order #f47ac10b"),
+    'body': fields.String(required=True, description='Email content',
+                example="Dear Test User,\n\nYour crypto purchase has been completed successfully:\n\nAmount: 0.02345 BTC\nCost: 1000.00 USD\nStatus: Completed\nTransaction ID: f47ac10b-58cc-4372-a567-0e02b2c3d479\n\nThank you for using our service.\n\nRegards,\nCrypto Exchange Team")
 })
 
 # Connect to AMQP broker

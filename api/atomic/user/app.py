@@ -123,38 +123,52 @@ class UserAddress(db.Model):
 
 # Output One/Many user account
 user_output_model = account_ns.model('UserOutput', {
-    'userId': fields.String(attribute='user_id', readOnly=True, description='The unique identifier of a user'),
-    'username': fields.String(required=True, description='The username'),
-    'fullname': fields.String(required=True, description='The full name'),
-    'phone': fields.String(required=True, description='The phone number'),
-    'email': fields.String(required=True, description='The email address')
+    'userId': fields.String(attribute='user_id', readOnly=True, description='The unique identifier of a user',
+                example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'username': fields.String(required=True, description='The username',
+                example='test'),
+    'fullname': fields.String(required=True, description='The full name',
+                example='Test User'),
+    'phone': fields.String(required=True, description='The phone number',
+                example='12345678'),
+    'email': fields.String(required=True, description='The email address',
+                example='test@test.com')
 })
 
 # Input One user account
 user_input_model = account_ns.model('UserInput', {
-    'username': fields.String(required=True, description='The username'),
-    'fullname': fields.String(required=True, description='The full name'),
-    'phone': fields.String(required=True, description='The phone number'),
-    'email': fields.String(required=True, description='The email address')
+    'username': fields.String(required=True, description='The username',
+                example='test'),
+    'fullname': fields.String(required=True, description='The full name',
+                example='Test User'),
+    'phone': fields.String(required=True, description='The phone number',
+                example='12345678'),
+    'email': fields.String(required=True, description='The email address',
+                example='test@test.com')
 })
 
 # output one user authenticate
 auth_output_model = authenticate_ns.model('AuthOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
-    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password')
+    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID',
+                example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'passwordHashed': fields.String(attribute='password_hashed', required=True, description='The hashed password',
+                example='$2b$12$qHXz/XGhT57M.vltsTzoNOKVBDL2BHN0q0EEgXsNQ3lKD6rn3Y1eG')
 })
 
 # Input one user authenticate
 auth_input_model = authenticate_ns.model('AuthInput', {
-    'password': fields.String(attribute='password', required=True, description='The password')
+    'password': fields.String(attribute='password', required=True, description='The password',
+                example='test12345')
 })
 
 # Input model for authentication
 auth_model = authenticate_ns.model(
     "AuthenticateUser",
     {
-        "identifier": fields.String(required=True, description="Username or Email"),
-        "password": fields.String(required=True, description="User password"),
+        "identifier": fields.String(required=True, description="Username or Email",
+                    example='test'),
+        "password": fields.String(required=True, description="User password",
+                    example='test12345'),
     },
 )
 
@@ -162,9 +176,12 @@ auth_model = authenticate_ns.model(
 auth_success_response = authenticate_ns.model(
     "AuthSuccessResponse",
     {
-        "message": fields.String(description="Authentication successful"),
-        "userId": fields.String(attribute='user_id', description="Authenticated User ID"),
-        "token": fields.String(description="JWT authentication token")
+        "message": fields.String(description="Authentication successful",
+                    example='Authentication successful'),
+        "userId": fields.String(attribute='user_id', description="Authenticated User ID",
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+        "token": fields.String(description="JWT authentication token",
+                    example='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTdjMzk2ZTItODM3MC00OTc1LTgyMGUtYzVlZThlMzg3NWMwIiwiZXhwIjoxNjYwMDAwMDAwfQ.signature')
     },
 )
 
@@ -172,8 +189,10 @@ auth_success_response = authenticate_ns.model(
 auth_error_response = authenticate_ns.model(
     "AuthErrorResponse",
     {
-        "error": fields.String(description="Error message"),
-        "details": fields.String(description="Additional error details"),
+        "error": fields.String(description="Error message",
+                example='Authentication failed'),
+        "details": fields.String(description="Additional error details",
+                example='Invalid username or password'),
     },
 )
 
@@ -181,7 +200,8 @@ auth_error_response = authenticate_ns.model(
 reset_password_request_model = authenticate_ns.model(
     "ResetPasswordRequest",
     {
-        "email": fields.String(required=True, description="The email address of the user"),
+        "email": fields.String(required=True, description="The email address of the user",
+                example='test@test.com'),
     },
 )
 
@@ -189,8 +209,10 @@ reset_password_request_model = authenticate_ns.model(
 reset_password_model = authenticate_ns.model(
     "ResetPassword",
     {
-        "token": fields.String(required=True, description="The reset token"),
-        "newPassword": fields.String(required=True, description="The new password"),
+        "token": fields.String(required=True, description="The reset token",
+                example='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJleHAiOjE2NjAwMDAwMDB9.signature'),
+        "newPassword": fields.String(required=True, description="The new password",
+                example='newPassword123'),
     },
 )
 
@@ -198,35 +220,55 @@ reset_password_model = authenticate_ns.model(
 reset_password_response = authenticate_ns.model(
     "ResetPasswordResponse",
     {
-        "message": fields.String(description="Operation result message"),
+        "message": fields.String(description="Operation result message",
+                example='Password has been reset successfully'),
     },
 )
 
 # output one user address
 address_output_model = address_ns.model('AddressOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID'),
-    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
-    'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
-    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
-    'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
-    'district': fields.String(attribute='district',required=False, description='The district'),
-    'city': fields.String(required=True, description='The city'),
-    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
-    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
-    'country': fields.String(required=True, description='The country')
+    'userId': fields.String(attribute='user_id', required=True, description='The associated user ID',
+                example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number',
+                example='Test'),
+    'streetName': fields.String(attribute='street_name',required=True, description='The street name',
+                example='Test Street'),
+    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number',
+                example='Test'),
+    'buildingName': fields.String(attribute='building_name',required=False, description='The building name',
+                example='Test Building'),
+    'district': fields.String(attribute='district',required=False, description='The district',
+                example='Test District'),
+    'city': fields.String(required=True, description='The city',
+                example='Test City'),
+    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province',
+                example='Test State'),
+    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code',
+                example='Test123'),
+    'country': fields.String(required=True, description='The country',
+                example='Test Country')
 })
 
 # input one user address
 address_input_model = address_ns.model('AddressInput', {
-    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number'),
-    'streetName': fields.String(attribute='street_name',required=True, description='The street name'),
-    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number'),
-    'buildingName': fields.String(attribute='building_name',required=False, description='The building name'),
-    'district': fields.String(attribute='district',required=False, description='The district'),
-    'city': fields.String(required=True, description='The city'),
-    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province'),
-    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code'),
-    'country': fields.String(required=True, description='The country')
+    'streetNumber': fields.String(attribute='street_number',required=True, description='The street number',
+                example='Test'),
+    'streetName': fields.String(attribute='street_name',required=True, description='The street name',
+                example='Test Street'),
+    'unitNumber': fields.String(attribute='unit_number',required=False, description='The unit number',
+                example='Test'),
+    'buildingName': fields.String(attribute='building_name',required=False, description='The building name',
+                example='Test Building'),
+    'district': fields.String(attribute='district',required=False, description='The district',
+                example='Test District'),
+    'city': fields.String(required=True, description='The city',
+                example='Test City'),
+    'stateProvince': fields.String(attribute='state_province',required=True, description='The state or province',
+                example='Test State'),
+    'postalCode': fields.String(attribute='postal_code',required=True, description='The postal code',
+                example='Test123'),
+    'country': fields.String(required=True, description='The country',
+                example='Test Country')
 })
 
 

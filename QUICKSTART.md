@@ -66,51 +66,40 @@ Ensure the following are installed:
 
 ## 🧾 Swagger API Documentation
 
-After running `docker-compose`, access the API documentation:
+Go to [Swagger UI](http://localhost:3001/swagger-ui) after running:  
+```bash
+docker-compose up -d --build
+```
 
-- **Consolidated Swagger UI:**  
-  [http://localhost:3001/swagger-ui](http://localhost:3001/swagger-ui)
+### 🔹 Atomic Microservices
+- **[Fiat Service](http://localhost:5001/api/v1/fiat)**  
+  Handles fiat currencies and user fiat accounts.
+- **[Crypto Service](http://localhost:5002/api/v1/crypto)**  
+  Manages crypto wallets and related operations.
+- **[User Service](http://localhost:5003/api/v1/user)**  
+  User account management – profiles, addresses, and authentication.
+- **[Transaction Logs Service](http://localhost:5005/api/v1/transaction)**  
+  Stores and retrieves transaction history logs.
+- **[Orderbook Service](https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/)**  
+  Store current market orders (buy/sell listings).
 
-- **Individual Microservice Endpoints:**
+### 🔸 Composite Microservices
 
-  **Atomic Microservices:**
-
-  - **User Service:**  
-    [http://localhost:5003/api/v1/user](http://localhost:5003/api/v1/user)
-
-  - **Crypto Service:**  
-    [http://localhost:5002/api/v1/crypto](http://localhost:5002/api/v1/crypto)
-
-  - **Fiat Service:**  
-    [http://localhost:5001/api/v1/fiat](http://localhost:5001/api/v1/fiat)
-
-  - **Transaction Service:**  
-    [http://localhost:5005/api/v1/transaction](http://localhost:5005/api/v1/transaction)
-
-  - **Order Book Service (OutSystems):**  
-    [https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/](https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/)
-
-  **Composite Microservices:**
-
-  - **Identity Service:**  
-    [http://localhost:5004/api/v1](http://localhost:5004/api/v1)
-
-  - **Deposit Service:**  
-    [http://localhost:5006/api/v1](http://localhost:5006/api/v1)
-
-  - **Ramp Service:**  
-    [http://localhost:5007/api/v1](http://localhost:5007/api/v1)
-
-  - **Market Service:**  
-    [http://localhost:5008/api/v1](http://localhost:5008/api/v1)
-
-  - **Initiate Service:**  
-    [http://localhost:5009/api/v1/](http://localhost:5009/api/v1/)
-
-  - **Complete Service:**  
-    [http://localhost:5010/api/v1/](http://localhost:5010/api/v1/)
-
----
+- **[Manage Identity Service](http://localhost:5004/api/v1)**  
+  Creates/deletes user-linked fiat and crypto accounts.
+- **[Deposit Fiat Service](http://localhost:5006/api/v1)**  
+  Allows fiat deposits via Stripe with webhook support.
+- **[Ramp Crypto Service](http://localhost:5007/api/v1)**  
+  Facilitates fiat ↔ crypto conversions (on/off ramp).
+- **[Market Aggregator Service](http://localhost:5008/api/v1)**  
+  Combines data from Coingecko, rates, orderbook, and executions for UI.
+- **[Initiate Order Service](http://localhost:5009/api/v1/)**  
+  Starts a new crypto order (buy/sell).
+- **Match Order Service**  
+  *No REST endpoint – uses AMQP only*  
+  Matches new orders with existing ones in the orderbook.
+- **[Complete Order Service](http://localhost:5010/api/v1/)**  
+  Finalises and confirms crypto trades.
 
 ## ⚠️ Troubleshooting
 

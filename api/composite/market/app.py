@@ -491,6 +491,31 @@ class ExchangeRateResource(Resource):
         
         return {"rates": rates} # return rates dict
 
+@market_ns.route('/fiatrates')
+class FiatRatesResource(Resource):
+    @market_ns.doc(
+        responses={
+            200: 'Success',
+            500: 'Server Error'
+        }
+    )
+
+    @market_ns.marshal_with(exchange_rate_api_response, code=200)
+
+    def get(self):
+        """
+        Retrieve current exchange rates for fiat currencies
+        
+        This endpoint fetches current exchange rates from Exchange Rate API.
+        Returns the base currency and conversion rates for various fiat currencies.
+        """
+        data, error = get_exchange_rate_api_data()
+
+        if error:
+            return {"error": error}, 500
+
+        return data
+
 # api endpoint for market/fiatrates
 @orderbook_ns.route('/recentorders')
 class RecentOrdersResource(Resource):

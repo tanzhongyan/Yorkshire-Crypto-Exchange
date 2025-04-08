@@ -282,6 +282,7 @@ services:
       postgres:
         condition: service_healthy # wait until postgres healthy
     networks:
+      - kong-net
       - rabbit-net
   
   match-service:

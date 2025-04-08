@@ -87,37 +87,37 @@ class FiatAccount(db.Model):
 
 # Currency Models
 fiat_currency_output_model = currency_ns.model('FiatCurrencyOutput', {
-    'currencyCode': fields.String(attribute='currency_code',required=True),
-    'rate': fields.Float(required=True),
+    'currencyCode': fields.String(attribute='currency_code', required=True, example="usd"),
+    'rate': fields.Float(required=True, example=1.0),
     'updated': fields.DateTime
 })
 
 fiat_currency_input_model = currency_ns.model('FiatCurrencyInput', {
-    'currencyCode': fields.String(attribute='currency_code',required=True),
-    'rate': fields.Float(required=True)
+    'currencyCode': fields.String(attribute='currency_code', required=True, example="usd"),
+    'rate': fields.Float(required=True, example=1.0)
 })
 
 fiat_currency_update_model = currency_ns.model('FiatCurrencyUpdate', {
-    'rate': fields.Float(required=True)
+    'rate': fields.Float(required=True, example=1.25)
 })
 
 # Account Models
 fiat_account_output_model = account_ns.model('FiatAccountOutput', {
-    'userId': fields.String(attribute='user_id',required=True),
-    'balance': fields.Float(required=True),
-    'currencyCode': fields.String(attribute='currency_code',required=True),
+    'userId': fields.String(attribute='user_id', required=True, example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+    'balance': fields.Float(required=True, example=1000.0),
+    'currencyCode': fields.String(attribute='currency_code', required=True, example="usd"),
     'updated': fields.DateTime
 })
 
 fiat_account_input_model = account_ns.model('FiatAccountInput', {
-    'userId': fields.String(attribute='user_id',required=True),
-    'balance': fields.Float(required=True),
-    'currencyCode': fields.String(attribute='currency_code',required=True)
+    'userId': fields.String(attribute='user_id', required=True, example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+    'balance': fields.Float(required=True, example=1000.0),
+    'currencyCode': fields.String(attribute='currency_code', required=True, example="usd")
 })
 
 fiat_account_update_model = account_ns.model('FiatAccountUpdate', {
-    'amountChanged': fields.Float(required=True),
-    })
+    'amountChanged': fields.Float(required=True, example=500.0)
+})
 
 ##### CRUD Resource Definitions #####
 

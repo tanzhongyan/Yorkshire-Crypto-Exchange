@@ -55,15 +55,20 @@ api.add_namespace(orderbook_ns)
 
 ##### API Models - flask restx API autodoc #####
 market_params = market_ns.model('MarketParams', {
-    'coin': fields.String(required=False, default='bitcoin', description='Cryptocurrency name for CoinGecko API'),
-    'days': fields.String(required=False, default='1', description='Time period for CoinGecko API'),
+    'coin': fields.String(required=False, default='bitcoin', description='Cryptocurrency name for CoinGecko API',
+                example='bitcoin'),
+    'days': fields.String(required=False, default='1', description='Time period for CoinGecko API',
+                example='7'),
 })
 
 # /market response
 coin_gecko_model = market_ns.model('CoinGeckoData', {
-    'prices': fields.Raw(description='Price data points [timestamp, price]'),
-    'market_caps': fields.Raw(description='Market cap data points [timestamp, cap]'),
-    'total_volumes': fields.Raw(description='Volume data points [timestamp, volume]')
+    'prices': fields.Raw(description='Price data points [timestamp, price]',
+                example=[[1680912000000, 28500.32], [1680915600000, 28612.45], [1680919200000, 28550.18]]),
+    'market_caps': fields.Raw(description='Market cap data points [timestamp, cap]',
+                example=[[1680912000000, 552891234567], [1680915600000, 554123456789], [1680919200000, 553456789012]]),
+    'total_volumes': fields.Raw(description='Volume data points [timestamp, volume]',
+                example=[[1680912000000, 15678934567], [1680915600000, 15789045678], [1680919200000, 15890156789]])
 })
 
 market_response = market_ns.model('MarketResponse', {
@@ -72,27 +77,39 @@ market_response = market_ns.model('MarketResponse', {
 
 # market/exchangerate response model
 exchange_rate_response = market_ns.model('ExchangeRateResponse', {
-    'rates': fields.Raw(description='Exchange rates for requested tokens against USDT')
+    'rates': fields.Raw(description='Exchange rates for requested tokens against USDT',
+                example={'btc': 65000.45, 'eth': 3456.78, 'sol': 142.35, 'bnb': 567.89})
 })
 
 # market/fiatrates API response model
 exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
-    'base_code': fields.String(description='Base currency code'),
-    'conversion_rates': fields.Raw(description='Currency conversion rates'),
-    'time_last_update_utc': fields.String(description='Last update time in UTC')
+    'base_code': fields.String(description='Base currency code',
+                example='USD'),
+    'conversion_rates': fields.Raw(description='Currency conversion rates',
+                example={'USD': 1.0, 'SGD': 1.35, 'EUR': 0.85, 'JPY': 110.0, 'GBP': 0.75}),
+    'time_last_update_utc': fields.String(description='Last update time in UTC',
+                example='Tue, 08 Apr 2025 04:30:00 +0000')
 })
 
 # orders model from outsystem orderbook
 # same as json response from orderbook, we are only working with limit 
 orderbook_model = orderbook_ns.model('OrderBookData', {
-    'transactionId': fields.String(description='Unique identifier for the transaction'),
-    'userId': fields.String(description='Unique identifier for the user'),
-    'orderType': fields.String(description='Type of order (e.g., limit)', example='limit'),
-    'fromTokenId': fields.String(description='Source token identifier'),
-    'toTokenId': fields.String(description='Destination token identifier'),
-    'fromAmount': fields.Float(description='Amount of source token'),
-    'limitPrice': fields.Float(description='Limit price for the order'),
-    'creation': fields.DateTime(description='Timestamp of order creation', example='2014-12-31T23:59:59.937Z')
+    'transactionId': fields.String(description='Unique identifier for the transaction',
+                    example='7890abcd-ef12-34gh-5678-ijklmnopqrst'),
+    'userId': fields.String(description='Unique identifier for the user',
+                    example='751fab8c-7070-48b2-a723-df9ce7e5719c'),
+    'orderType': fields.String(description='Type of order (e.g., limit)', 
+                    example='limit'),
+    'fromTokenId': fields.String(description='Source token identifier',
+                    example='usdt'),
+    'toTokenId': fields.String(description='Destination token identifier',
+                    example='btc'),
+    'fromAmount': fields.Float(description='Amount of source token',
+                    example=5000.0),
+    'limitPrice': fields.Float(description='Limit price for the order',
+                    example=65000.0),
+    'creation': fields.DateTime(description='Timestamp of order creation', 
+                    example='2025-04-08T10:15:30.937Z')
 })
 
 # /recentorders output model

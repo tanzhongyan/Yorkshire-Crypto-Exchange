@@ -89,57 +89,79 @@ class CryptoHolding(db.Model):
 
 # CryptoWallet API Models
 wallet_output_model = wallet_ns.model('CryptoWalletOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID')
+    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID', 
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0')
 })
 
 wallet_input_model = wallet_ns.model('CryptoWalletInput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID')
+    'userId': fields.String(attribute='user_id', required=True, description='The unique user ID',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0')
 })
 
 # CryptoToken API Models
 token_output_model = token_ns.model('CryptoTokenOutput', {
-    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID'),
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token'),
-    'created': fields.DateTime(description='When the token was created')
+    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID',
+               example='btc'),
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Bitcoin'),
+    'created': fields.DateTime(description='When the token was created',
+               example='2023-08-15T14:30:00')
 })
 
 token_input_model = token_ns.model('CryptoTokenInput', {
-    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID'),
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token')
+    'tokenId': fields.String(attribute='token_id', required=True, description='The unique token ID',
+               example='eth'),
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Ethereum')
 })
 
 # For PUT operations on tokens (no tokenId needed since it's in the path)
 token_update_model = token_ns.model('CryptoTokenUpdate', {
-    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token')
+    'tokenName': fields.String(attribute='token_name', required=True, description='The name of the token',
+               example='Ethereum 2.0')
 })
 
 # CryptoHolding API Models
 holding_output_model = holding_ns.model('CryptoHoldingOutput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
-    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)'),
-    'updatedOn': fields.DateTime(attribute='updated_on', description='When the holding was last updated')
+    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding',
+               example='btc'),
+    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token',
+               example=0.25),
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)',
+               example=0.25),
+    'updatedOn': fields.DateTime(attribute='updated_on', description='When the holding was last updated',
+               example='2023-08-15T14:30:00')
 })
 
 holding_input_model = holding_ns.model('CryptoHoldingInput', {
-    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding'),
-    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)')
+    'userId': fields.String(attribute='user_id', required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(attribute='token_id', required=True, description='The token ID associated with the holding',
+               example='usdt'),
+    'actualBalance': fields.Float(attribute='actual_balance', required=True, description='The actual balance of the token',
+               example=1000.0),
+    'availableBalance': fields.Float(attribute='available_balance', required=True, description='The available balance of the token (reserved for orders)',
+               example=1000.0)
 })
 
 # Model for updating holdings (only non-primary key fields can be updated)
 holding_update_model = holding_ns.model('CryptoHoldingUpdate', {
-    'actualBalance': fields.Float(attribute='actual_balance', required=False, description='The new actual balance of the token'),
-    'availableBalance': fields.Float(attribute='available_balance', required=False, description='The new available balance of the token')
+    'actualBalance': fields.Float(attribute='actual_balance', required=False, description='The new actual balance of the token',
+               example=1500.0),
+    'availableBalance': fields.Float(attribute='available_balance', required=False, description='The new available balance of the token',
+               example=1500.0)
 })
 
 # Updated model for operations that change amounts - now including userId and tokenId
 amount_change_model = holding_ns.model('CryptoAmountChange', {
-    'userId': fields.String(required=True, description='The user ID associated with the holding'),
-    'tokenId': fields.String(required=True, description='The token ID associated with the holding'),
-    'amountChanged': fields.Float(required=True, description='The amount to add or subtract')
+    'userId': fields.String(required=True, description='The user ID associated with the holding',
+               example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'tokenId': fields.String(required=True, description='The token ID associated with the holding',
+               example='btc'),
+    'amountChanged': fields.Float(required=True, description='The amount to add or subtract',
+               example=0.05)
 })
 
 ##### API actions - flask restx API autodoc #####
@@ -706,40 +728,44 @@ def seed_data():
             db.session.add(new_token)
         db.session.commit()
 
-        # 3) Insert CryptoHolding data using deposit logic
-        user_id = "a7c396e2-8370-4975-820e-c5ee8e3875c0"
-        token_id = "usdt"
-        amount = 1000.0
+        # 3) Insert CryptoHolding data for all holdings
+        crypto_holdings_data = data.get("cryptoHoldings", [])
         
-        # Check if user and token exist
-        wallet = CryptoWallet.query.get(user_id)
-        token = CryptoToken.query.get(token_id)
-        
-        if wallet and token:
-            # Check if holding already exists
-            existing_holding = CryptoHolding.query.filter_by(
-                user_id=user_id,
-                token_id=token_id
-            ).first()
+        for holding in crypto_holdings_data:
+            user_id = holding["userId"]
+            token_id = holding["tokenId"]
+            actual_balance = holding.get("actualBalance", 0.0)
+            available_balance = holding.get("availableBalance", 0.0)
             
-            if existing_holding:
-                print(f"Holding for user '{user_id}' and token '{token_id}' already exists with balance {existing_holding.actual_balance}.")
-            else:
-                # Use deposit logic
-                new_holding = CryptoHolding(
+            # Check if user and token exist
+            wallet = CryptoWallet.query.get(user_id)
+            token = CryptoToken.query.get(token_id)
+            
+            if wallet and token:
+                # Check if holding already exists
+                existing_holding = CryptoHolding.query.filter_by(
                     user_id=user_id,
-                    token_id=token_id,
-                    actual_balance=amount,
-                    available_balance=amount
-                )
-                db.session.add(new_holding)
-                db.session.commit()
-                print(f"Successfully deposited {amount} {token_id} to user {user_id}")
-        else:
-            if not wallet:
-                print(f"Cannot deposit: User {user_id} does not exist.")
-            if not token:
-                print(f"Cannot deposit: Token {token_id} does not exist.")
+                    token_id=token_id
+                ).first()
+                
+                if existing_holding:
+                    print(f"Holding for user '{user_id}' and token '{token_id}' already exists with balance {existing_holding.actual_balance}.")
+                else:
+                    # Create new holding
+                    new_holding = CryptoHolding(
+                        user_id=user_id,
+                        token_id=token_id,
+                        actual_balance=actual_balance,
+                        available_balance=available_balance
+                    )
+                    db.session.add(new_holding)
+                    db.session.commit()
+                    print(f"Successfully created holding with {actual_balance} {token_id} for user {user_id}")
+            else:
+                if not wallet:
+                    print(f"Cannot create holding: User {user_id} does not exist.")
+                if not token:
+                    print(f"Cannot create holding: Token {token_id} does not exist.")
 
         print("Seed data successfully loaded from seeddata.json.")
 

@@ -7,19 +7,28 @@ app = Flask(__name__)
 atomic_services = {
     "Fiat Service": {
         "url": "http://localhost:5001/api/v1/fiat",
-        "description": "Manages fiat currency operations"
+        "description": "Manages fiat currency operations",
+        "platform": "Docker"
     },
     "Crypto Service": {
         "url": "http://localhost:5002/api/v1/crypto",
-        "description": "Handles crypto currency operations"
+        "description": "Handles crypto currency operations",
+        "platform": "Docker"
     },
     "User Service": {
         "url": "http://localhost:5003/api/v1/user",
-        "description": "User account management"
+        "description": "User account management",
+        "platform": "Docker"
     },
     "Transaction Service": {
         "url": "http://localhost:5005/api/v1/transaction",
-        "description": "Transaction records for fiat, fiattocrypto, crypto, and aggregated transactions"
+        "description": "Transaction records for fiat, fiattocrypto, crypto, and aggregated transactions",
+        "platform": "Docker"
+    },
+    "OrderBook Service": {
+        "url": "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1",
+        "description": "OrderBook API",
+        "platform": "OutSystems"
     }
 }
 
@@ -120,6 +129,13 @@ def swagger_ui():
                 border-bottom: 1px solid #444;
                 padding-bottom: 5px;
             }
+            .platform-category {
+                margin-top: 10px;
+                margin-bottom: 5px;
+                font-weight: 500;
+                font-size: 0.85em;
+                padding-left: 10px;
+            }
             .nav-link {
                 color: #ced4da;
                 transition: all 0.2s;
@@ -185,14 +201,31 @@ def swagger_ui():
                 <div class="sidebar-menu">
                     <div>
                         <div class="service-category">Atomic Microservices</div>
-                        <nav class="nav flex-column">
+                        <div class="platform-category">OutSystems</div>
+                        <nav class="nav flex-column ps-2">
                             {% for name, details in atomic_services.items() %}
-                            <a class="nav-link service-link" data-url="{{ details.url }}/swagger.json">
-                                <div>
-                                    <i class="bi bi-box"></i> {{ name }}
-                                    <span class="service-description">{{ details.description }}</span>
-                                </div>
-                            </a>
+                                {% if details.platform == "OutSystems" %}
+                                <a class="nav-link service-link" data-url="{{ details.url }}/swagger.json">
+                                    <div>
+                                        <i class="bi bi-box"></i> {{ name }}
+                                        <span class="service-description">{{ details.description }}</span>
+                                    </div>
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                        </nav>
+                        
+                        <div class="platform-category">Docker</div>
+                        <nav class="nav flex-column ps-2">
+                            {% for name, details in atomic_services.items() %}
+                                {% if details.platform == "Docker" %}
+                                <a class="nav-link service-link" data-url="{{ details.url }}/swagger.json">
+                                    <div>
+                                        <i class="bi bi-box"></i> {{ name }}
+                                        <span class="service-description">{{ details.description }}</span>
+                                    </div>
+                                </a>
+                                {% endif %}
                             {% endfor %}
                         </nav>
                     </div>
@@ -221,9 +254,18 @@ def swagger_ui():
                     </div>
                     <div>
                         <select id="service-selector" class="form-select">
-                            <optgroup label="Atomic Microservices">
+                            <optgroup label="Atomic Microservices - OutSystems">
                                 {% for name, details in atomic_services.items() %}
-                                <option value="{{ details.url }}/swagger.json">{{ name }}</option>
+                                    {% if details.platform == "OutSystems" %}
+                                    <option value="{{ details.url }}/swagger.json">{{ name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Atomic Microservices - Docker">
+                                {% for name, details in atomic_services.items() %}
+                                    {% if details.platform == "Docker" %}
+                                    <option value="{{ details.url }}/swagger.json">{{ name }}</option>
+                                    {% endif %}
                                 {% endfor %}
                             </optgroup>
                             <optgroup label="Composite Microservices">

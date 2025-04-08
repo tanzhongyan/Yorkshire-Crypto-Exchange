@@ -65,9 +65,12 @@ deposit_ns = Namespace('deposit', description='Deposit-related operations')
 transaction_input_model = deposit_ns.model(
     "TransactionInput", 
     {
-        "userId": fields.String(attribute="user_id", required=True, description="User ID"),
-        "amount": fields.Float(required=True, description="Amount to deposit"),
-        "currencyCode": fields.String(attribute="currency_code", required=True, description="Currency code (default: USD)")
+        "userId": fields.String(attribute="user_id", required=True, description="User ID",
+                   example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+        "amount": fields.Float(required=True, description="Amount to deposit",
+                   example=1000.0),
+        "currencyCode": fields.String(attribute="currency_code", required=True, description="Currency code (default: USD)",
+                   example="usd")
     }
 )
 
@@ -75,9 +78,12 @@ transaction_input_model = deposit_ns.model(
 transaction_output_model = deposit_ns.model(
     "TransactionOutput", 
     {
-        "transactionId": fields.String(attribute="transaction_id", description="Transaction ID"),
-        "checkoutUrl": fields.String(attribute="checkout_url", description="Stripe Checkout URL"),
-        "amount": fields.Float(description="Amount deposited"),
+        "transactionId": fields.String(attribute="transaction_id", description="Transaction ID",
+                        example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+        "checkoutUrl": fields.String(attribute="checkout_url", description="Stripe Checkout URL",
+                        example="https://checkout.stripe.com/pay/cs_test_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"),
+        "amount": fields.Float(description="Amount deposited",
+                        example=1000.0),
     }
 )
 

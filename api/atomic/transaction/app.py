@@ -126,114 +126,193 @@ class TransactionCrypto(db.Model):
 
 # Fiat Transactions
 fiat_output_model = fiat_ns.model('FiatTransactionOutput', {
-    'transactionId': fields.String(attribute='transaction_id', readonly=True),
-    'userId': fields.String(attribute='user_id',required=True),
-    'amount': fields.Float(required=True),
-    'currencyCode': fields.String(attribute='currency_code', required=True),
-    'type': fields.String(required=True),
-    'status': fields.String(required=True),
-    'creation': fields.DateTime,
-    'confirmation': fields.DateTime
+    'transactionId': fields.String(attribute='transaction_id', readonly=True, 
+                    example='f47ac10b-58cc-4372-a567-0e02b2c3d479'),
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'amount': fields.Float(required=True,
+                    example=1000.0),
+    'currencyCode': fields.String(attribute='currency_code', required=True,
+                    example='sgd'),
+    'type': fields.String(required=True,
+                    example='deposit'),
+    'status': fields.String(required=True,
+                    example='pending'),
+    'creation': fields.DateTime(
+                    example='2023-08-15T10:30:00'),
+    'confirmation': fields.DateTime(
+                    example='2023-08-16T14:45:00')
 })
 
 fiat_input_model = fiat_ns.model('FiatTransactionInput', {
-    'userId': fields.String(attribute='user_id',required=True),
-    'amount': fields.Float(required=True),
-    'currencyCode': fields.String(attribute='currency_code', required=True),
-    'type': fields.String(required=True),
-    'status': fields.String(required=True)
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'amount': fields.Float(required=True,
+                    example=2000.0),
+    'currencyCode': fields.String(attribute='currency_code', required=True,
+                    example='usd'),
+    'type': fields.String(required=True,
+                    example='deposit'),
+    'status': fields.String(required=True,
+                    example='pending')
 })
 
 # Fiat to Crypto Transactions
 fiattocrypto_output_model = fiat_to_crypto_ns.model('FiatToCryptoOutput', {
-    'transactionId': fields.String(attribute='transaction_id', readonly=True),
-    'userId': fields.String(attribute='user_id',required=True),
-    'fromAmount': fields.Float(attribute='from_amount', required=True),
-    'toAmount': fields.Float(attribute='to_amount', required=True),
-    'direction': fields.String(required=True),
-    'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'status': fields.String(required=True),
-    'tokenId': fields.String(attribute='token_id', required=False),
-    'currencyCode': fields.String(attribute='currency_code', required=True),
-    'creation': fields.DateTime,
-    'confirmation': fields.DateTime
+    'transactionId': fields.String(attribute='transaction_id', readonly=True,
+                    example='a1b2c3d4-e5f6-4a5b-9c8d-1e2f3a4b5c6d'),
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'fromAmount': fields.Float(attribute='from_amount', required=True,
+                    example=1000.0),
+    'toAmount': fields.Float(attribute='to_amount', required=True,
+                    example=1000.0),
+    'direction': fields.String(required=True,
+                    example='fiattocrypto'),
+    'limitPrice': fields.Float(attribute='limit_price', required=True,
+                    example=1.0),
+    'status': fields.String(required=True,
+                    example='pending'),
+    'tokenId': fields.String(attribute='token_id', required=False,
+                    example='usdt'),
+    'currencyCode': fields.String(attribute='currency_code', required=True,
+                    example='usd'),
+    'creation': fields.DateTime(
+                    example='2023-08-15T11:45:00'),
+    'confirmation': fields.DateTime(
+                    example='2023-08-16T09:30:00')
 })
 
 fiattocrypto_input_model = fiat_to_crypto_ns.model('FiatToCryptoInput', {
-    'userId': fields.String(attribute='user_id',required=True),
-    'fromAmount': fields.Float(attribute='from_amount', required=True),
-    'toAmount': fields.Float(attribute='to_amount', required=True),
-    'direction': fields.String(required=True),
-    'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'status': fields.String(required=True),
-    'tokenId': fields.String(attribute='token_id', required=False),
-    'currencyCode': fields.String(attribute='currency_code', required=True)
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'fromAmount': fields.Float(attribute='from_amount', required=True,
+                    example=1000.0),
+    'toAmount': fields.Float(attribute='to_amount', required=True,
+                    example=1000.0),
+    'direction': fields.String(required=True,
+                    example='fiattocrypto'),
+    'limitPrice': fields.Float(attribute='limit_price', required=True,
+                    example=1.0),
+    'status': fields.String(required=True,
+                    example='pending'),
+    'tokenId': fields.String(attribute='token_id', required=False,
+                    example='usdt'),
+    'currencyCode': fields.String(attribute='currency_code', required=True,
+                    example='usd')
 })
 
 # Crypto Transactions
 crypto_output_model = crypto_ns.model('CryptoTransactionOutput', {
-    'transactionId': fields.String(attribute='transaction_id', readonly=True),
-    'userId': fields.String(attribute='user_id',required=True),
-    'status': fields.String(required=True),
-    'fromTokenId': fields.String(attribute='from_token_id', required=True),
-    'fromAmount': fields.Float(attribute='from_amount', required=True),
-    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
-    'toTokenId': fields.String(attribute='to_token_id', required=True),
-    'toAmount': fields.Float(attribute='to_amount', required=True),
-    'toAmountActual': fields.Float(attribute='to_amount_actual'),
-    'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'creation': fields.DateTime,
-    'completion': fields.DateTime,
-    'orderType': fields.String(attribute='order_type', required=True)
+    'transactionId': fields.String(attribute='transaction_id', readonly=True,
+                    example='7890abcd-ef12-34gh-5678-ijklmnopqrst'),
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'status': fields.String(required=True,
+                    example='completed'),
+    'fromTokenId': fields.String(attribute='from_token_id', required=True,
+                    example='usdt'),
+    'fromAmount': fields.Float(attribute='from_amount', required=True,
+                    example=500.0),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual',
+                    example=500.0),
+    'toTokenId': fields.String(attribute='to_token_id', required=True,
+                    example='btc'),
+    'toAmount': fields.Float(attribute='to_amount', required=True,
+                    example=0.01),
+    'toAmountActual': fields.Float(attribute='to_amount_actual',
+                    example=0.01),
+    'limitPrice': fields.Float(attribute='limit_price', required=True,
+                    example=50000.0),
+    'creation': fields.DateTime(
+                    example='2023-08-15T09:15:00'),
+    'completion': fields.DateTime(
+                    example='2023-08-15T09:16:30'),
+    'orderType': fields.String(attribute='order_type', required=True,
+                    example='limit')
 })
 
 crypto_input_model = crypto_ns.model('CryptoTransactionInput', {
-    'userId': fields.String(attribute='user_id',required=True),
-    'status': fields.String(required=True),
-    'fromTokenId': fields.String(attribute='from_token_id', required=True),
-    'fromAmount': fields.Float(attribute='from_amount', required=True),
-    'fromAmountActual': fields.Float(attribute='from_amount_actual'),
-    'toTokenId': fields.String(attribute='to_token_id', required=True),
-    'toAmount': fields.Float(attribute='to_amount', required=True),
-    'toAmountActual': fields.Float(attribute='to_amount_actual'),
-    'limitPrice': fields.Float(attribute='limit_price', required=True),
-    'orderType': fields.String(attribute='order_type', required=True)
+    'userId': fields.String(attribute='user_id',required=True,
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'status': fields.String(required=True,
+                    example='pending'),
+    'fromTokenId': fields.String(attribute='from_token_id', required=True,
+                    example='usdt'),
+    'fromAmount': fields.Float(attribute='from_amount', required=True,
+                    example=1000.0),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual',
+                    example=1000.0),
+    'toTokenId': fields.String(attribute='to_token_id', required=True,
+                    example='eth'),
+    'toAmount': fields.Float(attribute='to_amount', required=True,
+                    example=0.5),
+    'toAmountActual': fields.Float(attribute='to_amount_actual',
+                    example=0.5),
+    'limitPrice': fields.Float(attribute='limit_price', required=True,
+                    example=2000.0),
+    'orderType': fields.String(attribute='order_type', required=True,
+                    example='market')
 })
 
 # Aggregated Transaction Logs
 transaction_log_output_model = transaction_log_ns.model('TransactionLogOutput', {
-    'transactionId': fields.String(attribute='transaction_id'),
-    'userId': fields.String(attribute='user_id'),
-    'status': fields.String(),
-    'creationDate': fields.DateTime(attribute='creation_date'),
-    'transactionType': fields.String(attribute='transaction_type'),
+    'transactionId': fields.String(attribute='transaction_id',
+                    example='f47ac10b-58cc-4372-a567-0e02b2c3d479'),
+    'userId': fields.String(attribute='user_id',
+                    example='a7c396e2-8370-4975-820e-c5ee8e3875c0'),
+    'status': fields.String(
+                    example='pending'),
+    'creationDate': fields.DateTime(attribute='creation_date',
+                    example='2023-08-15T10:30:00'),
+    'transactionType': fields.String(attribute='transaction_type',
+                    example='fiat'),
     # Common financial fields
-    'amount': fields.Float(attribute='amount', required=False),
-    'currencyCode': fields.String(attribute='currency_code', required=False),
+    'amount': fields.Float(attribute='amount', required=False,
+                    example=1000.0),
+    'currencyCode': fields.String(attribute='currency_code', required=False,
+                    example='sgd'),
     # Fiat specific fields
-    'type': fields.String(required=False),
-    'confirmation': fields.DateTime(required=False),
+    'type': fields.String(required=False,
+                    example='deposit'),
+    'confirmation': fields.DateTime(required=False,
+                    example='2023-08-16T14:45:00'),
     # Fiat to Crypto specific fields
-    'fromAmount': fields.Float(attribute='from_amount', required=False),
-    'toAmount': fields.Float(attribute='to_amount', required=False),
-    'direction': fields.String(required=False),
-    'limitPrice': fields.Float(attribute='limit_price', required=False),
-    'tokenId': fields.String(attribute='token_id', required=False),
+    'fromAmount': fields.Float(attribute='from_amount', required=False,
+                    example=1000.0),
+    'toAmount': fields.Float(attribute='to_amount', required=False,
+                    example=1000.0),
+    'direction': fields.String(required=False,
+                    example='fiattocrypto'),
+    'limitPrice': fields.Float(attribute='limit_price', required=False,
+                    example=1.0),
+    'tokenId': fields.String(attribute='token_id', required=False,
+                    example='usdt'),
     # Crypto specific fields
-    'fromTokenId': fields.String(attribute='from_token_id', required=False),
-    'fromAmountActual': fields.Float(attribute='from_amount_actual', required=False),
-    'toTokenId': fields.String(attribute='to_token_id', required=False),
-    'toAmountActual': fields.Float(attribute='to_amount_actual', required=False),
-    'orderType': fields.String(attribute='order_type', required=False),
-    'completion': fields.DateTime(required=False)
+    'fromTokenId': fields.String(attribute='from_token_id', required=False,
+                    example='usdt'),
+    'fromAmountActual': fields.Float(attribute='from_amount_actual', required=False,
+                    example=500.0),
+    'toTokenId': fields.String(attribute='to_token_id', required=False,
+                    example='btc'),
+    'toAmountActual': fields.Float(attribute='to_amount_actual', required=False,
+                    example=0.01),
+    'orderType': fields.String(attribute='order_type', required=False,
+                    example='limit'),
+    'completion': fields.DateTime(required=False,
+                    example='2023-08-15T09:16:30')
 })
 
 # Pagination model for metadata
 pagination_model = transaction_log_ns.model('PaginationInfo', {
-    'total': fields.Integer(description='Total number of records'),
-    'pages': fields.Integer(description='Total number of pages'),
-    'page': fields.Integer(description='Current page number'),
-    'per_page': fields.Integer(description='Number of records per page')
+    'total': fields.Integer(description='Total number of records',
+                example=42),
+    'pages': fields.Integer(description='Total number of pages',
+                example=5),
+    'page': fields.Integer(description='Current page number',
+                example=1),
+    'per_page': fields.Integer(description='Number of records per page',
+                example=10)
 })
 
 # Combined response model with both data and pagination info

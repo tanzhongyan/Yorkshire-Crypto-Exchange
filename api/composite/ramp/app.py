@@ -38,26 +38,51 @@ ramp_ns = Namespace('ramp', description='Ramp related operations')
 api.add_namespace(ramp_ns)
 
 
-##### API Models - flask restx API autodoc #####
+#### API Models - flask restx API autodoc #####
 swap_request_model = ramp_ns.model('SwapRequest', {
-    'user_id': fields.String(required=True, description="User's ID"),
-    'amount': fields.Float(required=True, description="Amount to swap (interpreted based on direction)"),
-    'fiat_currency': fields.String(required=True, description="Currency code of fiat"),
-    'token_id': fields.String(required=True, description="Crypto token ID to swap to/from"),
-    'direction': fields.String(required=True, description="Direction of swap: 'fiattocrypto' or 'cryptotofiat'")
+    'userId': fields.String(attribute="user_id", required=True, description="User's ID",
+                example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+    'amount': fields.Float(required=True, description="Amount to swap (interpreted based on direction)",
+                example=1000.0),
+    'fiatCurrency': fields.String(attribute="fiat_currency", required=True, description="Currency code of fiat",
+                example="sgd"),
+    'tokenId': fields.String(attribute="token_id", required=True, description="Crypto token ID to swap to/from",
+                example="usdt"),
+    'direction': fields.String(required=True, description="Direction of swap: 'fiattocrypto' or 'cryptotofiat'",
+                example="fiattocrypto")
 })
 
 ramp_response_model = ramp_ns.model('RampResponse', {
-    'message': fields.String(description="Response message"),
-    'transaction_details': fields.Raw(description="Details of the transaction")
+    'message': fields.String(description="Response message",
+                example="Swap operation completed successfully"),
+    'transactionDetails': fields.Raw(attribute="transaction_details", description="Details of the transaction",
+                example={
+                    "transactionId": "a1b2c3d4-e5f6-4a5b-9c8d-1e2f3a4b5c6d",
+                    "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
+                    "fromAmount": 1000.0,
+                    "toAmount": 0.015,
+                    "direction": "fiattocrypto",
+                    "limitPrice": 65000.0,
+                    "status": "completed",
+                    "tokenId": "usdt",
+                    "currencyCode": "sgd",
+                    "creation": "2025-04-08T04:30:00",
+                    "confirmation": "2025-04-08T04:32:15"
+                })
 })
 
 error_model = ramp_ns.model('ErrorResponse', {
-    'error': fields.String(description="Error type"),
-    'message': fields.String(description="Error message"),
-    'service_response': fields.Raw(description="Original service response that caused the error")
+    'error': fields.String(description="Error type",
+                example="insufficient_funds"),
+    'message': fields.String(description="Error message",
+                example="User has insufficient funds to complete this transaction"),
+    'serviceResponse': fields.Raw(attribute="service_response", description="Original service response that caused the error",
+                example={
+                    "status": "error",
+                    "code": 4001,
+                    "details": "Available balance (500.00 USD) is less than requested amount (1000.00 USD)"
+                })
 })
-
 
 ##### Helper Functions #####
 def check_fiat_account(user_id, currency_code):
@@ -81,14 +106,13 @@ def check_fiat_account(user_id, currency_code):
             return {
                 'error': 'Failed to check fiat account', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text
                 }
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
-
 
 def update_fiat_balance(user_id, currency_code, amount_changed):
     """
@@ -111,10 +135,10 @@ def update_fiat_balance(user_id, currency_code, amount_changed):
             return {
                 'error': 'Failed to update fiat balance', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -141,8 +165,8 @@ def check_crypto_wallet(user_id):
             return {
                 'error': 'Failed to check crypto wallet', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text
                 }
             }
@@ -169,10 +193,10 @@ def create_crypto_wallet(user_id):
             return {
                 'error': 'Failed to create crypto wallet', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -199,8 +223,8 @@ def check_token_exists(token_id):
             return {
                 'error': 'Failed to check token existence', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text
                 }
             }
@@ -234,15 +258,14 @@ def create_token(token_id, token_name=None):
             return {
                 'error': 'Failed to create token', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
-
 
 def check_crypto_holding(user_id, token_id):
     """
@@ -265,8 +288,8 @@ def check_crypto_holding(user_id, token_id):
             return {
                 'error': 'Failed to check crypto holding', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text
                 }
             }
@@ -300,10 +323,10 @@ def deposit_crypto(user_id, token_id, amount):
             return {
                 'error': 'Failed to deposit crypto', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -336,10 +359,10 @@ def withdraw_crypto(user_id, token_id, amount):
             return {
                 'error': 'Failed to withdraw crypto', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -372,10 +395,10 @@ def create_crypto_holding(user_id, token_id, amount):
             return {
                 'error': 'Failed to create crypto holding', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -416,15 +439,14 @@ def create_fiat_to_crypto_transaction(user_id, from_amount, to_amount, direction
             return {
                 'error': 'Failed to create transaction record', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
-
 
 def update_transaction_status(transaction_id, status, to_amount=None):
     """
@@ -445,8 +467,8 @@ def update_transaction_status(transaction_id, status, to_amount=None):
             return {
                 'error': 'Failed to retrieve transaction', 
                 'message': get_response.text,
-                'service_response': {
-                    'status_code': get_response.status_code,
+                'serviceResponse': {
+                    'statusCode': get_response.status_code,
                     'text': get_response.text
                 }
             }
@@ -466,10 +488,10 @@ def update_transaction_status(transaction_id, status, to_amount=None):
             return {
                 'error': 'Failed to update transaction status', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': transaction
+                    'requestPayload': transaction
                 }
             }
     except requests.exceptions.RequestException as e:
@@ -501,15 +523,14 @@ def create_fiat_account(user_id, currency_code, initial_balance=0):
             return {
                 'error': 'Failed to create fiat account', 
                 'message': response.text,
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text,
-                    'request_payload': payload
+                    'requestPayload': payload
                 }
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
-
 
 def get_exchange_rate(from_currency, to_currency, amount):
     """
@@ -535,37 +556,34 @@ def get_exchange_rate(from_currency, to_currency, amount):
                 converted_amount = data['conversion_result']
                 return {
                     'rate': data['conversion_rate'],
-                    'converted_amount': converted_amount
+                    'convertedAmount': converted_amount
                 }
             else:
                 return {
                     'error': 'Failed to fetch exchange rate', 
                     'message': data.get('error-type', 'Unknown error'),
-                    'service_response': data
+                    'serviceResponse': data
                 }
         else:
             return {
                 'error': 'Failed to fetch exchange rate', 
                 'message': 'Bad response from API',
-                'service_response': {
-                    'status_code': response.status_code,
+                'serviceResponse': {
+                    'statusCode': response.status_code,
                     'text': response.text
                 }
             }
     except requests.exceptions.RequestException as e:
         return {'error': 'Network error', 'message': str(e)}
 
-
 ##### API actions - flask restx API autodoc #####
 @ramp_ns.route('/swap')
 class SwapResource(Resource):
     @ramp_ns.expect(swap_request_model)
-    @ramp_ns.doc(responses={
-        201: 'Swap completed successfully',
-        400: 'Bad request - invalid input data',
-        404: 'Resource not found',
-        500: 'Server error'
-    })
+    @ramp_ns.response(201, 'Swap completed successfully', ramp_response_model)
+    @ramp_ns.response(400, 'Bad request - invalid input data', error_model)
+    @ramp_ns.response(404, 'Resource not found', error_model)
+    @ramp_ns.response(500, 'Server error', error_model)
     def post(self):
         """
         Swap between fiat and crypto currencies.
@@ -584,10 +602,10 @@ class SwapResource(Resource):
         - Equivalent fiat is added to the user's fiat account
         """
         data = request.json
-        user_id = data['user_id']
+        user_id = data['userId']
         amount = data['amount']
-        fiat_currency = data['fiat_currency']
-        token_id = data['token_id']
+        fiat_currency = data['fiatCurrency']
+        token_id = data['tokenId']
         direction = data['direction'].lower()
         
         # Validate direction
@@ -649,7 +667,7 @@ class SwapResource(Resource):
         if 'error' in exchange_result:
             return exchange_result, 500
         
-        converted_amount = exchange_result['converted_amount']
+        converted_amount = exchange_result['convertedAmount']
         
         # Calculate limit price - for fiat to crypto, it's 1/rate
         limit_price = 1 / exchange_result['rate']
@@ -695,8 +713,8 @@ class SwapResource(Resource):
                 return {
                     'error': deposit_result['error'],
                     'message': deposit_result['message'],
-                    'rollback_result': rollback,
-                    'service_response': deposit_result.get('service_response', {})
+                    'rollbackResult': rollback,
+                    'serviceResponse': deposit_result.get('serviceResponse', {})
                 }, 500
         else:
             # User doesn't have a holding, create one
@@ -710,8 +728,8 @@ class SwapResource(Resource):
                 return {
                     'error': holding_result['error'],
                     'message': holding_result['message'],
-                    'rollback_result': rollback,
-                    'service_response': holding_result.get('service_response', {})
+                    'rollbackResult': rollback,
+                    'serviceResponse': holding_result.get('serviceResponse', {})
                 }, 500
         
         # Step 10: Update transaction with final details and mark as successful
@@ -724,15 +742,15 @@ class SwapResource(Resource):
         # Return success response
         return {
             'message': 'Swap completed successfully',
-            'transaction_details': {
-                'user_id': user_id,
-                'from_amount': fiat_amount,
-                'from_currency': fiat_currency,
-                'to_amount': converted_amount,
-                'to_currency': token_id,
-                'exchange_rate': exchange_result['rate'],
-                'limit_price': limit_price,
-                'transaction_id': transaction_id,
+            'transactionDetails': {
+                'userId': user_id,
+                'fromAmount': fiat_amount,
+                'fromCurrency': fiat_currency,
+                'toAmount': converted_amount,
+                'toCurrency': token_id,
+                'exchangeRate': exchange_result['rate'],
+                'limitPrice': limit_price,
+                'transactionId': transaction_id,
                 'status': 'completed'
             }
         }, 201
@@ -770,7 +788,7 @@ class SwapResource(Resource):
             return exchange_result, 500
         
         # Get equivalent fiat amount
-        fiat_amount = exchange_result['converted_amount']
+        fiat_amount = exchange_result['convertedAmount']
         
         # Calculate limit price - for crypto to fiat, it's the direct rate
         limit_price = exchange_result['rate']
@@ -815,8 +833,8 @@ class SwapResource(Resource):
                 return {
                     'error': create_account_result['error'],
                     'message': create_account_result['message'],
-                    'rollback_result': rollback,
-                    'service_response': create_account_result.get('service_response', {})
+                    'rollbackResult': rollback,
+                    'serviceResponse': create_account_result.get('serviceResponse', {})
                 }, 500
         elif 'error' in fiat_account:
             # Rollback crypto withdrawal
@@ -836,8 +854,8 @@ class SwapResource(Resource):
             return {
                 'error': fiat_update['error'],
                 'message': fiat_update['message'],
-                'rollback_result': rollback,
-                'service_response': fiat_update.get('service_response', {})
+                'rollbackResult': rollback,
+                'serviceResponse': fiat_update.get('serviceResponse', {})
             }, 500
         
         # Step 8: Update transaction with final details and mark as successful
@@ -850,15 +868,15 @@ class SwapResource(Resource):
         # Return success response
         return {
             'message': 'Swap completed successfully',
-            'transaction_details': {
-                'user_id': user_id,
-                'from_amount': crypto_amount,
-                'from_currency': token_id,
-                'to_amount': fiat_amount,
-                'to_currency': fiat_currency,
-                'exchange_rate': exchange_result['rate'],
-                'limit_price': limit_price,
-                'transaction_id': transaction_id,
+            'transactionDetails': {
+                'userId': user_id,
+                'fromAmount': crypto_amount,
+                'fromCurrency': token_id,
+                'toAmount': fiat_amount,
+                'toCurrency': fiat_currency,
+                'exchangeRate': exchange_result['rate'],
+                'limitPrice': limit_price,
+                'transactionId': transaction_id,
                 'status': 'completed'
             }
         }, 201

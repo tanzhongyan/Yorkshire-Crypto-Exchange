@@ -551,14 +551,14 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             if buy_from_amount_left > ZERO_THRESHOLD:
                                 buy_status = 'Partially filled'
                             else:
-                                buy_status = 'Success'
+                                buy_status = 'Completed'
                                 fulfilled_incoming_req = True
                                 
                             if sell_from_amount_left > ZERO_THRESHOLD:
                                 sell_status = 'Partially filled'
                                 update_book_response = update_order_in_orderbook(sell.get('transactionId'), sell_from_amount_left)
                             else:
-                                sell_status = 'Success'
+                                sell_status = 'Completed'
                                 update_book_response = delete_order_in_orderbook(sell.get('transactionId'))
                                 
                                 
@@ -639,7 +639,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
             message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Fail', 
+                                                'status' : 'Cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -659,7 +659,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Fail', 
+                                                'status' : 'Cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -792,7 +792,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             if sell_from_amount_left > ZERO_THRESHOLD:
                                 sell_status = 'Partially filled'
                             else:
-                                sell_status = 'Success'
+                                sell_status = 'Completed'
                                 fulfilled_incoming_req = True
                                 
                             if buy_from_amount_left > ZERO_THRESHOLD:
@@ -800,7 +800,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                                 update_book_response = update_order_in_orderbook(buy.get('transactionId'), buy_from_amount_left)
                                 
                             else:
-                                buy_status = 'Success'
+                                buy_status = 'Completed'
                                 update_book_response = delete_order_in_orderbook(buy.get('transactionId'))
                                 
                             if not update_book_response.get('success'):
@@ -876,7 +876,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
             message_to_publish = {
                                                 'transactionId' : incoming_order.get('transactionId'),
                                                 'userId' : incoming_order.get('userId'), 
-                                                'status' : 'Fail', 
+                                                'status' : 'Cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -897,7 +897,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Fail', 
+                                                'status' : 'Cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -952,7 +952,7 @@ def callback(channel, method, properties, body):
                     message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'),  
-                                                        'status' : 'Fail', 
+                                                        'status' : 'Cancelled', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
                                                         'details' : description
@@ -977,7 +977,7 @@ def callback(channel, method, properties, body):
                 message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'), 
-                                                        'status' : 'Fail', 
+                                                        'status' : 'Cancelled', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
                                                         'details' : description

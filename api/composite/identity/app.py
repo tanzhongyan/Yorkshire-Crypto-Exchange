@@ -72,7 +72,8 @@ create_account_model = identity_ns.model(
 delete_account_model = identity_ns.model(
     "DeleteAccount",
     {
-        "userId": fields.String(required=True, description="User ID to delete"),
+        "userId": fields.String(required=True, description="User ID to delete",
+                   example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
     },
 )
 
@@ -80,9 +81,12 @@ delete_account_model = identity_ns.model(
 success_response = identity_ns.model(
     "SuccessResponse",
     {
-        "message": fields.String(description="Success message"),
-        "userId": fields.String(description="Created User ID"),
-        "token": fields.String(description="JWT Token"),
+        "message": fields.String(description="Success message",
+                    example="User account successfully created"),
+        "userId": fields.String(description="Created User ID",
+                    example="a7c396e2-8370-4975-820e-c5ee8e3875c0"),
+        "token": fields.String(description="JWT Token",
+                    example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NTFmYWI4Yy03MDcwLTQ4YjItYTcyMy1kZjljZTdlNTcxOWMiLCJleHAiOjE3NDQwOTA0NTQsImlhdCI6MTc0NDA4Njg1NCwia2lkIjoiaWxvdmVlc2QiLCJpc3MiOiJpbG92ZWVzZCJ9.s9BNMVNBubaUEJxg_h9KmGrmanWzCuzpmVFWWN7ZVoc"),
     },
 )
 
@@ -90,8 +94,10 @@ success_response = identity_ns.model(
 error_response = identity_ns.model(
     "ErrorResponse",
     {
-        "error": fields.String(description="Error message"),
-        "details": fields.String(description="Error details"),
+        "error": fields.String(description="Error message",
+                 example="Failed to create user account"),
+        "details": fields.String(description="Error details",
+                 example="Username or email already exists"),
     },
 )
 

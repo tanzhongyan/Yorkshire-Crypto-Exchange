@@ -31,12 +31,12 @@ export default function RampPage() {
   const [toCurrency, setToCurrency] = useState("usdt"); // Default to currency
   const [direction, setDirection] = useState("fiattocrypto"); // Default direction
   const [isProcessing, setIsProcessing] = useState(false);
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
-  const [fiatAccounts, setFiatAccounts] = useState<any[]>([]);
-  const [cryptoHoldings, setCryptoHoldings] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [exchangeRates, setExchangeRates] = useState({});
+  const [fiatAccounts, setFiatAccounts] = useState([]);
+  const [cryptoHoldings, setCryptoHoldings] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
-  const [availableFiatCurrencies, setAvailableFiatCurrencies] = useState<string[]>([]);
+  const [availableFiatCurrencies, setAvailableFiatCurrencies] = useState([]);
 
   // Get user ID from cookie
   const userId = getCookie("userId");
@@ -63,7 +63,7 @@ export default function RampPage() {
   }, []);
 
   // Update to amount when from amount changes
-  const updateToAmount = useCallback((newFromAmount: string, fromCurr: string, toCurr: string) => {
+  const updateToAmount = useCallback((newFromAmount, fromCurr, toCurr) => {
     const numValue = parseFloat(newFromAmount) || 0;
     
     if (newFromAmount && !isNaN(numValue) && Object.keys(exchangeRates).length > 0) {
@@ -96,7 +96,7 @@ export default function RampPage() {
   }, [exchangeRates]);
 
   // Handle from amount change
-  const handleFromAmountChange = (value: string) => {
+  const handleFromAmountChange = (value) => {
     setFromAmount(value);
     updateToAmount(value, fromCurrency, toCurrency);
   };
@@ -169,20 +169,20 @@ export default function RampPage() {
   };
 
   // Get currency symbol
-  const getCurrencySymbol = (code: string) => {
+  const getCurrencySymbol = (code) => {
     if (code.toLowerCase() === "usdt") return "$";
     const currency = FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === code.toLowerCase());
     return currency?.symbol || "$";
   };
 
   // Handle from currency change
-  const handleFromCurrencyChange = (value: string) => {
+  const handleFromCurrencyChange = (value) => {
     setFromCurrency(value);
     updateToAmount(fromAmount, value, toCurrency);
   };
 
   // Handle to currency change
-  const handleToCurrencyChange = (value: string) => {
+  const handleToCurrencyChange = (value) => {
     setToCurrency(value);
     updateToAmount(fromAmount, fromCurrency, value);
   };
@@ -201,7 +201,7 @@ export default function RampPage() {
   };
 
   // Submit swap
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!fromAmount || Number.parseFloat(fromAmount) <= 0 || !userId) {
@@ -211,11 +211,12 @@ export default function RampPage() {
     setIsProcessing(true);
 
     try {
+      // Updated to use camelCase property names in the request payload
       const response = await axios.post("/api/v1/ramp/swap", {
-        user_id: userId,
+        userId: userId,
         amount: parseFloat(fromAmount),
-        fiat_currency: direction === "fiattocrypto" ? fromCurrency : toCurrency,
-        token_id: direction === "fiattocrypto" ? toCurrency : fromCurrency,
+        fiatCurrency: direction === "fiattocrypto" ? fromCurrency : toCurrency,
+        tokenId: direction === "fiattocrypto" ? toCurrency : fromCurrency,
         direction: direction
       });
 
@@ -228,7 +229,7 @@ export default function RampPage() {
       setFromAmount("");
       setToAmount("");
       
-    } catch (error: any) {
+    } catch (error) {
       console.error("Swap failed:", error);
       alert(`Swap failed: ${error.response?.data?.message || "Unknown error"}`);
     } finally {
@@ -245,7 +246,7 @@ export default function RampPage() {
       setFiatAccounts(response.data);
       
       // Set available fiat currencies
-      const currencies = response.data.map((acc: any) => acc.currencyCode.toLowerCase());
+      const currencies = response.data.map((acc) => acc.currencyCode.toLowerCase());
       setAvailableFiatCurrencies(currencies);
       
       // If the user doesn't have SGD, set default to the first available currency
@@ -280,7 +281,7 @@ export default function RampPage() {
     try {
       const response = await axios.get(`/api/v1/transaction/fiattocrypto/user/${userId}`);
       const sortedTransactions = response.data.sort(
-        (a: any, b: any) => new Date(b.creation).getTime() - new Date(a.creation).getTime()
+        (a, b) => new Date(b.creation).getTime() - new Date(a.creation).getTime()
       );
       setTransactions(sortedTransactions);
     } catch (error) {
@@ -307,7 +308,7 @@ export default function RampPage() {
   }, [userId, fetchFiatAccounts, fetchCryptoHoldings, fetchTransactions, fetchAllExchangeRates]);
 
   // Get the current exchange rate between two currencies
-  const getCurrentExchangeRate = useCallback((from: string, to: string) => {
+  const getCurrentExchangeRate = useCallback((from, to) => {
     const fromUpper = from.toUpperCase();
     const toUpper = to.toUpperCase() === 'USDT' ? 'USD' : to.toUpperCase();
     
@@ -494,7 +495,7 @@ export default function RampPage() {
           <div className="space-y-2">
             <h2 className="text-lg font-semibold mt-6">Your Fiat Accounts</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fiatAccounts.map((account: any) => (
+              {fiatAccounts.map((account) => (
                 <Card key={account.currencyCode} className="flex flex-col items-center text-center">
                   <CardHeader>
                     <CardTitle>{account.currencyCode.toUpperCase()}</CardTitle>
@@ -517,7 +518,7 @@ export default function RampPage() {
           <h2 className="text-lg font-semibold mt-6">Your Crypto Wallet</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {cryptoHoldings.length > 0 ? (
-              cryptoHoldings.map((holding: any) => (
+              cryptoHoldings.map((holding) => (
                 <Card key={holding.tokenId} className="flex flex-col items-center text-center">
                   <CardHeader>
                     <CardTitle>{holding.tokenId.toUpperCase()}</CardTitle>
@@ -555,7 +556,7 @@ export default function RampPage() {
         <h2 className="text-lg font-semibold">Ramp Transactions</h2>
         {transactions.length > 0 ? (
           <div className="space-y-2">
-            {transactions.map((txn: any) => (
+            {transactions.map((txn) => (
               <Card key={txn.transactionId} className="flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>

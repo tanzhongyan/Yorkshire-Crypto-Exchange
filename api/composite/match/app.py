@@ -549,16 +549,16 @@ def match_incoming_buy(incoming_order, counterparty_orders):
                             # adding of incoming buy order to order book to be done last after full iteration
                             buy['fromAmount'] = buy_from_amount_left
                             if buy_from_amount_left > ZERO_THRESHOLD:
-                                buy_status = 'Partially filled'
+                                buy_status = 'partially filled'
                             else:
-                                buy_status = 'Completed'
+                                buy_status = 'completed'
                                 fulfilled_incoming_req = True
                                 
                             if sell_from_amount_left > ZERO_THRESHOLD:
-                                sell_status = 'Partially filled'
+                                sell_status = 'partially filled'
                                 update_book_response = update_order_in_orderbook(sell.get('transactionId'), sell_from_amount_left)
                             else:
-                                sell_status = 'Completed'
+                                sell_status = 'completed'
                                 update_book_response = delete_order_in_orderbook(sell.get('transactionId'))
                                 
                                 
@@ -631,15 +631,15 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         # if incoming order not fully updated, then add to order book for further processing
         add_to_orderbook_success , add_to_orderbook_error_message = add_to_order_book(buy) 
         description = add_to_orderbook_error_message
-        # Note if failed to add at this point, check if 'Fail' or 'Partially filled'. 
-        # if 'Partially filled', would have published message that can help update front end alrdy so its fine
+        # Note if failed to add at this point, check if 'Fail' or 'partially filled'. 
+        # if 'partially filled', would have published message that can help update front end alrdy so its fine
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
             message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Cancelled', 
+                                                'status' : 'cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -659,7 +659,7 @@ def match_incoming_buy(incoming_order, counterparty_orders):
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Cancelled', 
+                                                'status' : 'cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -790,17 +790,17 @@ def match_incoming_sell(incoming_order, counterparty_orders):
                             incoming_order['fromAmount'] = sell_from_amount_left
                             
                             if sell_from_amount_left > ZERO_THRESHOLD:
-                                sell_status = 'Partially filled'
+                                sell_status = 'partially filled'
                             else:
-                                sell_status = 'Completed'
+                                sell_status = 'completed'
                                 fulfilled_incoming_req = True
                                 
                             if buy_from_amount_left > ZERO_THRESHOLD:
-                                buy_status = 'Partially filled'
+                                buy_status = 'partially filled'
                                 update_book_response = update_order_in_orderbook(buy.get('transactionId'), buy_from_amount_left)
                                 
                             else:
-                                buy_status = 'Completed'
+                                buy_status = 'completed'
                                 update_book_response = delete_order_in_orderbook(buy.get('transactionId'))
                                 
                             if not update_book_response.get('success'):
@@ -868,15 +868,15 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         # if incoming order not fully updated, then add to order book for further processing
         add_to_orderbook_success , add_to_orderbook_error_message = add_to_order_book(sell) 
         description = add_to_orderbook_error_message
-        # Note if failed to add at this point, check if 'Fail' or 'Partially filled'. 
-        # if 'Partially filled', would have published message that can help update front end alrdy so its fine
+        # Note if failed to add at this point, check if 'Fail' or 'partially filled'. 
+        # if 'partially filled', would have published message that can help update front end alrdy so its fine
         # if 'fail', need to publish message that can help update front end
         if not add_to_orderbook_success and fail_incoming_req:
             # current description will be add order to orderbook fail or duplicate order exist
             message_to_publish = {
                                                 'transactionId' : incoming_order.get('transactionId'),
                                                 'userId' : incoming_order.get('userId'), 
-                                                'status' : 'Cancelled', 
+                                                'status' : 'cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -897,7 +897,7 @@ def match_incoming_sell(incoming_order, counterparty_orders):
         message_to_publish =  {
                                                 'transactionId' : incoming_order.get('transactionId'), 
                                                 'userId' : incoming_order.get('userId'),
-                                                'status' : 'Cancelled', 
+                                                'status' : 'cancelled', 
                                                 'fromAmountActual' : 0, 
                                                 'toAmountActual' : 0, 
                                                 'details' : description
@@ -952,7 +952,7 @@ def callback(channel, method, properties, body):
                     message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'),  
-                                                        'status' : 'Cancelled', 
+                                                        'status' : 'cancelled', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
                                                         'details' : description
@@ -977,7 +977,7 @@ def callback(channel, method, properties, body):
                 message_to_publish = {
                                                         'transactionId' : incoming_order.get('transactionId'),
                                                         'userId' : incoming_order.get('userId'), 
-                                                        'status' : 'Cancelled', 
+                                                        'status' : 'cancelled', 
                                                         'fromAmountActual' : 0, 
                                                         'toAmountActual' : 0, 
                                                         'details' : description

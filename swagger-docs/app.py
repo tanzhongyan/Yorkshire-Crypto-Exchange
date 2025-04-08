@@ -7,55 +7,55 @@ app = Flask(__name__)
 atomic_services = {
     "Fiat Service": {
         "url": "http://localhost:5001/api/v1/fiat",
-        "description": "Manages fiat currency operations",
+        "description": "Handles fiat currencies and user fiat accounts",
         "platform": "Docker"
     },
     "Crypto Service": {
         "url": "http://localhost:5002/api/v1/crypto",
-        "description": "Handles crypto currency operations",
+        "description": "Manages crypto wallets and related operations",
         "platform": "Docker"
     },
     "User Service": {
         "url": "http://localhost:5003/api/v1/user",
-        "description": "User account management",
+        "description": "User account management – profiles, addresses, and authentication",
         "platform": "Docker"
     },
-    "Transaction Service": {
+    "Transaction Logs Service": {
         "url": "http://localhost:5005/api/v1/transaction",
-        "description": "Transaction records for fiat, fiattocrypto, crypto, and aggregated transactions",
+        "description": "Stores and retrieves transaction history logs",
         "platform": "Docker"
     },
-    "OrderBook Service": {
+    "Orderbook Service": {
         "url": "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1",
-        "description": "OrderBook API",
+        "description": "Stores current market orders (buy/sell listings)",
         "platform": "OutSystems"
     }
 }
 
 composite_services = {
-    "Identity": {
+    "Manage Identity Service": {
         "url": "http://localhost:5004/api/v1",
-        "description": "Identity, wallet and account creation/deletion"
+        "description": "Creates/deletes user-linked fiat and crypto accounts"
     },
-    "Deposit": {
+    "Deposit Fiat Service": {
         "url": "http://localhost:5006/api/v1",
-        "description": "Manages fiat deposit operations"
+        "description": "Allows fiat deposits via Stripe with webhook support"
     },
-    "Ramp": {
+    "Ramp Crypto Service": {
         "url": "http://localhost:5007/api/v1",
-        "description": "Fiat to crypto ramp services"
+        "description": "Facilitates fiat ↔ crypto conversions (on/off ramp)"
     },
-    "Market": {
+    "Market Aggregator Service": {
         "url": "http://localhost:5008/api/v1",
-        "description": "Coingecko, exchangerate, orderbook, and executions data"
+        "description": "Combines data from Coingecko, rates, orderbook, and executions for UI"
     },
-    "Initiate": {
+    "Initiate Order Service": {
         "url": "http://localhost:5009/api/v1",
-        "description": "Initiates crypto order processes"
+        "description": "Starts a new crypto order (buy/sell)"
     },
-    "Complete": {
+    "Complete Order Service": {
         "url": "http://localhost:5010/api/v1",
-        "description": "Completes and finalizes crypto order transactions"
+        "description": "Finalises and confirms crypto trades"
     }
 }
 

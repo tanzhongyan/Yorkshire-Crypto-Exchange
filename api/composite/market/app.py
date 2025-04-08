@@ -505,6 +505,12 @@ class RecentOrdersResource(Resource):
     )
     @orderbook_ns.marshal_with(recent_orders_response, code=200)
     def get(self):
+        """
+        Retrieve 10 of the most recent completed transactions for a specific token
+        
+        This endpoint fetches:
+        - 10 most recent completed transactions, regardless of transaction type.
+        """
         # Get token from query parameters
         token = request.args.get("token", "BTC")
         print(f"Fetching recent orders for token: {token}")

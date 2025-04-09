@@ -299,8 +299,6 @@ def get_ten_recent_completed_crypto_transactions(token="BTC"):
             # normalize token to lowercase for comparison
             token_lower = token.lower()
             
-            print(f"Filtering transactions for token: {token_lower}")
-            
             # filter for completed transactions involving the specified token
             filtered_transactions = []
             for tx in data:
@@ -313,7 +311,6 @@ def get_ten_recent_completed_crypto_transactions(token="BTC"):
                 if status == "completed" and (from_token == token_lower or to_token == token_lower):
                     filtered_transactions.append(tx)
             
-            print(f"Found {len(filtered_transactions)} filtered transactions")
             
             # Sort transactions by completion date (newest first)
             # Handle potential missing 'completion' field
@@ -354,8 +351,6 @@ def get_ten_recent_completed_crypto_transactions(token="BTC"):
     except Exception as e:
         import traceback
         error_msg = f"Error fetching Transaction Service data: {str(e)}"
-        print(error_msg)
-        print(traceback.format_exc())  # Print full stack trace
         return None, error_msg
     
 # helper function to get sorted orders for a input token

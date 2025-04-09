@@ -17,7 +17,7 @@ rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "order_topic"
 exchange_type = "topic"
-queue_name = "order_initiation_service.orders_creation"
+queue_name = "new_orders"
 routing_key = "order.executed"
 
 connection = None 

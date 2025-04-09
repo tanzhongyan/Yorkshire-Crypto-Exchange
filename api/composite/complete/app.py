@@ -42,7 +42,7 @@ AMQP_HOST = os.getenv("AMQP_HOST", "rabbitmq")
 AMQP_PORT = int(os.getenv("AMQP_PORT", "5672"))
 EXCHANGE_NAME = "order_topic"
 EXCHANGE_TYPE = "topic"
-QUEUE_NAME = "notification_service.orders_executed"
+QUEUE_NAME = "done_orders"
 ROUTING_KEY = "order.executed"
 
 # Global variables for AMQP connection

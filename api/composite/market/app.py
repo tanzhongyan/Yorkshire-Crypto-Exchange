@@ -34,7 +34,7 @@ app.register_blueprint(blueprint)
 COINGECKO_MARKET_CHART_URL = "https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
 COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
 ORDERBOOK_GET_ALL_URL = "http://orderbook-service:5000/api/v1/orderbook/order/AddOrder"
-ORDERBOOK_GET_BY_TOKEN_URL = "http://orderbook-service:5000/api/v1/orderbook/order/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
+ORDERBOOK_GET_BY_TOKEN_URL = "http://orderbook-service:5000/api/v1/orderbook/order/GetOrdersByToken?fromTokenId={fromTokenId}&toTokenId={toTokenId}"
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
 # New Exchange Rate API URL
@@ -49,10 +49,10 @@ EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY")
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls
 market_ns = Namespace('market', description='Market related operations')
-orderbook_ns = Namespace('orderbook', description='Orderbook related operations')
+orderview_ns = Namespace('orderview', description='Orderbook related operations')
 
 api.add_namespace(market_ns)
-api.add_namespace(orderbook_ns)
+api.add_namespace(orderview_ns)
 
 ##### API Models - flask restx API autodoc #####
 market_params = market_ns.model('MarketParams', {
@@ -94,7 +94,7 @@ exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
 
 # orders model from orderbook
 # same as json response from orderbook, we are only working with limit
-orderbook_model = orderbook_ns.model('OrderBookData', {
+orderbook_model = orderview_ns.model('OrderBookData', {
     'transactionId': fields.String(description='Unique identifier for the transaction',
                     example='7890abcd-ef12-34gh-5678-ijklmnopqrst'),
     'userId': fields.String(description='Unique identifier for the user',
@@ -114,12 +114,12 @@ orderbook_model = orderbook_ns.model('OrderBookData', {
 })
 
 # /recentorders output model
-recent_orders_response = orderbook_ns.model('RecentOrderResponse', {
+recent_orders_response = orderview_ns.model('RecentOrderResponse', {
     'orders': fields.List(fields.Nested(orderbook_model), description='List of recent orders in the orderbook')
 })
 
 # /sortedorders output model (buy contains 5 most expensive usdt to crypto buy-ins, sell contains 5 cheapest crypto to usdt sell-outs)
-sorted_orders_response = orderbook_ns.model('SortedOrdersResponse', {
+sorted_orders_response = orderview_ns.model('SortedOrdersResponse', {
     'buy': fields.List(fields.Nested(orderbook_model), description='List of 5 most expensive buy orders (USDT to token)'),
     'sell': fields.List(fields.Nested(orderbook_model), description='List of 5 cheapest sell orders (token to USDT)')
 })
@@ -366,11 +366,11 @@ def get_sorted_orders(token):
     """
     try:
         # get buy orders (USDT to input token)
-        buy_url = ORDERBOOK_GET_BY_TOKEN_URL.format(FromTokenId='usdt', ToTokenId=token)
+        buy_url = ORDERBOOK_GET_BY_TOKEN_URL.format(fromTokenId='usdt', toTokenId=token)
         buy_response = requests.get(buy_url)
         
         # get sell orders (input token to USDT)
-        sell_url = ORDERBOOK_GET_BY_TOKEN_URL.format(FromTokenId=token, ToTokenId='usdt')
+        sell_url = ORDERBOOK_GET_BY_TOKEN_URL.format(fromTokenId=token, toTokenId='usdt')
         sell_response = requests.get(sell_url)
         
         # success request?
@@ -512,9 +512,9 @@ class FiatRatesResource(Resource):
         return data
 
 # api endpoint for market/fiatrates
-@orderbook_ns.route('/recentorders')
+@orderview_ns.route('/recentorders')
 class RecentOrdersResource(Resource):
-    @orderbook_ns.doc(
+    @orderview_ns.doc(
         params={
             'token': {'description': 'Token identifier (e.g., BTC, ETH)', 'default': 'BTC'}
         },
@@ -523,7 +523,7 @@ class RecentOrdersResource(Resource):
             500: 'Server Error'
         }
     )
-    @orderbook_ns.marshal_with(recent_orders_response, code=200)
+    @orderview_ns.marshal_with(recent_orders_response, code=200)
     def get(self):
         """
         Retrieve 10 of the most recent completed transactions for a specific token
@@ -545,9 +545,9 @@ class RecentOrdersResource(Resource):
         return {"orders": recent_transactions if recent_transactions is not None else []}
 
 # api endpoint for /orderbook/sortedorders
-@orderbook_ns.route('/sortedorders')
+@orderview_ns.route('/sortedorders')
 class SortedOrdersResource(Resource):
-    @orderbook_ns.doc(
+    @orderview_ns.doc(
         params={
             'token': {'description': 'Token identifier (e.g., BTC, ETH)', 'default': 'BTC'}
         },
@@ -556,7 +556,7 @@ class SortedOrdersResource(Resource):
             500: 'Server Error'
         }
     )
-    @orderbook_ns.marshal_with(sorted_orders_response, code=200)
+    @orderview_ns.marshal_with(sorted_orders_response, code=200)
     def get(self):
         """
         Retrieve 5 most expensive buy orders and 5 cheapest sell orders for a specific token

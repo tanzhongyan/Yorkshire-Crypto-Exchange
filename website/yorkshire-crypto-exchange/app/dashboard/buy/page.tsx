@@ -163,7 +163,7 @@ export default function BuyPage() {
     if (!currentToken) return
     
     try {
-      const response = await axios.get(`/api/v1/orderbook/sortedorders?token=${currentToken.toLowerCase()}`)
+      const response = await axios.get(`/api/v1/orderview/sortedorders?token=${currentToken.toLowerCase()}`)
       setOrderBook({
         asks: response.data.sell || [],
         bids: response.data.buy || []
@@ -179,7 +179,7 @@ export default function BuyPage() {
     if (!token) return;
     
     try {
-      const response = await axios.get(`/api/v1/orderbook/recentorders?token=${token.toLowerCase()}`);
+      const response = await axios.get(`/api/v1/orderview/recentorders?token=${token.toLowerCase()}`);
       
       // Filter for current token
       const filteredTrades = response.data.orders.filter(order => 
@@ -574,7 +574,7 @@ export default function BuyPage() {
     };
     
     // Set up interval
-    const interval = setInterval(refreshAllData, 2000);
+    const interval = setInterval(refreshAllData, 10000);
     
     return () => clearInterval(interval);
   }, [

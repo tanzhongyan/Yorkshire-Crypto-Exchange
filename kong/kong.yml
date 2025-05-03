@@ -26,8 +26,9 @@ plugins:
       secret_is_base64: false
   - name: rate-limiting
     config:
-      second: 10
-      hour: 1000
+      second: 30
+      minute: 300
+      hour: 3000
       policy: local
       fault_tolerant: true
       header_name: null
@@ -177,6 +178,12 @@ services:
       - name: market-route
         paths:
           - /api/v1/market
+        strip_path: false
+        plugins:
+          - name: jwt
+      - name: orderview-route
+        paths:
+          - /api/v1/orderview
         strip_path: false
         plugins:
           - name: jwt

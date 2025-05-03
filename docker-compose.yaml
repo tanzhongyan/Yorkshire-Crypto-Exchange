@@ -160,6 +160,31 @@ services:
     expose:
       - "5000"
 
+  orderbook-service:
+    container_name: orderbook-service
+    build:
+      context: ./api/atomic/orderbook
+      dockerfile: Dockerfile
+    ports:
+      - "5012:5000"
+    depends_on:
+      # - rabbitmq
+      postgres:
+        condition: service_healthy # wait until postgres healthy
+    environment:
+      - RUNNING_IN_DOCKER=true  # Detects Docker mode
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=orderbook_db
+      - DB_USER=user
+      - DB_PASS=password
+    volumes:
+      - orderbook_data:/var/lib/orderbook_service
+    networks:
+      - kong-net
+    expose:
+      - "5000"
+
   deposit-service:
     container_name: deposit-service
     build:
@@ -252,7 +277,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db, transaction_db
+      POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db, transaction_db, orderbook_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh
@@ -364,3 +389,4 @@ volumes:
   rabbitmq_data:
   postgres_data:
   transaction_data:
+  orderbook_data:

@@ -33,8 +33,8 @@ app.register_blueprint(blueprint)
 # NOTE: Do not use localhost here as localhost refer to this container itself
 COINGECKO_MARKET_CHART_URL = "https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
 COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
-ORDERBOOK_GET_ALL_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetAllOrders"
-ORDERBOOK_GET_BY_TOKEN_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
+ORDERBOOK_GET_ALL_URL = "http://orderbook-service:5000/api/v1/orderbook/order/AddOrder"
+ORDERBOOK_GET_BY_TOKEN_URL = "http://orderbook-service:5000/api/v1/orderbook/order/GetOrdersByToken?FromTokenId={FromTokenId}&ToTokenId={ToTokenId}"
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 
 # New Exchange Rate API URL
@@ -92,8 +92,8 @@ exchange_rate_api_response = market_ns.model('ExchangeRateApiResponse', {
                 example='Tue, 08 Apr 2025 04:30:00 +0000')
 })
 
-# orders model from outsystem orderbook
-# same as json response from orderbook, we are only working with limit 
+# orders model from orderbook
+# same as json response from orderbook, we are only working with limit
 orderbook_model = orderbook_ns.model('OrderBookData', {
     'transactionId': fields.String(description='Unique identifier for the transaction',
                     example='7890abcd-ef12-34gh-5678-ijklmnopqrst'),
@@ -274,7 +274,7 @@ def get_exchange_rate_api_data(base_currency="USD"):
         return None, f"Error fetching Exchange Rate API data: {str(e)}"
 
 
-# helper function for outsystem order book 10 most recent completed crypto transactions
+# helper function for order book 10 most recent completed crypto transactions
 def get_ten_recent_completed_crypto_transactions(token="BTC"):
     """
     Get 10 most recent completed crypto transactions for a specific token from Transaction Service

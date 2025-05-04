@@ -1,22 +1,30 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { CreditCard, DollarSign, LogOut, Menu, RefreshCw, ShoppingCart, User, Wallet } from "lucide-react"
-import { useAuth } from "@/components/AuthProvider"
-import AuthGuard from "@/components/AuthGuard"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  CreditCard,
+  LogOut,
+  Menu,
+  RefreshCw,
+  ShoppingCart,
+  User,
+  Wallet,
+} from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import AuthGuard from "@/components/AuthGuard";
 
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
-  title: string
-  href: string
-  icon: React.ReactNode
+  title: string;
+  href: string;
+  icon: React.ReactNode;
 }
 
 const navItems: NavItem[] = [
@@ -45,21 +53,20 @@ const navItems: NavItem[] = [
     href: "/dashboard/profile",
     icon: <User className="h-5 w-5" />,
   },
-]
+];
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const { logout } = useAuth()
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    logout()
-  }
+    logout();
+  };
 
   return (
     <AuthGuard>
@@ -82,7 +89,9 @@ export default function DashboardLayout({
                       onClick={() => setOpen(false)}
                       className={cn(
                         "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
+                        pathname === item.href
+                          ? "bg-accent text-accent-foreground"
+                          : "transparent",
                       )}
                     >
                       {item.icon}
@@ -101,12 +110,16 @@ export default function DashboardLayout({
               </SheetContent>
             </Sheet>
             <Link href="/dashboard" className="flex items-center gap-2">
-              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">Yorkshire Crypto</span>
+              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">
+                Yorkshire Crypto
+              </span>
             </Link>
           </div>
           <div className="hidden md:flex md:flex-1">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">Yorkshire Crypto</span>
+              <span className="font-bold text-l md:text-xl lg:text-2xl tracking-tight">
+                Yorkshire Crypto
+              </span>
             </Link>
             <nav className="flex flex-1 items-center justify-center gap-6">
               {navItems.map((item) => (
@@ -115,7 +128,9 @@ export default function DashboardLayout({
                   href={item.href}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:text-primary",
-                    pathname === item.href ? "text-primary" : "text-muted-foreground",
+                    pathname === item.href
+                      ? "text-primary"
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.icon}
@@ -134,5 +149,5 @@ export default function DashboardLayout({
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
     </AuthGuard>
-  )
+  );
 }

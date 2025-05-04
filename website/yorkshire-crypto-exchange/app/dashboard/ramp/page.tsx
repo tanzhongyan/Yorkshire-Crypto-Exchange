@@ -6,22 +6,35 @@ import { getCookie } from "@/lib/cookies";
 import axios from "@/lib/axios";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Define available currencies with their symbols
 const FIAT_CURRENCIES = [
-  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$"},
-  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$"},
-  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€"},
-  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM"},
-  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$"},
-  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£"},
-  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥"},
-  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥"},
-  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹"}
+  { currencyCode: "usd", name: "US Dollar (USD)", symbol: "$" },
+  { currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$" },
+  { currencyCode: "eur", name: "Euro (EUR)", symbol: "€" },
+  { currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM" },
+  { currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$" },
+  { currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£" },
+  { currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥" },
+  { currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥" },
+  { currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹" },
 ];
 
 export default function RampPage() {
@@ -45,13 +58,13 @@ export default function RampPage() {
   const fetchAllExchangeRates = useCallback(async () => {
     try {
       // Use axios to call our API endpoint instead of direct fetch with API key
-      const response = await axios.get('/api/v1/market/fiatrates');
-      
+      const response = await axios.get("/api/v1/market/fiatrates");
+
       if (response.status === 200 && response.data) {
         // Add USD to USD rate (1.0) if not already present
-        const rates = { 
-          ...response.data.conversion_rates, 
-          USD: 1.0 // Ensure USD to USD is 1.0
+        const rates = {
+          ...response.data.conversion_rates,
+          USD: 1.0, // Ensure USD to USD is 1.0
         };
         setExchangeRates(rates);
       } else {
@@ -63,37 +76,45 @@ export default function RampPage() {
   }, []);
 
   // Update to amount when from amount changes
-  const updateToAmount = useCallback((newFromAmount, fromCurr, toCurr) => {
-    const numValue = parseFloat(newFromAmount) || 0;
-    
-    if (newFromAmount && !isNaN(numValue) && Object.keys(exchangeRates).length > 0) {
-      // For USDT, we treat it as USD for conversion purposes
-      const fromUpper = fromCurr.toUpperCase();
-      const toUpper = toCurr.toUpperCase() === 'USDT' ? 'USD' : toCurr.toUpperCase();
-      
-      // First convert to USD (which is the base currency for our rates)
-      let fromToUsd;
-      if (fromUpper === 'USDT' || fromUpper === 'USD') {
-        fromToUsd = numValue;
+  const updateToAmount = useCallback(
+    (newFromAmount, fromCurr, toCurr) => {
+      const numValue = parseFloat(newFromAmount) || 0;
+
+      if (
+        newFromAmount &&
+        !isNaN(numValue) &&
+        Object.keys(exchangeRates).length > 0
+      ) {
+        // For USDT, we treat it as USD for conversion purposes
+        const fromUpper = fromCurr.toUpperCase();
+        const toUpper =
+          toCurr.toUpperCase() === "USDT" ? "USD" : toCurr.toUpperCase();
+
+        // First convert to USD (which is the base currency for our rates)
+        let fromToUsd;
+        if (fromUpper === "USDT" || fromUpper === "USD") {
+          fromToUsd = numValue;
+        } else {
+          // Convert from source currency to USD
+          fromToUsd = numValue / exchangeRates[fromUpper];
+        }
+
+        // Then convert from USD to target currency
+        let result;
+        if (toUpper === "USD" || toUpper === "USDT") {
+          result = fromToUsd;
+        } else {
+          // Convert from USD to target currency
+          result = fromToUsd * exchangeRates[toUpper];
+        }
+
+        setToAmount(result.toFixed(2));
       } else {
-        // Convert from source currency to USD
-        fromToUsd = numValue / exchangeRates[fromUpper];
+        setToAmount("");
       }
-      
-      // Then convert from USD to target currency
-      let result;
-      if (toUpper === 'USD' || toUpper === 'USDT') {
-        result = fromToUsd;
-      } else {
-        // Convert from USD to target currency
-        result = fromToUsd * exchangeRates[toUpper];
-      }
-      
-      setToAmount(result.toFixed(2));
-    } else {
-      setToAmount("");
-    }
-  }, [exchangeRates]);
+    },
+    [exchangeRates],
+  );
 
   // Handle from amount change
   const handleFromAmountChange = (value) => {
@@ -114,47 +135,54 @@ export default function RampPage() {
     // Store current values before swapping
     const oldFromCurrency = fromCurrency;
     const oldToCurrency = toCurrency;
-    const oldFromAmount = fromAmount;
     const oldToAmount = toAmount;
-    
+
     // Define new direction
-    const newDirection = direction === "fiattocrypto" ? "cryptotofiat" : "fiattocrypto";
-    
+    const newDirection =
+      direction === "fiattocrypto" ? "cryptotofiat" : "fiattocrypto";
+
     // First update the direction
     setDirection(newDirection);
-    
+
     // Use function to update state to ensure consistent rendering
     function updateStates() {
       // Swap currencies
       setFromCurrency(oldToCurrency);
       setToCurrency(oldFromCurrency);
-      
+
       // Swap amounts if they exist
       if (oldToAmount) {
         setFromAmount(oldToAmount);
-        
+
         // Calculate new to amount directly
         const numValue = parseFloat(oldToAmount) || 0;
-        if (oldToAmount && !isNaN(numValue) && Object.keys(exchangeRates).length > 0) {
+        if (
+          oldToAmount &&
+          !isNaN(numValue) &&
+          Object.keys(exchangeRates).length > 0
+        ) {
           const fromUpper = oldToCurrency.toUpperCase();
-          const toUpper = oldFromCurrency.toUpperCase() === 'USDT' ? 'USD' : oldFromCurrency.toUpperCase();
-          
+          const toUpper =
+            oldFromCurrency.toUpperCase() === "USDT"
+              ? "USD"
+              : oldFromCurrency.toUpperCase();
+
           // Convert to USD
           let fromToUsd;
-          if (fromUpper === 'USDT' || fromUpper === 'USD') {
+          if (fromUpper === "USDT" || fromUpper === "USD") {
             fromToUsd = numValue;
           } else {
             fromToUsd = numValue / exchangeRates[fromUpper];
           }
-          
+
           // Convert from USD
           let result;
-          if (toUpper === 'USD' || toUpper === 'USDT') {
+          if (toUpper === "USD" || toUpper === "USDT") {
             result = fromToUsd;
           } else {
             result = fromToUsd * exchangeRates[toUpper];
           }
-          
+
           setToAmount(result.toFixed(2));
         } else {
           setToAmount("");
@@ -163,7 +191,7 @@ export default function RampPage() {
         setToAmount("");
       }
     }
-    
+
     // Use requestAnimationFrame to ensure UI updates properly
     requestAnimationFrame(updateStates);
   };
@@ -171,7 +199,9 @@ export default function RampPage() {
   // Get currency symbol
   const getCurrencySymbol = (code) => {
     if (code.toLowerCase() === "usdt") return "$";
-    const currency = FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === code.toLowerCase());
+    const currency = FIAT_CURRENCIES.find(
+      (c) => c.currencyCode.toLowerCase() === code.toLowerCase(),
+    );
     return currency?.symbol || "$";
   };
 
@@ -191,11 +221,15 @@ export default function RampPage() {
   const getAvailableBalance = () => {
     if (direction === "fiattocrypto") {
       // For fiat to crypto transactions, check fiat account balance
-      const account = fiatAccounts.find(acc => acc.currencyCode.toLowerCase() === fromCurrency.toLowerCase());
+      const account = fiatAccounts.find(
+        (acc) => acc.currencyCode.toLowerCase() === fromCurrency.toLowerCase(),
+      );
       return account ? account.balance : 0;
     } else {
       // For crypto to fiat transactions, check USDT available balance
-      const holding = cryptoHoldings.find(h => h.tokenId.toLowerCase() === fromCurrency.toLowerCase());
+      const holding = cryptoHoldings.find(
+        (h) => h.tokenId.toLowerCase() === fromCurrency.toLowerCase(),
+      );
       return holding ? holding.availableBalance : 0;
     }
   };
@@ -212,23 +246,22 @@ export default function RampPage() {
 
     try {
       // Updated to use camelCase property names in the request payload
-      const response = await axios.post("/api/v1/ramp/swap", {
+      await axios.post("/api/v1/ramp/swap", {
         userId: userId,
         amount: parseFloat(fromAmount),
         fiatCurrency: direction === "fiattocrypto" ? fromCurrency : toCurrency,
         tokenId: direction === "fiattocrypto" ? toCurrency : fromCurrency,
-        direction: direction
+        direction: direction,
       });
 
       // Refresh balances and transactions after successful swap
       fetchFiatAccounts();
       fetchCryptoHoldings();
       fetchTransactions();
-      
+
       // Reset the form
       setFromAmount("");
       setToAmount("");
-      
     } catch (error) {
       console.error("Swap failed:", error);
       alert(`Swap failed: ${error.response?.data?.message || "Unknown error"}`);
@@ -240,20 +273,21 @@ export default function RampPage() {
   // Fetch fiat accounts
   const fetchFiatAccounts = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       const response = await axios.get(`/api/v1/fiat/account/${userId}`);
       setFiatAccounts(response.data);
-      
+
       // Set available fiat currencies
-      const currencies = response.data.map((acc) => acc.currencyCode.toLowerCase());
+      const currencies = response.data.map((acc) =>
+        acc.currencyCode.toLowerCase(),
+      );
       setAvailableFiatCurrencies(currencies);
-      
+
       // If the user doesn't have SGD, set default to the first available currency
       if (currencies.length > 0 && !currencies.includes("sgd")) {
         setFromCurrency(currencies[0]);
       }
-      
     } catch (error) {
       console.error("Failed to load fiat accounts:", error);
     }
@@ -262,10 +296,12 @@ export default function RampPage() {
   // Fetch crypto holdings - specifically USDT only
   const fetchCryptoHoldings = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       // Get user's USDT holdings only
-      const holdingResponse = await axios.get(`/api/v1/crypto/holdings/${userId}/usdt`);
+      const holdingResponse = await axios.get(
+        `/api/v1/crypto/holdings/${userId}/usdt`,
+      );
       setCryptoHoldings([holdingResponse.data]);
     } catch (error) {
       console.error("Failed to load crypto holdings:", error);
@@ -277,11 +313,14 @@ export default function RampPage() {
   // Fetch transaction history
   const fetchTransactions = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
-      const response = await axios.get(`/api/v1/transaction/fiattocrypto/user/${userId}`);
+      const response = await axios.get(
+        `/api/v1/transaction/fiattocrypto/user/${userId}`,
+      );
       const sortedTransactions = response.data.sort(
-        (a, b) => new Date(b.creation).getTime() - new Date(a.creation).getTime()
+        (a, b) =>
+          new Date(b.creation).getTime() - new Date(a.creation).getTime(),
       );
       setTransactions(sortedTransactions);
     } catch (error) {
@@ -295,36 +334,45 @@ export default function RampPage() {
   useEffect(() => {
     // Fetch exchange rates once at component initialization
     fetchAllExchangeRates();
-    
+
     if (userId) {
       Promise.all([
         fetchFiatAccounts(),
         fetchCryptoHoldings(),
-        fetchTransactions()
+        fetchTransactions(),
       ]);
     } else {
       setDataLoading(false);
     }
-  }, [userId, fetchFiatAccounts, fetchCryptoHoldings, fetchTransactions, fetchAllExchangeRates]);
+  }, [
+    userId,
+    fetchFiatAccounts,
+    fetchCryptoHoldings,
+    fetchTransactions,
+    fetchAllExchangeRates,
+  ]);
 
   // Get the current exchange rate between two currencies
-  const getCurrentExchangeRate = useCallback((from, to) => {
-    const fromUpper = from.toUpperCase();
-    const toUpper = to.toUpperCase() === 'USDT' ? 'USD' : to.toUpperCase();
-    
-    if (Object.keys(exchangeRates).length === 0) {
-      return null;
-    }
-    
-    if (fromUpper === 'USDT' || fromUpper === 'USD') {
-      return exchangeRates[toUpper] || null;
-    } else if (toUpper === 'USD' || toUpper === 'USDT') {
-      return 1 / exchangeRates[fromUpper] || null;
-    } else {
-      // Cross rate calculation: from -> USD -> to
-      return exchangeRates[toUpper] / exchangeRates[fromUpper] || null;
-    }
-  }, [exchangeRates]);
+  const getCurrentExchangeRate = useCallback(
+    (from, to) => {
+      const fromUpper = from.toUpperCase();
+      const toUpper = to.toUpperCase() === "USDT" ? "USD" : to.toUpperCase();
+
+      if (Object.keys(exchangeRates).length === 0) {
+        return null;
+      }
+
+      if (fromUpper === "USDT" || fromUpper === "USD") {
+        return exchangeRates[toUpper] || null;
+      } else if (toUpper === "USD" || toUpper === "USDT") {
+        return 1 / exchangeRates[fromUpper] || null;
+      } else {
+        // Cross rate calculation: from -> USD -> to
+        return exchangeRates[toUpper] / exchangeRates[fromUpper] || null;
+      }
+    },
+    [exchangeRates],
+  );
 
   if (dataLoading) {
     return (
@@ -381,24 +429,34 @@ export default function RampPage() {
                         Max
                       </Button>
                     </div>
-                    <Select value={fromCurrency} onValueChange={handleFromCurrencyChange}>
+                    <Select
+                      value={fromCurrency}
+                      onValueChange={handleFromCurrencyChange}
+                    >
                       <SelectTrigger className="w-[120px]">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {direction === "fiattocrypto" 
-                          ? availableFiatCurrencies.map(currency => (
-                              <SelectItem key={currency} value={currency}>
-                                {currency.toUpperCase()}
-                              </SelectItem>
-                            ))
-                          : <SelectItem value="usdt">USDT</SelectItem>
-                        }
+                        {direction === "fiattocrypto" ? (
+                          availableFiatCurrencies.map((currency) => (
+                            <SelectItem key={currency} value={currency}>
+                              {currency.toUpperCase()}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="usdt">USDT</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Available: {parseFloat(getAvailableBalance().toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })} {fromCurrency.toUpperCase()}
+                    Available:{" "}
+                    {parseFloat(
+                      getAvailableBalance().toFixed(2),
+                    ).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}{" "}
+                    {fromCurrency.toUpperCase()}
                   </p>
                 </div>
 
@@ -434,19 +492,23 @@ export default function RampPage() {
                         readOnly
                       />
                     </div>
-                    <Select value={toCurrency} onValueChange={handleToCurrencyChange}>
+                    <Select
+                      value={toCurrency}
+                      onValueChange={handleToCurrencyChange}
+                    >
                       <SelectTrigger className="w-[120px]">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {direction === "fiattocrypto" 
-                          ? <SelectItem value="usdt">USDT</SelectItem>
-                          : availableFiatCurrencies.map(currency => (
-                              <SelectItem key={currency} value={currency}>
-                                {currency.toUpperCase()}
-                              </SelectItem>
-                            ))
-                        }
+                        {direction === "fiattocrypto" ? (
+                          <SelectItem value="usdt">USDT</SelectItem>
+                        ) : (
+                          availableFiatCurrencies.map((currency) => (
+                            <SelectItem key={currency} value={currency}>
+                              {currency.toUpperCase()}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -457,12 +519,16 @@ export default function RampPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Exchange Rate</span>
                     <span>
-                      1 {fromCurrency.toUpperCase()} = {currentRate ? (1 / currentRate).toFixed(6) : "..."} {toCurrency.toUpperCase()}
+                      1 {fromCurrency.toUpperCase()} ={" "}
+                      {currentRate ? (1 / currentRate).toFixed(6) : "..."}{" "}
+                      {toCurrency.toUpperCase()}
                     </span>
                   </div>
                   {fromAmount && toAmount && (
                     <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">You will receive</span>
+                      <span className="text-muted-foreground">
+                        You will receive
+                      </span>
                       <span className="font-medium">
                         {toAmount} {toCurrency.toUpperCase()}
                       </span>
@@ -474,7 +540,12 @@ export default function RampPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isProcessing || !fromAmount || Number.parseFloat(fromAmount) <= 0 || Number.parseFloat(fromAmount) > getAvailableBalance()}
+                  disabled={
+                    isProcessing ||
+                    !fromAmount ||
+                    Number.parseFloat(fromAmount) <= 0 ||
+                    Number.parseFloat(fromAmount) > getAvailableBalance()
+                  }
                 >
                   {isProcessing ? (
                     <>
@@ -496,15 +567,25 @@ export default function RampPage() {
             <h2 className="text-lg font-semibold mt-6">Your Fiat Accounts</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {fiatAccounts.map((account) => (
-                <Card key={account.currencyCode} className="flex flex-col items-center text-center">
+                <Card
+                  key={account.currencyCode}
+                  className="flex flex-col items-center text-center"
+                >
                   <CardHeader>
                     <CardTitle>{account.currencyCode.toUpperCase()}</CardTitle>
                     <CardDescription>Balance</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold">
-                      {FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === account.currencyCode.toLowerCase())?.symbol || '$'}
-                      {parseFloat(account.balance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {FIAT_CURRENCIES.find(
+                        (c) =>
+                          c.currencyCode.toLowerCase() ===
+                          account.currencyCode.toLowerCase(),
+                      )?.symbol || "$"}
+                      {parseFloat(account.balance.toFixed(2)).toLocaleString(
+                        undefined,
+                        { minimumFractionDigits: 2 },
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -519,17 +600,26 @@ export default function RampPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {cryptoHoldings.length > 0 ? (
               cryptoHoldings.map((holding) => (
-                <Card key={holding.tokenId} className="flex flex-col items-center text-center">
+                <Card
+                  key={holding.tokenId}
+                  className="flex flex-col items-center text-center"
+                >
                   <CardHeader>
                     <CardTitle>{holding.tokenId.toUpperCase()}</CardTitle>
                     <CardDescription>Balance</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold">
-                      ${parseFloat(holding.actualBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      $
+                      {parseFloat(
+                        holding.actualBalance.toFixed(2),
+                      ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Available: ${parseFloat(holding.availableBalance.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      Available: $
+                      {parseFloat(
+                        holding.availableBalance.toFixed(2),
+                      ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </CardContent>
                 </Card>
@@ -541,9 +631,7 @@ export default function RampPage() {
                   <CardDescription>Balance</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">
-                    $0.00
-                  </div>
+                  <div className="text-xl font-bold">$0.00</div>
                 </CardContent>
               </Card>
             )}
@@ -561,13 +649,17 @@ export default function RampPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-sm">
-                      {txn.direction === "fiattocrypto" ? "FIAT → CRYPTO" : "CRYPTO → FIAT"}
+                      {txn.direction === "fiattocrypto"
+                        ? "FIAT → CRYPTO"
+                        : "CRYPTO → FIAT"}
                     </CardTitle>
                     <CardDescription>
                       {new Date(txn.creation).toLocaleString()}
                     </CardDescription>
                   </div>
-                  <div className={`text-sm font-semibold ${txn.status === 'completed' ? 'text-green-600' : txn.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'}`}>
+                  <div
+                    className={`text-sm font-semibold ${txn.status === "completed" ? "text-green-600" : txn.status === "cancelled" ? "text-red-600" : "text-yellow-600"}`}
+                  >
                     {txn.status.toUpperCase()}
                   </div>
                 </CardHeader>
@@ -576,14 +668,26 @@ export default function RampPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">From</p>
                       <p className="font-semibold">
-                        {parseFloat(txn.fromAmount.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })} {txn.direction === "fiattocrypto" ? txn.currencyCode.toUpperCase() : txn.tokenId.toUpperCase()}
+                        {parseFloat(txn.fromAmount.toFixed(2)).toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )}{" "}
+                        {txn.direction === "fiattocrypto"
+                          ? txn.currencyCode.toUpperCase()
+                          : txn.tokenId.toUpperCase()}
                       </p>
                     </div>
                     <ArrowDown className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">To</p>
                       <p className="font-semibold">
-                        {parseFloat(txn.toAmount.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2 })} {txn.direction === "fiattocrypto" ? txn.tokenId.toUpperCase() : txn.currencyCode.toUpperCase()}
+                        {parseFloat(txn.toAmount.toFixed(2)).toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )}{" "}
+                        {txn.direction === "fiattocrypto"
+                          ? txn.tokenId.toUpperCase()
+                          : txn.currencyCode.toUpperCase()}
                       </p>
                     </div>
                   </div>

@@ -6,27 +6,104 @@ import { CreditCard } from "lucide-react";
 
 import { getCookie } from "@/lib/cookies";
 import axios from "@/lib/axios";
-
+import { AxiosError } from 'axios';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface PendingLinks {
+  [transactionId: string]: string;
+}
+
+interface Transaction {
+  transactionId: string;
+  status: string;
+  type: string;
+  currencyCode: string;
+  amount: number;
+  creation: string;
+}
+
+interface FiatAccount {
+  currencyCode: string;
+  balance: number;
+}
 
 // Define available currencies with their symbols and maximum limits
 const FIAT_CURRENCIES = [
-  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$", maxLimit: 999999.99},
-  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$", maxLimit: 999999.99},
-  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€", maxLimit: 999999.99},
-  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM", maxLimit: 999999.99},
-  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$", maxLimit: 999999.99},
-  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£", maxLimit: 999999.99},
-  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥", maxLimit: 999999.99},
-  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥", maxLimit: 999999.99},
-  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹", maxLimit: 9999999.99}
+  {
+    currencyCode: "usd",
+    name: "US Dollar (USD)",
+    symbol: "$",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "sgd",
+    name: "Singapore Dollar (SGD)",
+    symbol: "S$",
+    maxLimit: 999999.99,
+  },
+  { currencyCode: "eur", name: "Euro (EUR)", symbol: "€", maxLimit: 999999.99 },
+  {
+    currencyCode: "myr",
+    name: "Malaysian Ringgit (MYR)",
+    symbol: "RM",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "aud",
+    name: "Australian Dollar (AUD)",
+    symbol: "A$",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "gbp",
+    name: "British Pound (GBP)",
+    symbol: "£",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "jpy",
+    name: "Japanese Yen (JPY)",
+    symbol: "¥",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "cny",
+    name: "Chinese Yuan (CNY)",
+    symbol: "¥",
+    maxLimit: 999999.99,
+  },
+  {
+    currencyCode: "inr",
+    name: "Indian Rupee (INR)",
+    symbol: "₹",
+    maxLimit: 9999999.99,
+  },
 ];
 
 export default function DepositPage() {
@@ -38,14 +115,17 @@ export default function DepositPage() {
   const [transactions, setTransactions] = useState([]);
   const [statusMessage, setStatusMessage] = useState<"success" | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [pendingLinks, setPendingLinks] = useState<any>({});
+  const [pendingLinks, setPendingLinks] = useState<PendingLinks>({});
   const [dataLoading, setDataLoading] = useState(true);
 
   const searchParams = useSearchParams();
 
   // Get the currency details for the selected currency
   const getCurrencyDetails = () => {
-    return FIAT_CURRENCIES.find(c => c.currencyCode === currencyCode) || FIAT_CURRENCIES[0];
+    return (
+      FIAT_CURRENCIES.find((c) => c.currencyCode === currencyCode) ||
+      FIAT_CURRENCIES[0]
+    );
   };
 
   // Get the currency symbol for the selected currency
@@ -76,25 +156,35 @@ export default function DepositPage() {
         const userId = getCookie("userId");
         if (!userId) return;
 
-        const response = await axios.get(`/api/v1/transaction/fiatuser/${userId}`);
+        const response = await axios.get(
+          `/api/v1/transaction/fiatuser/${userId}`,
+        );
         const transactions = response.data.sort(
-          (a: any, b: any) => new Date(b.creation).getTime() - new Date(a.creation).getTime()
+          (a: Transaction, b: Transaction) =>
+            new Date(b.creation).getTime() - new Date(a.creation).getTime(),
         );
 
         const storedLinks = sessionStorage.getItem("pendingLinks");
         const linkMap = storedLinks ? JSON.parse(storedLinks) : {};
 
         const cancelPromises = transactions
-          .filter((txn: any) => txn.status === "pending" && !linkMap[txn.transactionId])
-          .map((txn: any) =>
+          .filter(
+            (txn: Transaction) =>
+              txn.status === "pending" && !linkMap[txn.transactionId],
+          )
+          .map((txn: Transaction) =>
             axios
-              .put(`/api/v1/transaction/fiat/${txn.transactionId}`, { status: "cancelled" })
-              .catch((err) => console.error("Failed to update txn to cancelled", err))
+              .put(`/api/v1/transaction/fiat/${txn.transactionId}`, {
+                status: "cancelled",
+              })
+              .catch((err) =>
+                console.error("Failed to update txn to cancelled", err),
+              ),
           );
 
         await Promise.all(cancelPromises);
 
-        const updatedTransactions = transactions.map((txn: any) => {
+        const updatedTransactions = transactions.map((txn: Transaction) => {
           if (txn.status === "pending" && !linkMap[txn.transactionId]) {
             txn.status = "cancelled";
           }
@@ -129,7 +219,9 @@ export default function DepositPage() {
 
     if (!amount || parsedAmount <= 0) return;
     if (parsedAmount > maxLimit) {
-      alert(`Maximum deposit amount for ${currencyCode.toUpperCase()} is ${getCurrencySymbol()}${maxLimit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`);
+      alert(
+        `Maximum deposit amount for ${currencyCode.toUpperCase()} is ${getCurrencySymbol()}${maxLimit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      );
       return;
     }
 
@@ -142,7 +234,7 @@ export default function DepositPage() {
       const response = await axios.post("/api/v1/deposit/fiat/", {
         userId,
         amount: parsedAmount,
-        currencyCode: currencyCode.toUpperCase() // Use the selected currency
+        currencyCode: currencyCode.toUpperCase(), // Use the selected currency
       });
 
       const { checkoutUrl, transactionId } = response.data;
@@ -151,9 +243,16 @@ export default function DepositPage() {
       sessionStorage.setItem("pendingLinks", JSON.stringify(updatedLinks));
 
       window.location.href = checkoutUrl;
-    } catch (err: any) {
-      console.error("Deposit initiation failed", err);
-      alert("Deposit failed: " + (err.response?.data?.message || "Unknown error"));
+    } catch (err: unknown) {
+      if (err instanceof AxiosError) {
+        console.error("Deposit initiation failed", err);
+        alert(
+          "Deposit failed: " + (err.response?.data?.message || "Unknown error")
+        );
+      } else {
+        // Handle other types of errors here
+        console.error("An unexpected error occurred:", err);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -186,29 +285,31 @@ export default function DepositPage() {
             </DialogHeader>
           </DialogContent>
         </Dialog>
-        
+
         <div>
           <h2 className="text-lg font-semibold mb-2">Deposit Section</h2>
           <Card>
             <CardHeader>
               <CardTitle>Deposit Funds</CardTitle>
-              <CardDescription>Add funds to your account using your preferred payment method</CardDescription>
+              <CardDescription>
+                Add funds to your account using your preferred payment method
+              </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-6">
                 {/* Currency Selector */}
                 <div className="space-y-2">
                   <Label htmlFor="currency">Currency</Label>
-                  <Select 
-                    value={currencyCode} 
-                    onValueChange={setCurrencyCode}
-                  >
+                  <Select value={currencyCode} onValueChange={setCurrencyCode}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Currency" />
                     </SelectTrigger>
                     <SelectContent>
                       {FIAT_CURRENCIES.map((currency) => (
-                        <SelectItem key={currency.currencyCode} value={currency.currencyCode}>
+                        <SelectItem
+                          key={currency.currencyCode}
+                          value={currency.currencyCode}
+                        >
                           {currency.name}
                         </SelectItem>
                       ))}
@@ -217,7 +318,9 @@ export default function DepositPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Amount ({currencyCode.toUpperCase()})</Label>
+                  <Label htmlFor="amount">
+                    Amount ({currencyCode.toUpperCase()})
+                  </Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       {getCurrencySymbol()}
@@ -243,8 +346,11 @@ export default function DepositPage() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Minimum deposit: {getCurrencySymbol()}10.00 | 
-                    Maximum deposit: {getCurrencySymbol()}{getCurrencyMaxLimit().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    Minimum deposit: {getCurrencySymbol()}10.00 | Maximum
+                    deposit: {getCurrencySymbol()}
+                    {getCurrencyMaxLimit().toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
                   </p>
                 </div>
 
@@ -252,9 +358,17 @@ export default function DepositPage() {
 
                 <div className="space-y-2">
                   <Label>Payment Method</Label>
-                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-1 gap-4">
+                  <RadioGroup
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                    className="grid grid-cols-1 gap-4"
+                  >
                     <div>
-                      <RadioGroupItem value="credit-card" id="credit-card" className="peer sr-only" />
+                      <RadioGroupItem
+                        value="credit-card"
+                        id="credit-card"
+                        className="peer sr-only"
+                      />
                       <Label
                         htmlFor="credit-card"
                         className="flex cursor-pointer items-center justify-between rounded-md border border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
@@ -262,8 +376,12 @@ export default function DepositPage() {
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-5 w-5" />
                           <div className="grid gap-1">
-                            <div className="font-medium">Credit / Debit Card</div>
-                            <div className="text-xs text-muted-foreground">Visa, Mastercard, AMEX</div>
+                            <div className="font-medium">
+                              Credit / Debit Card
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Visa, Mastercard, AMEX
+                            </div>
                           </div>
                         </div>
                       </Label>
@@ -275,7 +393,12 @@ export default function DepositPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isProcessing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > getCurrencyMaxLimit()}
+                  disabled={
+                    isProcessing ||
+                    !amount ||
+                    parseFloat(amount) <= 0 ||
+                    parseFloat(amount) > getCurrencyMaxLimit()
+                  }
                 >
                   {isProcessing ? "Processing..." : "Proceed to Payment"}
                 </Button>
@@ -288,16 +411,25 @@ export default function DepositPage() {
           <div className="space-y-2">
             <h2 className="text-lg font-semibold mt-6">Your Fiat Accounts</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fiatAccounts.map((account: any) => (
-                <Card key={account.currencyCode} className="flex flex-col items-center text-center">
+              {fiatAccounts.map((account: FiatAccount) => (
+                <Card
+                  key={account.currencyCode}
+                  className="flex flex-col items-center text-center"
+                >
                   <CardHeader>
                     <CardTitle>{account.currencyCode.toUpperCase()}</CardTitle>
                     <CardDescription>Balance</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold">
-                      {FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === account.currencyCode.toLowerCase())?.symbol || '$'}
-                      {account.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {FIAT_CURRENCIES.find(
+                        (c) =>
+                          c.currencyCode.toLowerCase() ===
+                          account.currencyCode.toLowerCase(),
+                      )?.symbol || "$"}
+                      {account.balance.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -306,32 +438,52 @@ export default function DepositPage() {
           </div>
         )}
       </div>
-      
+
       <div className="space-y-2 overflow-y-auto max-h-[80vh]">
         <h2 className="text-lg font-semibold">Fiat Transactions</h2>
         {transactions.length > 0 ? (
           <div className="space-y-2">
-            {transactions.map((txn: any) => (
+            {transactions.map((txn: Transaction) => (
               <Card key={txn.transactionId} className="flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm">{txn.type.toUpperCase()}</CardTitle>
+                    <CardTitle className="text-sm">
+                      {txn.type.toUpperCase()}
+                    </CardTitle>
                     <CardDescription>
-                      {txn.currencyCode.toUpperCase()} • {new Date(txn.creation).toLocaleString()}
+                      {txn.currencyCode.toUpperCase()} •{" "}
+                      {new Date(txn.creation).toLocaleString()}
                     </CardDescription>
                   </div>
-                  <div className={`text-sm font-semibold ${txn.status === 'completed' ? 'text-green-600' : txn.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'}`}>
+                  <div
+                    className={`text-sm font-semibold ${txn.status === "completed" ? "text-green-600" : txn.status === "cancelled" ? "text-red-600" : "text-yellow-600"}`}
+                  >
                     {txn.status.toUpperCase()}
                   </div>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between">
                   <div className="text-xl font-bold">
-                    {FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === txn.currencyCode.toLowerCase())?.symbol || '$'}
-                    {txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {FIAT_CURRENCIES.find(
+                      (c) =>
+                        c.currencyCode.toLowerCase() ===
+                        txn.currencyCode.toLowerCase(),
+                    )?.symbol || "$"}
+                    {txn.amount.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
                   </div>
-                  {txn.status === "pending" && pendingLinks[txn.transactionId] && (
-                    <Button size="sm" onClick={() => window.location.href = pendingLinks[txn.transactionId]}>Continue Payment</Button>
-                  )}
+                  {txn.status === "pending" &&
+                    pendingLinks[txn.transactionId] && (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          (window.location.href =
+                            pendingLinks[txn.transactionId])
+                        }
+                      >
+                        Continue Payment
+                      </Button>
+                    )}
                 </CardContent>
               </Card>
             ))}

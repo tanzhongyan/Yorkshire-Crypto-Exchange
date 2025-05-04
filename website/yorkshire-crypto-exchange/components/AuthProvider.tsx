@@ -1,10 +1,16 @@
 // components/AuthProvider.tsx
-"use client"
+"use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
-import { setCookie, getCookie, removeCookie } from '@/lib/cookies'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import { useRouter } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+import { setCookie, getCookie, removeCookie } from "@/lib/cookies";
 
 type AuthContextType = {
   token: string | null;
@@ -22,24 +28,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   const login = useCallback((newToken: string, expirySeconds = 604800) => {
-    setCookie('jwt_token', newToken, expirySeconds);
-    setCookie('userId', getUserIdFromToken(newToken) || '', expirySeconds);
+    setCookie("jwt_token", newToken, expirySeconds);
+    setCookie("userId", getUserIdFromToken(newToken) || "", expirySeconds);
     setToken(newToken);
   }, []);
 
   const logout = useCallback(() => {
-    removeCookie('jwt_token');
-    removeCookie('userId');
+    removeCookie("jwt_token");
+    removeCookie("userId");
     setToken(null);
-    router.push('/login');
+    router.push("/login");
   }, [router]);
 
   // Extract userId from token
   const getUserIdFromToken = (token: string): string | null => {
     try {
-      const decoded: any = jwtDecode(token);
-      return decoded.userId || decoded.sub || null;
-    } catch (e) {
+      const decoded: unknown = jwtDecode(token);
+      const decodedToken = decoded as { userId?: string; sub?: string };
+      return decodedToken.userId || decodedToken.sub || null;
+    } catch {
       return null;
     }
   };
@@ -47,9 +54,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Function to validate token
   const validateToken = (token: string) => {
     try {
-      const payload: any = jwtDecode(token);
-      return payload.exp * 1000 > Date.now();
-    } catch (e) {
+      const payload: unknown = jwtDecode(token);
+      const decodedPayload = payload as { exp: number };
+      return decodedPayload.exp * 1000 > Date.now();
+    } catch {
       return false;
     }
   };
@@ -57,8 +65,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Add a small delay to ensure cookies are loaded
     const checkToken = () => {
-      const storedToken = getCookie('jwt_token');
-      
+      const storedToken = getCookie("jwt_token");
+
       if (storedToken) {
         if (validateToken(storedToken)) {
           setToken(storedToken);
@@ -69,14 +77,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Delay the check slightly to allow cookies to load
     setTimeout(checkToken, 100);
-    
+
     // Can also implement a retry mechanism if needed
     // let attempts = 0;
     // const maxAttempts = 5;
     // const checkInterval = setInterval(() => {
     //   const storedToken = getCookie('jwt_token');
     //   attempts++;
-    //   
+    //
     //   if (storedToken) {
     //     clearInterval(checkInterval);
     //     if (validateToken(storedToken)) {
@@ -88,21 +96,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     //     setIsInitializing(false);
     //   }
     // }, 100);
-    // 
+    //
     // return () => clearInterval(checkInterval);
-    
   }, []); // No dependency on router
 
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ 
-      token, 
-      isAuthenticated, 
-      isInitializing, // Expose loading state
-      login, 
-      logout 
-    }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        isAuthenticated,
+        isInitializing, // Expose loading state
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -112,4 +121,4 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
-}
+};

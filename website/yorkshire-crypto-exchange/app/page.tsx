@@ -1,6 +1,6 @@
-import Link from "next/link"
-import { ArrowRight, Shield, BarChart3, Layers, Database, Server } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { ArrowRight, Shield, BarChart3, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
   return (
@@ -31,10 +31,13 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             <div className="md:w-1/2 space-y-6">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">Yorkshire Crypto Exchange</h1>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                Yorkshire Crypto Exchange
+              </h1>
               <p className="text-xl text-muted-foreground max-w-2xl">
-                Secure and efficient fiat-to-crypto transactions, wallet management, and trade execution built on a
-                modern microservices architecture.
+                Secure and efficient fiat-to-crypto transactions, wallet
+                management, and trade execution built on a modern microservices
+                architecture.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button asChild size="lg">
@@ -87,19 +90,22 @@ export default function HomePage() {
       {/* Tech Stack Section */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-4">Built with Modern Technology</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Built with Modern Technology
+          </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Yorkshire Crypto Exchange leverages cutting-edge technologies to deliver a robust and scalable platform.
+            Yorkshire Crypto Exchange leverages cutting-edge technologies to
+            deliver a robust and scalable platform.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            <TechItem name="PostgreSQL" />
-            <TechItem name="Next.js" />
-            <TechItem name="Flask" />
-            <TechItem name="RabbitMQ" />
-            <TechItem name="Docker" />
-            <TechItem name="TypeScript" />
-            <TechItem name="SQLAlchemy" />
-            <TechItem name="Kong API Gateway" />
+            <TechItem name="PostgreSQL" icon={undefined} />
+            <TechItem name="Next.js" icon={undefined} />
+            <TechItem name="Flask" icon={undefined} />
+            <TechItem name="RabbitMQ" icon={undefined} />
+            <TechItem name="Docker" icon={undefined} />
+            <TechItem name="TypeScript" icon={undefined} />
+            <TechItem name="SQLAlchemy" icon={undefined} />
+            <TechItem name="Kong API Gateway" icon={undefined} />
           </div>
         </div>
       </section>
@@ -108,18 +114,23 @@ export default function HomePage() {
       <section className="py-16 bg-muted">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold mb-6">About Yorkshire Crypto Exchange</h2>
+            <h2 className="text-3xl font-bold mb-6">
+              About Yorkshire Crypto Exchange
+            </h2>
             <p className="text-lg text-foreground mb-6">
-              Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platform designed for secure
-              and efficient fiat-to-crypto transactions, wallet management, and trade execution.
+              Yorkshire Crypto Exchange is a microservices-based cryptocurrency
+              exchange platform designed for secure and efficient fiat-to-crypto
+              transactions, wallet management, and trade execution.
             </p>
             <p className="text-lg text-foreground mb-6">
-              Built using Flask, Next.js, TypeScript, PostgreSQL, RabbitMQ, and Docker, it follows REST API
-              best practices and utilizes message queues for asynchronous processing.
+              Built using Flask, Next.js, TypeScript, PostgreSQL, RabbitMQ, and
+              Docker, it follows REST API best practices and utilizes message
+              queues for asynchronous processing.
             </p>
             <p className="text-lg text-foreground">
-              This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability,
-              modularity, and real-world financial transaction handling in a containerized environment.
+              This project is part of the Enterprise Solution Design (ESD)
+              course, demonstrating scalability, modularity, and real-world
+              financial transaction handling in a containerized environment.
             </p>
           </div>
         </div>
@@ -130,8 +141,12 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">Yorkshire Crypto Exchange</h3>
-              <p className="text-muted-foreground">Secure, efficient, and modern cryptocurrency exchange platform.</p>
+              <h3 className="text-xl font-bold mb-4">
+                Yorkshire Crypto Exchange
+              </h3>
+              <p className="text-muted-foreground">
+                Secure, efficient, and modern cryptocurrency exchange platform.
+              </p>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-4">Documentation</h3>
@@ -185,12 +200,15 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-            <p>© {new Date().getFullYear()} Yorkshire Crypto Exchange. All rights reserved.</p>
+            <p>
+              © {new Date().getFullYear()} Yorkshire Crypto Exchange. All
+              rights reserved.
+            </p>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
 
 function FeatureCard({ icon, title, description }) {
@@ -200,7 +218,7 @@ function FeatureCard({ icon, title, description }) {
       <h3 className="text-xl font-bold mb-2">{title}</h3>
       <p className="text-muted-foreground">{description}</p>
     </div>
-  )
+  );
 }
 
 function TechItem({ icon, name }) {
@@ -209,5 +227,5 @@ function TechItem({ icon, name }) {
       {icon && <div className="mb-2">{icon}</div>}
       <span className="font-medium">{name}</span>
     </div>
-  )
+  );
 }

@@ -1,27 +1,46 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { ArrowUpRight, Wallet, CreditCard, Coins, ChevronLeft, ChevronRight } from "lucide-react"
-import { getCookie } from "@/lib/cookies"
-import axios from "@/lib/axios"
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useState, useEffect, useCallback } from "react";
+import {
+  Wallet,
+  CreditCard,
+  Coins,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { getCookie } from "@/lib/cookies";
+import axios from "@/lib/axios";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 // Define available currencies with their symbols
 const FIAT_CURRENCIES = [
-  {currencyCode: "usd", name: "US Dollar (USD)", symbol: "$"},
-  {currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$"},
-  {currencyCode: "eur", name: "Euro (EUR)", symbol: "€"},
-  {currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM"},
-  {currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$"},
-  {currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£"},
-  {currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥"},
-  {currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥"},
-  {currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹"}
+  { currencyCode: "usd", name: "US Dollar (USD)", symbol: "$" },
+  { currencyCode: "sgd", name: "Singapore Dollar (SGD)", symbol: "S$" },
+  { currencyCode: "eur", name: "Euro (EUR)", symbol: "€" },
+  { currencyCode: "myr", name: "Malaysian Ringgit (MYR)", symbol: "RM" },
+  { currencyCode: "aud", name: "Australian Dollar (AUD)", symbol: "A$" },
+  { currencyCode: "gbp", name: "British Pound (GBP)", symbol: "£" },
+  { currencyCode: "jpy", name: "Japanese Yen (JPY)", symbol: "¥" },
+  { currencyCode: "cny", name: "Chinese Yuan (CNY)", symbol: "¥" },
+  { currencyCode: "inr", name: "Indian Rupee (INR)", symbol: "₹" },
 ];
 
 // Define monochromatic colors for pie chart to match minimalistic design
@@ -40,10 +59,20 @@ const CustomPieTooltip = ({ active, payload }) => {
       <div className="bg-white p-2 border rounded shadow-sm">
         <p className="font-bold">{data.name}</p>
         <p>Amount: ${data.value.toFixed(2)}</p>
-        <p>Price: {data.name === "USDT" ? "$1.00 per USDT" : `$${data.price?.toFixed(2) || '1.00'} per ${data.name === "Crypto" ? "token" : data.tokenId || ''}`}</p>
+        <p>
+          Price:{" "}
+          {data.name === "USDT"
+            ? "$1.00 per USDT"
+            : `$${data.price?.toFixed(2) || "1.00"} per ${data.name === "Crypto" ? "token" : data.tokenId || ""}`}
+        </p>
         <p>Net Worth: ${data.value.toFixed(2)}</p>
         {data.available !== undefined && (
-          <p>Available: {data.name === "Fiat" ? `$${data.available.toFixed(2)}` : `${data.availableTokens?.toFixed(8) || data.available.toFixed(2)} ${data.tokenId || ''}`}</p>
+          <p>
+            Available:{" "}
+            {data.name === "Fiat"
+              ? `$${data.available.toFixed(2)}`
+              : `${data.availableTokens?.toFixed(8) || data.available.toFixed(2)} ${data.tokenId || ""}`}
+          </p>
         )}
       </div>
     );
@@ -52,35 +81,35 @@ const CustomPieTooltip = ({ active, payload }) => {
 };
 
 export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false)
-  const [fiatAccounts, setFiatAccounts] = useState([])
-  const [cryptoHoldings, setCryptoHoldings] = useState([])
-  const [usdtHolding, setUsdtHolding] = useState(null)
-  const [exchangeRates, setExchangeRates] = useState({})
-  const [cryptoPrices, setCryptoPrices] = useState({})
-  const [transactions, setTransactions] = useState([])
+  const [mounted, setMounted] = useState(false);
+  const [fiatAccounts, setFiatAccounts] = useState([]);
+  const [cryptoHoldings, setCryptoHoldings] = useState([]);
+  const [usdtHolding, setUsdtHolding] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState({});
+  const [cryptoPrices, setCryptoPrices] = useState({});
+  const [transactions, setTransactions] = useState([]);
   const [pagination, setPagination] = useState({
     total: 0,
     pages: 0,
     page: 1,
-    per_page: 10
-  })
-  const [loading, setLoading] = useState(false)
-  const [loadingBalances, setLoadingBalances] = useState(true)
-  const userId = getCookie("userId")
+    per_page: 10,
+  });
+  const [loading, setLoading] = useState(false);
+  const [loadingBalances, setLoadingBalances] = useState(true);
+  const userId = getCookie("userId");
 
   // Fetch all exchange rates (USD based)
   const fetchAllExchangeRates = useCallback(async () => {
     try {
       // Use axios to call the /market/fiatrates endpoint
-      const response = await axios.get('/api/v1/market/fiatrates');
-      
+      const response = await axios.get("/api/v1/market/fiatrates");
+
       // Check if the response has the expected structure
       if (response.data && response.data.conversion_rates) {
         // Add USD to USD rate (1.0) if not already included
-        const rates = { 
-          ...response.data.conversion_rates, 
-          USD: 1.0 // Ensure USD to USD is 1.0
+        const rates = {
+          ...response.data.conversion_rates,
+          USD: 1.0, // Ensure USD to USD is 1.0
         };
         setExchangeRates(rates);
       } else {
@@ -94,26 +123,28 @@ export default function DashboardPage() {
   // Fetch crypto prices from the market/exchangerate endpoint
   const fetchCryptoPrices = useCallback(async (tokenIds) => {
     if (!tokenIds || tokenIds.length === 0) return;
-    
+
     try {
       // Always convert token IDs to uppercase for the API request
-      const upperCaseTokens = tokenIds.map(token => token.toUpperCase());
-      const tokenString = upperCaseTokens.join(',');
-      
+      const upperCaseTokens = tokenIds.map((token) => token.toUpperCase());
+      const tokenString = upperCaseTokens.join(",");
+
       console.log("Fetching prices for tokens:", tokenString);
-      
+
       // Call the exchangerate endpoint
-      const response = await axios.get(`/api/v1/market/exchangerate?tokens=${tokenString}`);
-      
+      const response = await axios.get(
+        `/api/v1/market/exchangerate?tokens=${tokenString}`,
+      );
+
       if (response.data && response.data.rates) {
         console.log("Received crypto prices:", response.data.rates);
-        
+
         // Store the prices - make sure keys are uppercase for consistent access
         const formattedPrices = {};
-        Object.keys(response.data.rates).forEach(key => {
+        Object.keys(response.data.rates).forEach((key) => {
           formattedPrices[key.toUpperCase()] = response.data.rates[key];
         });
-        
+
         setCryptoPrices(formattedPrices);
       } else {
         console.error("Failed to fetch crypto prices:", response.data);
@@ -126,7 +157,7 @@ export default function DashboardPage() {
   // Calculate total fiat balance in USD (excluding USDT)
   const calculateTotalFiatBalanceUSD = useCallback(() => {
     if (!fiatAccounts.length || !Object.keys(exchangeRates).length) return 0;
-    
+
     return fiatAccounts.reduce((total, account) => {
       const currencyCode = account.currencyCode.toUpperCase();
       const rate = exchangeRates[currencyCode] || 1;
@@ -143,19 +174,19 @@ export default function DashboardPage() {
   // Calculate total crypto balance in USD (excluding USDT)
   const calculateTotalCryptoBalanceUSD = useCallback(() => {
     if (!cryptoHoldings.length) return 0;
-    
+
     // Sum up crypto holdings excluding USDT, using real prices when available
     return cryptoHoldings.reduce((total, holding) => {
       const tokenId = holding.tokenId.toUpperCase();
       // Try to get the price, log when not found
       const price = cryptoPrices[tokenId];
-      
+
       if (price === undefined) {
         console.log(`No price found for ${tokenId}, using default of 1.0`);
         return total + holding.actualBalance; // Default to 1 USD if price not available
       }
-      
-      return total + (holding.actualBalance * price);
+
+      return total + holding.actualBalance * price;
     }, 0);
   }, [cryptoHoldings, cryptoPrices]);
 
@@ -165,56 +196,63 @@ export default function DashboardPage() {
     const usdtTotal = getUsdtBalanceUSD();
     const usdtAvailable = usdtHolding ? usdtHolding.availableBalance : 0;
     const cryptoTotal = calculateTotalCryptoBalanceUSD();
-    
+
     // Calculate available tokens and total value for each crypto
-    const cryptoData = cryptoHoldings.map(holding => {
+    const cryptoData = cryptoHoldings.map((holding) => {
       const tokenId = holding.tokenId.toUpperCase();
       const price = cryptoPrices[tokenId] || 1;
       const value = holding.actualBalance * price;
       const availableTokens = holding.availableBalance;
-      
+
       return {
         name: tokenId,
         tokenId: tokenId,
         value: value,
         available: holding.availableBalance * price,
         availableTokens: availableTokens,
-        price: price
+        price: price,
       };
     });
-    
+
     // Calculate aggregate crypto available balance
     const cryptoAvailable = cryptoHoldings.reduce((total, holding) => {
       const tokenId = holding.tokenId.toUpperCase();
       const price = cryptoPrices[tokenId] || 1;
-      return total + (holding.availableBalance * price);
+      return total + holding.availableBalance * price;
     }, 0);
-    
+
     const data = [
       { name: "Fiat", value: fiatTotal, available: fiatTotal }, // For fiat, available = total
-      { 
-        name: "USDT", 
-        tokenId: "USDT", 
-        value: usdtTotal, 
+      {
+        name: "USDT",
+        tokenId: "USDT",
+        value: usdtTotal,
         available: usdtAvailable,
         availableTokens: usdtAvailable,
-        price: 1
+        price: 1,
       },
-      { 
-        name: "Crypto", 
-        value: cryptoTotal, 
+      {
+        name: "Crypto",
+        value: cryptoTotal,
         available: cryptoAvailable,
-        holdings: cryptoData
-      }
-    ].filter(item => item.value >= 0.01); // Only include non-zero values and values >= 0.01
-    
+        holdings: cryptoData,
+      },
+    ].filter((item) => item.value >= 0.01); // Only include non-zero values and values >= 0.01
+
     return data;
-  }, [calculateTotalFiatBalanceUSD, getUsdtBalanceUSD, usdtHolding, calculateTotalCryptoBalanceUSD, cryptoHoldings, cryptoPrices]);
+  }, [
+    calculateTotalFiatBalanceUSD,
+    getUsdtBalanceUSD,
+    usdtHolding,
+    calculateTotalCryptoBalanceUSD,
+    cryptoHoldings,
+    cryptoPrices,
+  ]);
 
   // Fetch fiat accounts
   const fetchFiatAccounts = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       const response = await axios.get(`/api/v1/fiat/account/${userId}`);
       setFiatAccounts(response.data);
@@ -227,28 +265,32 @@ export default function DashboardPage() {
   // Fetch crypto holdings
   const fetchCryptoHoldings = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       // This endpoint returns all crypto holdings for user
       const response = await axios.get(`/api/v1/crypto/holdings/${userId}`);
-      
+
       // If response is successful, extract tokens for price fetching
       if (response.data && Array.isArray(response.data)) {
         console.log("Fetched crypto holdings:", response.data);
-        
+
         // Extract token IDs for price fetching
-        const tokenIds = response.data.map(holding => holding.tokenId);
-        
+        const tokenIds = response.data.map((holding) => holding.tokenId);
+
         // Filter USDT holding separately
-        const usdt = response.data.find(h => h.tokenId.toLowerCase() === 'usdt');
+        const usdt = response.data.find(
+          (h) => h.tokenId.toLowerCase() === "usdt",
+        );
         if (usdt) {
           setUsdtHolding(usdt);
         }
-        
+
         // Set other holdings
-        const otherHoldings = response.data.filter(h => h.tokenId.toLowerCase() !== 'usdt');
+        const otherHoldings = response.data.filter(
+          (h) => h.tokenId.toLowerCase() !== "usdt",
+        );
         setCryptoHoldings(otherHoldings);
-        
+
         // Fetch prices for all tokens
         if (tokenIds.length > 0) {
           await fetchCryptoPrices(tokenIds);
@@ -256,42 +298,50 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Failed to load crypto holdings:", error);
-      
+
       // Try to get USDT specifically as a fallback
       try {
-        const usdtResponse = await axios.get(`/api/v1/crypto/holdings/${userId}/usdt`);
+        const usdtResponse = await axios.get(
+          `/api/v1/crypto/holdings/${userId}/usdt`,
+        );
         setUsdtHolding(usdtResponse.data);
       } catch (err) {
         console.error("Failed to load USDT holdings:", err);
         setUsdtHolding(null);
       }
-      
+
       setCryptoHoldings([]);
     } finally {
       setLoadingBalances(false);
     }
   }, [userId, fetchCryptoPrices]);
 
-  const fetchTransactions = async (page = 1) => {
-    if (!userId) return;
-    
-    setLoading(true);
-    try {
-      const response = await axios.get(`/api/v1/transaction/aggregated/user/${userId}`, {
-        params: {
-          page,
-          per_page: 10
-        }
-      });
-      
-      setTransactions(response.data.transactions);
-      setPagination(response.data.pagination);
-    } catch (error) {
-      console.error("Failed to load transactions:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchTransactions = useCallback(
+    async (page = 1) => {
+      if (!userId) return;
+
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `/api/v1/transaction/aggregated/user/${userId}`,
+          {
+            params: {
+              page,
+              per_page: 10,
+            },
+          },
+        );
+
+        setTransactions(response.data.transactions);
+        setPagination(response.data.pagination);
+      } catch (error) {
+        console.error("Failed to load transactions:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId],
+  );
 
   const handlePageChange = (newPage) => {
     fetchTransactions(newPage);
@@ -310,114 +360,163 @@ export default function DashboardPage() {
       fetchCryptoHoldings();
       fetchTransactions(1);
     }
-  }, [mounted, userId, fetchAllExchangeRates, fetchFiatAccounts, fetchCryptoHoldings]);
+  }, [
+    mounted,
+    userId,
+    fetchAllExchangeRates,
+    fetchFiatAccounts,
+    fetchCryptoHoldings,
+    fetchTransactions,
+  ]);
 
   // Format dates for display
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // Format currency with proper symbol and decimals
-  const formatCurrency = (amount, currencyCode = 'USD') => {
-    const currency = FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === currencyCode.toLowerCase());
-    const symbol = currency ? currency.symbol : '$';
-    
+  const formatCurrency = (amount, currencyCode = "USD") => {
+    const currency = FIAT_CURRENCIES.find(
+      (c) => c.currencyCode.toLowerCase() === currencyCode.toLowerCase(),
+    );
+    const symbol = currency ? currency.symbol : "$";
+
     return `${symbol}${amount.toFixed(2)}`;
   };
 
   // Get status badge for transaction
   const getStatusBadge = (status) => {
     if (!status) return null;
-    
+
     switch (status.toLowerCase()) {
-      case 'completed':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Completed</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Cancelled</Badge>;
+      case "completed":
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+            Completed
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+            Pending
+          </Badge>
+        );
+      case "cancelled":
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+            Cancelled
+          </Badge>
+        );
       default:
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">{status}</Badge>;
+        return (
+          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">
+            {status}
+          </Badge>
+        );
     }
   };
 
   // Format transaction amount for display
   const formatTransactionDisplay = (transaction) => {
     switch (transaction.transactionType) {
-      case 'fiat':
+      case "fiat":
         return {
-          title: transaction.type === 'deposit' 
-            ? `Deposited ${transaction.currencyCode.toUpperCase()}` 
-            : `Withdrew ${transaction.currencyCode.toUpperCase()}`,
-          amount: `${transaction.type === 'deposit' ? '+' : '-'}${transaction.amount} ${transaction.currencyCode.toUpperCase()}`,
-          value: `${transaction.type === 'deposit' ? '+' : '-'}$${parseFloat(transaction.amount).toFixed(2)}`,
-          className: transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500',
-          status: transaction.status
-        }
-      case 'fiat_to_crypto':
+          title:
+            transaction.type === "deposit"
+              ? `Deposited ${transaction.currencyCode.toUpperCase()}`
+              : `Withdrew ${transaction.currencyCode.toUpperCase()}`,
+          amount: `${transaction.type === "deposit" ? "+" : "-"}${transaction.amount} ${transaction.currencyCode.toUpperCase()}`,
+          value: `${transaction.type === "deposit" ? "+" : "-"}$${parseFloat(transaction.amount).toFixed(2)}`,
+          className:
+            transaction.type === "deposit" ? "text-green-500" : "text-red-500",
+          status: transaction.status,
+        };
+      case "fiat_to_crypto":
         return {
-          title: transaction.direction === 'fiattocrypto' 
-            ? `Swapped ${transaction.currencyCode.toUpperCase()} to ${transaction.tokenId.toUpperCase()}` 
-            : `Swapped ${transaction.tokenId.toUpperCase()} to ${transaction.currencyCode.toUpperCase()}`,
-          amount: transaction.direction === 'fiattocrypto' 
-            ? `+${transaction.toAmount} ${transaction.tokenId.toUpperCase()}` 
-            : `+${transaction.toAmount} ${transaction.currencyCode.toUpperCase()}`,
+          title:
+            transaction.direction === "fiattocrypto"
+              ? `Swapped ${transaction.currencyCode.toUpperCase()} to ${transaction.tokenId.toUpperCase()}`
+              : `Swapped ${transaction.tokenId.toUpperCase()} to ${transaction.currencyCode.toUpperCase()}`,
+          amount:
+            transaction.direction === "fiattocrypto"
+              ? `+${transaction.toAmount} ${transaction.tokenId.toUpperCase()}`
+              : `+${transaction.toAmount} ${transaction.currencyCode.toUpperCase()}`,
           value: `$${parseFloat(transaction.toAmount).toFixed(2)}`,
-          className: transaction.direction === 'fiattocrypto' ? 'text-green-500' : 'text-red-500',
-          status: transaction.status
-        }
-      case 'crypto':
+          className:
+            transaction.direction === "fiattocrypto"
+              ? "text-green-500"
+              : "text-red-500",
+          status: transaction.status,
+        };
+      case "crypto":
         if (transaction.fromTokenId === transaction.toTokenId) {
           // Transfer of same token
           return {
             title: `Transferred ${transaction.fromTokenId.toUpperCase()}`,
             amount: `${transaction.fromAmount} ${transaction.fromTokenId.toUpperCase()}`,
             value: `-$${parseFloat(transaction.fromAmount).toFixed(2)}`,
-            className: 'text-red-500',
-            status: transaction.status
-          }
+            className: "text-red-500",
+            status: transaction.status,
+          };
         } else {
           // Swap between tokens - determine if buy or sell
-          const isBuy = transaction.fromTokenId.toLowerCase() === 'usdt';
-          const tokenDisplayed = isBuy ? transaction.toTokenId.toUpperCase() : transaction.fromTokenId.toUpperCase();
+          const isBuy = transaction.fromTokenId.toLowerCase() === "usdt";
+          const tokenDisplayed = isBuy
+            ? transaction.toTokenId.toUpperCase()
+            : transaction.fromTokenId.toUpperCase();
           const amount = isBuy ? transaction.toAmount : transaction.fromAmount;
-          const usdValue = isBuy ? transaction.fromAmount : transaction.toAmount;
-          
+          const usdValue = isBuy
+            ? transaction.fromAmount
+            : transaction.toAmount;
+
           return {
-            title: `${isBuy ? 'Bought' : 'Sold'} ${tokenDisplayed}`,
-            amount: `${isBuy ? '+' : '-'}${amount} ${tokenDisplayed}`,
-            value: `${isBuy ? '-' : '+'}$${parseFloat(usdValue).toFixed(2)} USDT`,
-            className: isBuy ? 'text-green-500' : 'text-red-500',
-            status: transaction.status
-          }
+            title: `${isBuy ? "Bought" : "Sold"} ${tokenDisplayed}`,
+            amount: `${isBuy ? "+" : "-"}${amount} ${tokenDisplayed}`,
+            value: `${isBuy ? "-" : "+"}$${parseFloat(usdValue).toFixed(2)} USDT`,
+            className: isBuy ? "text-green-500" : "text-red-500",
+            status: transaction.status,
+          };
         }
       default:
         return {
-          title: 'Unknown Transaction',
-          amount: '',
-          value: '',
-          className: 'text-muted-foreground',
-          status: transaction.status
-        }
+          title: "Unknown Transaction",
+          amount: "",
+          value: "",
+          className: "text-muted-foreground",
+          status: transaction.status,
+        };
     }
   };
 
   // Custom renderer for pie chart labels
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+  }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
     return (
-      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+      >
         {`${(percent * 100).toFixed(0)}%`}
       </text>
     );
@@ -431,8 +530,9 @@ export default function DashboardPage() {
   const totalFiatBalanceUSD = calculateTotalFiatBalanceUSD();
   const usdtBalanceUSD = getUsdtBalanceUSD();
   const totalCryptoBalanceUSD = calculateTotalCryptoBalanceUSD();
-  const totalBalanceUSD = totalFiatBalanceUSD + usdtBalanceUSD + totalCryptoBalanceUSD;
-  
+  const totalBalanceUSD =
+    totalFiatBalanceUSD + usdtBalanceUSD + totalCryptoBalanceUSD;
+
   // Prepare pie chart data
   const pieChartData = getPieChartData();
 
@@ -441,26 +541,38 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Balance (USD)</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Balance (USD)
+            </CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalBalanceUSD.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">All values calculated in USD</p>
+            <div className="text-2xl font-bold">
+              ${totalBalanceUSD.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              All values calculated in USD
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Fiat Balance (USD)</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Fiat Balance (USD)
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalFiatBalanceUSD.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Traditional currencies</p>
+            <div className="text-2xl font-bold">
+              ${totalFiatBalanceUSD.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Traditional currencies
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">USDT Balance</CardTitle>
@@ -479,25 +591,32 @@ export default function DashboardPage() {
             </svg>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${usdtBalanceUSD.toFixed(2)}</div>
+            <div className="text-2xl font-bold">
+              ${usdtBalanceUSD.toFixed(2)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Available: ${usdtHolding ? usdtHolding.availableBalance.toFixed(2) : "0.00"}
+              Available: $
+              {usdtHolding ? usdtHolding.availableBalance.toFixed(2) : "0.00"}
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Crypto Balance (USD)</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Crypto Balance (USD)
+            </CardTitle>
             <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalCryptoBalanceUSD.toFixed(2)}</div>
+            <div className="text-2xl font-bold">
+              ${totalCryptoBalanceUSD.toFixed(2)}
+            </div>
             <p className="text-xs text-muted-foreground">Excluding USDT</p>
           </CardContent>
         </Card>
       </div>
-      
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -508,7 +627,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Asset Allocation</CardTitle>
-              <CardDescription>Distribution of your assets (all values in USD)</CardDescription>
+              <CardDescription>
+                Distribution of your assets (all values in USD)
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingBalances ? (
@@ -518,7 +639,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Pie Chart - Made bigger */}
-                  <div style={{ height: '550px', width: '100%' }}>
+                  <div style={{ height: "550px", width: "100%" }}>
                     {pieChartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -533,10 +654,13 @@ export default function DashboardPage() {
                             dataKey="value"
                           >
                             {pieChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
                             ))}
                           </Pie>
-                          <Tooltip content={<CustomPieTooltip />} />
+                          <Tooltip content={<CustomPieTooltip active={undefined} payload={undefined} />} />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
@@ -546,33 +670,48 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Asset Details */}
                   <div className="space-y-6">
                     {/* Fiat Balances */}
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Fiat Currencies</h3>
+                      <h3 className="text-sm font-medium mb-2">
+                        Fiat Currencies
+                      </h3>
                       <div className="space-y-2">
                         {fiatAccounts.length > 0 ? (
                           fiatAccounts
                             .map((account) => {
-                              const currencyCode = account.currencyCode.toUpperCase();
+                              const currencyCode =
+                                account.currencyCode.toUpperCase();
                               const rate = exchangeRates[currencyCode] || 1;
                               const valueInUSD = account.balance / rate;
-                              
+
                               return { account, valueInUSD };
                             })
-                            .filter(({ valueInUSD }) => !isBalanceTooSmall(valueInUSD))
+                            .filter(
+                              ({ valueInUSD }) =>
+                                !isBalanceTooSmall(valueInUSD),
+                            )
                             .map(({ account, valueInUSD }) => {
-                              const currencyCode = account.currencyCode.toUpperCase();
+                              const currencyCode =
+                                account.currencyCode.toUpperCase();
                               const rate = exchangeRates[currencyCode] || 1;
-                              
+
                               return (
-                                <div key={account.currencyCode} className="flex justify-between items-center p-2 rounded-md border">
+                                <div
+                                  key={account.currencyCode}
+                                  className="flex justify-between items-center p-2 rounded-md border"
+                                >
                                   <div>
-                                    <div className="font-medium">{currencyCode}</div>
+                                    <div className="font-medium">
+                                      {currencyCode}
+                                    </div>
                                     <div className="text-sm text-muted-foreground">
-                                      {formatCurrency(account.balance, account.currencyCode)}
+                                      {formatCurrency(
+                                        account.balance,
+                                        account.currencyCode,
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -580,7 +719,10 @@ export default function DashboardPage() {
                                       ${valueInUSD.toFixed(2)}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
-                                      Rate: ${(currencyCode === "USD") ? "1.00" : (1/rate).toFixed(6)}
+                                      Rate: $
+                                      {currencyCode === "USD"
+                                        ? "1.00"
+                                        : (1 / rate).toFixed(6)}
                                     </div>
                                   </div>
                                 </div>
@@ -593,12 +735,13 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* USDT Balance */}
                     <div>
                       <h3 className="text-sm font-medium mb-2">USDT</h3>
                       <div className="space-y-2">
-                        {usdtHolding && !isBalanceTooSmall(usdtHolding.actualBalance) ? (
+                        {usdtHolding &&
+                        !isBalanceTooSmall(usdtHolding.actualBalance) ? (
                           <div className="flex justify-between items-center p-2 rounded-md border">
                             <div>
                               <div className="font-medium">USDT</div>
@@ -611,7 +754,9 @@ export default function DashboardPage() {
                                 ${usdtHolding.actualBalance.toFixed(2)}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                Available: {usdtHolding.availableBalance.toFixed(2)} USDT • Rate: $1.00
+                                Available:{" "}
+                                {usdtHolding.availableBalance.toFixed(2)} USDT •
+                                Rate: $1.00
                               </div>
                             </div>
                           </div>
@@ -622,10 +767,12 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Other Crypto Balances */}
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Other Cryptocurrencies</h3>
+                      <h3 className="text-sm font-medium mb-2">
+                        Other Cryptocurrencies
+                      </h3>
                       <div className="space-y-2">
                         {cryptoHoldings.length > 0 ? (
                           cryptoHoldings
@@ -633,19 +780,26 @@ export default function DashboardPage() {
                               const tokenId = holding.tokenId.toUpperCase();
                               const price = cryptoPrices[tokenId] || 1;
                               const valueInUSD = holding.actualBalance * price;
-                              
+
                               return { holding, valueInUSD, price };
                             })
-                            .filter(({ valueInUSD }) => !isBalanceTooSmall(valueInUSD))
+                            .filter(
+                              ({ valueInUSD }) =>
+                                !isBalanceTooSmall(valueInUSD),
+                            )
                             .map(({ holding, valueInUSD, price }) => {
                               const tokenId = holding.tokenId.toUpperCase();
-                              
+
                               return (
-                                <div key={holding.tokenId} className="flex justify-between items-center p-2 rounded-md border">
+                                <div
+                                  key={holding.tokenId}
+                                  className="flex justify-between items-center p-2 rounded-md border"
+                                >
                                   <div>
                                     <div className="font-medium">{tokenId}</div>
                                     <div className="text-sm text-muted-foreground">
-                                      {holding.actualBalance.toFixed(8)} {tokenId}
+                                      {holding.actualBalance.toFixed(8)}{" "}
+                                      {tokenId}
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -653,7 +807,15 @@ export default function DashboardPage() {
                                       ${valueInUSD.toFixed(2)}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
-                                      Available: {holding.availableBalance.toFixed(8)} {tokenId} • Price: ${price ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "1.00"}
+                                      Available:{" "}
+                                      {holding.availableBalance.toFixed(8)}{" "}
+                                      {tokenId} • Price: $
+                                      {price
+                                        ? price.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                          })
+                                        : "1.00"}
                                     </div>
                                   </div>
                                 </div>
@@ -689,23 +851,36 @@ export default function DashboardPage() {
                         const currencyCode = account.currencyCode.toUpperCase();
                         const rate = exchangeRates[currencyCode] || 1;
                         const valueInUSD = account.balance / rate;
-                        
+
                         return { account, valueInUSD };
                       })
-                      .filter(({ valueInUSD }) => !isBalanceTooSmall(valueInUSD))
+                      .filter(
+                        ({ valueInUSD }) => !isBalanceTooSmall(valueInUSD),
+                      )
                       .map(({ account, valueInUSD }) => {
                         const currencyCode = account.currencyCode.toUpperCase();
-                        const currency = FIAT_CURRENCIES.find(c => c.currencyCode.toLowerCase() === account.currencyCode.toLowerCase());
-                        
+                        const currency = FIAT_CURRENCIES.find(
+                          (c) =>
+                            c.currencyCode.toLowerCase() ===
+                            account.currencyCode.toLowerCase(),
+                        );
+
                         return (
                           <Card key={account.currencyCode}>
                             <CardHeader className="pb-2">
-                              <CardTitle className="text-base">{currencyCode}</CardTitle>
-                              <CardDescription>{currency?.name || currencyCode}</CardDescription>
+                              <CardTitle className="text-base">
+                                {currencyCode}
+                              </CardTitle>
+                              <CardDescription>
+                                {currency?.name || currencyCode}
+                              </CardDescription>
                             </CardHeader>
                             <CardContent>
                               <div className="text-2xl font-bold">
-                                {formatCurrency(account.balance, account.currencyCode)}
+                                {formatCurrency(
+                                  account.balance,
+                                  account.currencyCode,
+                                )}
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 ${valueInUSD.toFixed(2)} USD
@@ -721,12 +896,13 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* USDT Section */}
               <div>
                 <h3 className="text-lg font-semibold mb-2">USDT</h3>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {usdtHolding && !isBalanceTooSmall(usdtHolding.actualBalance) ? (
+                  {usdtHolding &&
+                  !isBalanceTooSmall(usdtHolding.actualBalance) ? (
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base">USDT</CardTitle>
@@ -737,10 +913,12 @@ export default function DashboardPage() {
                           {usdtHolding.actualBalance.toFixed(2)} USDT
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          ${usdtHolding.actualBalance.toFixed(2)} USD • Rate: $1.00
+                          ${usdtHolding.actualBalance.toFixed(2)} USD • Rate:
+                          $1.00
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Available: {usdtHolding.availableBalance.toFixed(2)} USDT
+                          Available: {usdtHolding.availableBalance.toFixed(2)}{" "}
+                          USDT
                         </div>
                       </CardContent>
                     </Card>
@@ -751,10 +929,12 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Other Crypto Section */}
               <div>
-                <h3 className="text-lg font-semibold mb-2">Other Cryptocurrencies</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Other Cryptocurrencies
+                </h3>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {cryptoHoldings.length > 0 ? (
                     cryptoHoldings
@@ -762,17 +942,21 @@ export default function DashboardPage() {
                         const tokenId = holding.tokenId.toUpperCase();
                         const price = cryptoPrices[tokenId] || 1;
                         const valueInUSD = holding.actualBalance * price;
-                        
+
                         return { holding, valueInUSD, price };
                       })
-                      .filter(({ valueInUSD }) => !isBalanceTooSmall(valueInUSD))
+                      .filter(
+                        ({ valueInUSD }) => !isBalanceTooSmall(valueInUSD),
+                      )
                       .map(({ holding, valueInUSD, price }) => {
                         const tokenId = holding.tokenId.toUpperCase();
-                        
+
                         return (
                           <Card key={holding.tokenId}>
                             <CardHeader className="pb-2">
-                              <CardTitle className="text-base">{tokenId}</CardTitle>
+                              <CardTitle className="text-base">
+                                {tokenId}
+                              </CardTitle>
                               <CardDescription>Cryptocurrency</CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -780,10 +964,17 @@ export default function DashboardPage() {
                                 {holding.actualBalance.toFixed(8)} {tokenId}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                ${valueInUSD.toFixed(2)} USD • Price: ${price ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "1.00"}
+                                ${valueInUSD.toFixed(2)} USD • Price: $
+                                {price
+                                  ? price.toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })
+                                  : "1.00"}
                               </div>
                               <div className="text-sm text-muted-foreground mt-1">
-                                Available: {holding.availableBalance.toFixed(8)} {tokenId}
+                                Available: {holding.availableBalance.toFixed(8)}{" "}
+                                {tokenId}
                               </div>
                             </CardContent>
                           </Card>
@@ -803,7 +994,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>Your recent transactions across all wallets</CardDescription>
+              <CardDescription>
+                Your recent transactions across all wallets
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -815,27 +1008,35 @@ export default function DashboardPage() {
                   {transactions.map((transaction) => {
                     const display = formatTransactionDisplay(transaction);
                     return (
-                      <div key={transaction.transactionId} className="flex items-center justify-between border-b pb-4">
+                      <div
+                        key={transaction.transactionId}
+                        className="flex items-center justify-between border-b pb-4"
+                      >
                         <div>
                           <div className="flex items-center space-x-2">
                             <div className="font-medium">{display.title}</div>
                             {getStatusBadge(display.status)}
                           </div>
-                          <div className="text-sm text-muted-foreground">{formatDate(transaction.creationDate)}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatDate(transaction.creationDate)}
+                          </div>
                         </div>
                         <div className="text-right">
                           <div className="font-medium">{display.amount}</div>
-                          <div className={`text-sm ${display.className}`}>{display.value}</div>
+                          <div className={`text-sm ${display.className}`}>
+                            {display.value}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-                  
+
                   {/* Pagination Controls */}
                   {pagination.pages > 1 && (
                     <div className="flex items-center justify-between pt-4">
                       <div className="text-sm text-muted-foreground">
-                        Showing {transactions.length} of {pagination.total} transactions
+                        Showing {transactions.length} of {pagination.total}{" "}
+                        transactions
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -871,5 +1072,5 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

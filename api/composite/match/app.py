@@ -27,7 +27,7 @@ channel = None
 # Environment variables for microservice URLs
 # NOTE: Do not use localhost here as localhost refer to this container itself
 CRYPTO_SERVICE_URL = "http://crypto-service:5000/api/v1/crypto"
-ORDERBOOK_SERVICE_URL = "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/"
+ORDERBOOK_SERVICE_URL = "http://orderbook-service:5000/api/v1/orderbook"
 
 ##### AMQP Connection Functions  #####
 
@@ -146,7 +146,7 @@ def get_counterparty_orders(incoming_order, incoming_side):
     try:
         # retrive the opposite side of the incoming_order AKA counterparty orders. NOTE: swap the from and to token ids for get query
         print(f"Retrieving Counterparty Order details for fromTokenId: {to_token_id} and toTokenId: {from_token_id}")
-        counterparty_orders_response = requests.get(f"{ORDERBOOK_SERVICE_URL}/GetOrdersByToken?fromTokenId={to_token_id}&toTokenId={from_token_id}")
+        counterparty_orders_response = requests.get(f"{ORDERBOOK_SERVICE_URL}/order/GetOrdersByToken?fromTokenId={to_token_id}&toTokenId={from_token_id}")
         
         # load data
         counterparty_orders_details = counterparty_orders_response.json()
@@ -194,7 +194,7 @@ def add_to_order_book(incoming_order):
     try:
         payload = incoming_order
         print(f"Adding order to order book for transaction_id: {incoming_order['transactionId']}")
-        add_to_orderbook_response = requests.post(f"{ORDERBOOK_SERVICE_URL}/AddOrder", json=payload)
+        add_to_orderbook_response = requests.post(f"{ORDERBOOK_SERVICE_URL}/order/AddOrder", json=payload)
         add_to_orderbook_details = add_to_orderbook_response.json() 
         add_to_orderbook_success = add_to_orderbook_details.get('success')
         add_to_orderbook_error_message = add_to_orderbook_details.get('errorMessage')
@@ -467,7 +467,7 @@ def update_order_in_orderbook(transaction_id, from_amount_left):
     try:
         payload = {"fromAmount": float(from_amount_left)}
         print(f"Adding updating order in order book for transaction_id: {transaction_id} and from_amount: {from_amount_left}")
-        update_amount_response = requests.patch(f"{ORDERBOOK_SERVICE_URL}/UpdateOrderQuantity/{transaction_id}/", json=payload)
+        update_amount_response = requests.patch(f"{ORDERBOOK_SERVICE_URL}/order/UpdateOrderQuantity/{transaction_id}/", json=payload)
         update_amount_response = update_amount_response.json() 
         return update_amount_response
         
@@ -489,7 +489,7 @@ def delete_order_in_orderbook(transaction_id):
     
     try:
         print(f"Adding deleting order in order book for transaction_id: {transaction_id}")
-        delete_response = requests.delete(f"{ORDERBOOK_SERVICE_URL}/DeleteOrder/{transaction_id}/")
+        delete_response = requests.delete(f"{ORDERBOOK_SERVICE_URL}/order/DeleteOrder/{transaction_id}/")
         delete_response = delete_response.json() 
         return delete_response
         

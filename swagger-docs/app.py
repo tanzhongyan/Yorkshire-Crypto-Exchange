@@ -25,10 +25,15 @@ atomic_services = {
         "description": "Stores and retrieves transaction history logs",
         "platform": "Docker"
     },
-    "Orderbook Service": {
+    "Orderbook Service (Outsystems)": {
         "url": "https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1",
         "description": "Stores current market orders (buy/sell listings)",
         "platform": "OutSystems"
+    },
+    "Orderbook Service": {
+        "url": "http://localhost:5012/api/v1/orderbook",
+        "description": "Stores current market orders (buy/sell listings)",
+        "platform": "Docker"
     }
 }
 

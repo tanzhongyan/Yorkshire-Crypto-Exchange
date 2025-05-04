@@ -1,0 +1,7 @@
+Flask
+Flask-restx
+pika
+Flask-Cors
+SQLAlchemy
+Flask-Migrate
+psycopg2-binary

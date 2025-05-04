@@ -48,8 +48,10 @@ docker-compose up -d --build
   User account management – profiles, addresses, and authentication.
 - **[Transaction Logs Service](http://localhost:5005/api/v1/transaction)**  
   Stores and retrieves transaction history logs.
-- **[Orderbook Service](https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/)**  
+- **[Orderbook Service (Outsystems)](https://personal-qrtp80l4.outsystemscloud.com/OrderBook_API/rest/v1/)**  
   Store current market orders (buy/sell listings).
+- **[Orderbook Service](http://localhost:5012/api/v1/orderbook)**  
+  Store current market orders (buy/sell listings). Migrated from outsystems to docker instead due to ease of deployment.
 
 ### 🔸 Composite Microservices
 - **[Manage Identity](http://localhost:5004/api/v1)**  

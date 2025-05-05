@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Shield, BarChart3, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import DashboardFooter from "@/components/footer";
 
 export default function HomePage() {
   return (
@@ -136,6 +137,114 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Team Members Section */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Team Members & Contributions
+          </h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Meet the developers behind Yorkshire Crypto Exchange and their contributions to the project.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Primary Contributors */}
+            <TeamMemberCard
+              name="Tan Zhong Yan"
+              githubUrl="https://github.com/tanzhongyan"
+              role="Technical Lead / Full-Stack Developer"
+              scope="Full system architecture, service development, and integration"
+              contributions={[
+                "Set up and configured the core development infrastructure, including GitHub repository, Docker Compose, Kong API Gateway, JWT authentication, and Stripe integration.",
+                "Led the backend stack configuration and automation using Flask-RestX, Flask-Migrate, and GitHub Actions.",
+                "Designed and implemented core atomic services: user, fiat, crypto, and transaction.",
+                "Developed major composite services: identity, deposit, ramp, and complete.",
+                "Integrated all backend microservices into the frontend application.",
+                "Consolidated and deployed a unified API testing interface for all services."
+              ]}
+              isPrimary={true}
+            />
+            
+            <TeamMemberCard
+              name="Wu Chensang"
+              githubUrl="https://github.com/Chensang-Wu"
+              role="Backend Developer / Frontend Integrator"
+              scope="Market data aggregation and UI integration"
+              contributions={[
+                "Developed the market composite service that aggregates data from CoinGecko and formats it based on defined business logic.",
+                "Integrated the market service into the frontend buy dashboard.",
+                "Produced and edited the final demo video showcasing project functionalities.",
+                "Conducted technical explorations on GraphQL and Twilio (not included in final deployment)."
+              ]}
+              isPrimary={true}
+            />
+            
+            <TeamMemberCard
+              name="Shahul Hameed"
+              githubUrl="https://github.com/ShahulHameedBZR"
+              role="Systems Analyst / Trading Logic Architect"
+              scope="Execution engine, algorithmic logic, and microservice coordination"
+              contributions={[
+                "Designed and implemented the orderbook atomic service, including custom logic for market and limit orders.",
+                "Created the match-order service with full matching algorithms: exact, cascading, partial fulfilment, and rollback handling.",
+                "Developed robust error handling logic and internal notification triggers based on execution outcomes.",
+                "Led standardisation efforts on trading logic and internal process documentation."
+              ]}
+              isPrimary={true}
+            />
+            
+            {/* Supporting Contributors */}
+            <TeamMemberCard
+              name="Jamesz Lau"
+              githubUrl="https://github.com/JameszLau"
+              role="Service Developer"
+              scope="Select microservices and message queue setup"
+              contributions={[
+                "Built the crypto atomic service and initiate-order composite service.",
+                "Set up RabbitMQ for inter-service messaging using Docker and custom scripts.",
+                "Contributed to system diagrams and architectural breakdowns."
+              ]}
+              isPrimary={true}
+            />
+            
+            <TeamMemberCard
+              name="Jacob Roy"
+              githubUrl="https://github.com/jacobr7"
+              role="Support Developer"
+              scope="Event-driven processing and backend service support"
+              contributions={[
+                "Assisted in the development of the order-completion composite service, which listens to message queues and triggers transaction updates.",
+                "Supported initial work on atomic services and system design discussions."
+              ]}
+              isPrimary={false}
+            />
+            
+            <TeamMemberCard
+              name="Christin Choo"
+              githubUrl="https://github.com/choowieeee"
+              role="Contributor"
+              scope="Minor service-level contributions"
+              contributions={[
+                "Provided development support on several atomic (user, fiat, transaction) and composite services (deposit, ramp)."
+              ]}
+              isPrimary={false}
+            />
+          </div>
+          
+          <div className="text-center mt-12">
+            <a 
+              href="https://github.com/tanzhongyan/Yorkshire-Crypto-Exchange/graphs/contributors" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-primary hover:underline"
+            >
+              View all contributions on GitHub
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-card text-card-foreground py-12 mt-auto border-t">
         <div className="container mx-auto px-4">
@@ -199,11 +308,8 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-            <p>
-              © {new Date().getFullYear()} Yorkshire Crypto Exchange. All
-              rights reserved.
-            </p>
+          <div className= "mt-8 pt-8 text-center text-muted-foreground">
+            <DashboardFooter />
           </div>
         </div>
       </footer>
@@ -226,6 +332,38 @@ function TechItem({ icon, name }) {
     <div className="flex items-center justify-center flex-col bg-card p-4 rounded-lg border shadow-sm">
       {icon && <div className="mb-2">{icon}</div>}
       <span className="font-medium">{name}</span>
+    </div>
+  );
+}
+
+function TeamMemberCard({ name, githubUrl, role, scope, contributions, isPrimary }) {
+  return (
+    <div className={`bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-shadow ${isPrimary ? 'border-primary/30' : ''}`}>
+      <h3 className="text-xl font-bold mb-1">
+        <a 
+          href={githubUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:text-primary hover:underline flex items-center"
+        >
+          {name}
+          <svg className="h-4 w-4 ml-2" viewBox="0 0 16 16" fill="currentColor">
+            <path fillRule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+          </svg>
+        </a>
+      </h3>
+      <div className={`inline-block px-3 py-1 rounded-full text-sm mb-3 ${isPrimary ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+        {role}
+      </div>
+      <p className="text-muted-foreground mb-3 text-sm">
+        <strong>Scope:</strong> {scope}
+      </p>
+      <h4 className="font-semibold mb-2">Contributions:</h4>
+      <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+        {contributions.map((contribution, index) => (
+          <li key={index}>{contribution}</li>
+        ))}
+      </ul>
     </div>
   );
 }

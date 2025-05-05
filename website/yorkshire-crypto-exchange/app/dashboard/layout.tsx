@@ -20,11 +20,16 @@ import AuthGuard from "@/components/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import DashboardFooter from "@/components/footer";
 
 interface NavItem {
   title: string;
   href: string;
   icon: React.ReactNode;
+}
+
+interface DashboardLayoutProps {
+  children: React.ReactNode;
 }
 
 const navItems: NavItem[] = [
@@ -147,6 +152,7 @@ export default function DashboardLayout({
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
+        <DashboardFooter />
       </div>
     </AuthGuard>
   );

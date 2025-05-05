@@ -16,8 +16,9 @@ services:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: "/kong/kong.yml"
       KONG_PROXY_LISTEN: "0.0.0.0:8000"
-      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
-      KONG_ADMIN_GUI_LISTEN: "0.0.0.0:8002"
+      # Only listen on localhost for admin API
+      KONG_ADMIN_LISTEN: "${KONG_ADMIN_HOST:-127.0.0.1}:8001"
+      KONG_ADMIN_GUI_LISTEN: "${KONG_ADMIN_HOST:-127.0.0.1}:8002"
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_PROXY_ACCESS_LOG: /dev/stdout
@@ -28,9 +29,10 @@ services:
     ports:
       - "8000:8000/tcp"
       - "8443:8443/tcp"
-      - "8001:8001/tcp"
-      - "8444:8444/tcp"
-      - "8002:8002/tcp"
+      - "${EXPOSE_PORTS:-127.0.0.1}:8001:8001"   # Admin API (conditional)
+      - "${EXPOSE_PORTS:-127.0.0.1}:8002:8002"   # Admin GUI (conditional)
+    expose:
+      - "8444"
     volumes:
       - ./kong/kong.yml:/kong/kong.yml:ro
     restart: on-failure
@@ -43,7 +45,7 @@ services:
       context: ./api/atomic/fiat
       dockerfile: Dockerfile
     ports:
-      - "5001:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5001:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -53,8 +55,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=fiat_db
-      - DB_USER=user
-      - DB_PASS=password
+      - DB_USER=${DB_USER:-user}
+      - DB_PASS=${DB_PASSWORD:-password}
     volumes:
       - fiat_data:/var/lib/fiat_service
     networks:
@@ -68,7 +70,7 @@ services:
       context: ./api/atomic/crypto
       dockerfile: Dockerfile
     ports:
-      - "5002:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5002:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -80,8 +82,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=crypto_db
-      - DB_USER=user
-      - DB_PASS=password
+      - DB_USER=${DB_USER:-user}
+      - DB_PASS=${DB_PASSWORD:-password}
     volumes:
       - crypto_data:/var/lib/crypto_service
     networks:
@@ -96,7 +98,7 @@ services:
       context: ./api/atomic/user
       dockerfile: Dockerfile
     ports:
-      - "5003:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5003:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -106,8 +108,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=user_db
-      - DB_USER=user
-      - DB_PASS=password
+      - DB_USER=${DB_USER:-user}
+      - DB_PASS=${DB_PASSWORD:-password}
     volumes:
       - user_data:/var/lib/user_service
     networks:
@@ -121,7 +123,7 @@ services:
       context: ./api/composite/identity
       dockerfile: Dockerfile
     ports:
-      - "5004:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5004:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -138,7 +140,7 @@ services:
       context: ./api/atomic/transaction
       dockerfile: Dockerfile
     ports:
-      - "5005:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5005:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -150,8 +152,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=transaction_db
-      - DB_USER=user
-      - DB_PASS=password
+      - DB_USER=${DB_USER:-user}
+      - DB_PASS=${DB_PASSWORD:-password}
     volumes:
       - transaction_data:/var/lib/transaction_service
     networks:
@@ -166,7 +168,7 @@ services:
       context: ./api/atomic/orderbook
       dockerfile: Dockerfile
     ports:
-      - "5012:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5012:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -176,8 +178,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=orderbook_db
-      - DB_USER=user
-      - DB_PASS=password
+      - DB_USER=${DB_USER:-user}
+      - DB_PASS=${DB_PASSWORD:-password}
     volumes:
       - orderbook_data:/var/lib/orderbook_service
     networks:
@@ -191,7 +193,7 @@ services:
       context: ./api/composite/deposit
       dockerfile: Dockerfile
     ports:
-      - "5006:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5006:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -220,7 +222,7 @@ services:
       context: ./api/composite/ramp
       dockerfile: Dockerfile
     ports:
-      - "5007:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5007:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -236,7 +238,7 @@ services:
       context: ./api/composite/market
       dockerfile: Dockerfile
     ports:
-      - "5008:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5008:5000"
     depends_on:
       # - rabbitmq
       postgres:
@@ -250,8 +252,8 @@ services:
     image: rabbitmq:management
     restart: always
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5672:5672"
+      - "${EXPOSE_PORTS:-127.0.0.1}:15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 5s
@@ -275,16 +277,18 @@ services:
     build: ./database
     container_name: postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_MULTIPLE_DATABASES: user_db, fiat_db, crypto_db, transaction_db, orderbook_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh
+    expose:
+      - "5432"
     ports:
-      - "5433:5432" # Changed local to 5433 due to possible existing local postgresql dbs
-    healthcheck: # Needed to initialise all databases initially
-      test: ["CMD-SHELL", "pg_isready -U user"]
+      - "${EXPOSE_PORTS:-127.0.0.1}:5433:5432"  # Only expose to localhost
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user}"]
       interval: 5s
       retries: 5
       start_period: 10s
@@ -298,7 +302,7 @@ services:
       context: ./api/composite/initiate
       dockerfile: Dockerfile
     ports:
-      - "5009:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5009:5000"
     depends_on:
       rabbitmq:
         condition: service_started # wait until rabbitmq healthy
@@ -316,7 +320,7 @@ services:
       context: ./api/composite/match
       dockerfile: Dockerfile
     ports:
-      - "5011:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5011:5000"
     depends_on:
       rabbitmq:
         condition: service_started # wait until rabbitmq healthy
@@ -336,7 +340,7 @@ services:
       context: ./api/composite/complete
       dockerfile: Dockerfile
     ports:
-      - "5010:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:5010:5000"
     depends_on:
       rabbitmq:
         condition: service_started # wait until rabbitmq healthy
@@ -356,7 +360,7 @@ services:
       context: ./swagger-docs
       dockerfile: Dockerfile
     ports:
-      - "3001:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:3001:5000"
     networks:
       - kong-net
     depends_on:

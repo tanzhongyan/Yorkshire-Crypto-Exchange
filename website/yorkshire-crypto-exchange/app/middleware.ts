@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-const SECRET = "esdisfun"; // Must match your backend exactly
+const SECRET = process.env.JWT_SECRET || "esdisfun";
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("jwt_token")?.value;

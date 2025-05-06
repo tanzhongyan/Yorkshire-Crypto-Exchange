@@ -4,7 +4,8 @@ from flask_restx import Api, Resource, fields, Namespace
 import requests
 import jwt
 import time
-
+import os
+from dotenv import load_dotenv
 
 ##### Configuration #####
 # Define API version and root path
@@ -13,6 +14,11 @@ API_ROOT = f'/api/{API_VERSION}'
 
 app = Flask(__name__)
 CORS(app)
+
+# Load environment variables
+load_dotenv()
+JWT_KEY = os.getenv("JWT_KEY", "iloveesd")
+JWT_SECRET = os.getenv("JWT_SECRET", "esdisfun")
 
 # Flask swagger (flask_restx) api documentation
 # Creates API documentation automatically
@@ -256,12 +262,12 @@ class CreateAccount(Resource):
             'sub': str(user_id),
             'exp': int(time.time()) + 3600,  # 1 hour expiry
             'iat': int(time.time()),
-            'kid': 'iloveesd',  # Must match your Kong configuration
-            'iss': 'iloveesd'   # Add the issuer claim with the same value as kid
+            'kid': JWT_KEY,  # Must match your Kong configuration
+            'iss': JWT_KEY   # Add the issuer claim with the same value as kid
         }
 
         # Create the token using the same secret defined in Kong
-        token = jwt.encode(payload, 'esdisfun', algorithm='HS256')
+        token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
         
         return {"message": "User account successfully created", "userId": user_id, "token": token}, 201
 

@@ -5,6 +5,7 @@ plugins:
     config:
       origins:
         - http://localhost:3000
+        - https://yorkshirecryptoexchange.com
       methods:
         - GET
         - POST
@@ -42,9 +43,9 @@ consumers:
 
 jwt_secrets:
   - consumer: app_client
-    key: "iloveesd"
-    secret: "esdisfun"
-    algorithm: HS256
+    key: "yce_client_prod"
+    secret: "421j31d12das9021djas0124l"
+    algorithm: "HS256"
 
 services:
   - name: user-service

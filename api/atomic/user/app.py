@@ -37,6 +37,8 @@ reset_tokens = {}
 
 # Detect if running inside Docker
 RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER", "false").lower() == "true"
+JWT_KEY = os.getenv("JWT_KEY", "iloveesd")
+JWT_SECRET = os.getenv("JWT_SECRET", "esdisfun")
 
 # Set Database Configuration Dynamically
 if RUNNING_IN_DOCKER:
@@ -307,12 +309,12 @@ def generate_jwt_token(user_id):
         'sub': str(user_id),
         'exp': int(time.time()) + 3600,  # 1 hour expiry
         'iat': int(time.time()),
-        'kid': 'iloveesd',  # Must match your Kong configuration
-        'iss': 'iloveesd'   # Add the issuer claim with the same value as kid
+        'kid': JWT_KEY,  # Must match your Kong configuration
+        'iss': JWT_KEY   # Add the issuer claim with the same value as kid
     }
 
     # Create the token using the same secret defined in Kong
-    token = jwt.encode(payload, 'esdisfun', algorithm='HS256')
+    token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
     return token
 
 def send_reset_email(to_email, reset_link):

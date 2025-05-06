@@ -30,7 +30,7 @@ CORS(app)
 load_dotenv()
 
 # Declare website location
-WEBAPP_URL = "http://localhost:3000"
+WEBAPP_URL = os.getenv("WEBAPP_URL", "http://localhost:3000")
 
 # In-memory storage for reset tokens (in production, use a database table)
 reset_tokens = {}

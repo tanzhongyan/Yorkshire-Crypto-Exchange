@@ -50,7 +50,7 @@ connection = None
 channel = None
 
 # API URLs
-SMU_SMS_URL = "https://smuedu-dev.outsystemsenterprise.com/SMULab_Notification/rest/Notification/SendSMS"
+# SMU_SMS_URL = "https://smuedu-dev.outsystemsenterprise.com/SMULab_Notification/rest/Notification/SendSMS"
 USER_API_URL = os.getenv("USER_API_URL", "http://user-service:5000/api/v1/user")
 TRANSACTION_API_URL = os.getenv("TRANSACTION_API_URL", "http://transaction-service:5000/api/v1/transaction")
 
@@ -80,12 +80,12 @@ transaction_update_model = transaction_ns.model('TransactionUpdate', {
                 example="Transaction processed successfully at market rate")
 })
 
-sms_model = notification_ns.model('SMSRequest', {
-    'mobile': fields.String(required=True, description='Mobile number',
-                example="+6512345678"),
-    'message': fields.String(required=True, description='SMS message content',
-                example="Your crypto purchase of 0.02345 BTC for 1000.00 USD has been completed. Transaction ID: f47ac10b.")
-})
+# sms_model = notification_ns.model('SMSRequest', {
+#     'mobile': fields.String(required=True, description='Mobile number',
+#                 example="+6512345678"),
+#     'message': fields.String(required=True, description='SMS message content',
+#                 example="Your crypto purchase of 0.02345 BTC for 1000.00 USD has been completed. Transaction ID: f47ac10b.")
+# })
 
 email_model = notification_ns.model('EmailRequest', {
     'to': fields.String(required=True, description='Recipient email',
@@ -141,20 +141,20 @@ def send_email(to_email, subject, body):
         logger.error(f"Failed to send email: {e}")
         return False
 
-def send_sms(phone_number, message):
-    """Send SMS using SMU wrapper"""
-    try:
-        payload = {
-            "mobile": phone_number,
-            "message": message
-        }
-        response = requests.post(SMU_SMS_URL, json=payload)
-        response.raise_for_status()
-        logger.info(f"SMS sent to {phone_number}")
-        return response.json()
-    except Exception as e:
-        logger.error(f"Failed to send SMS: {e}")
-        return None
+# def send_sms(phone_number, message):
+#     """Send SMS using SMU wrapper"""
+#     try:
+#         payload = {
+#             "mobile": phone_number,
+#             "message": message
+#         }
+#         response = requests.post(SMU_SMS_URL, json=payload)
+#         response.raise_for_status()
+#         logger.info(f"SMS sent to {phone_number}")
+#         return response.json()
+#     except Exception as e:
+#         logger.error(f"Failed to send SMS: {e}")
+#         return None
 
 def get_user_info(user_id):
     """Get user information (email and phone) by user ID"""
@@ -256,10 +256,10 @@ Thank you for using Yorkshire Crypto Exchange.
                     email_sent = send_email(email, email_subject, email_body.strip())
                     logger.info(f"Email notification {'sent' if email_sent else 'failed'} for transaction {transaction_id}")
                 
-                # Send SMS
-                if phone:
-                    sms_result = send_sms(phone, sms_message)
-                    logger.info(f"SMS notification sent for transaction {transaction_id}")
+                # # Send SMS
+                # if phone:
+                #     sms_result = send_sms(phone, sms_message)
+                #     logger.info(f"SMS notification sent for transaction {transaction_id}")
     else:
         logger.error(f"Could not find transaction {transaction_id} for update")
 
@@ -309,17 +309,17 @@ class TestNotify(Resource):
         process_message(mock_message)
         return {"message": "Notification sent"}, 200
 
-@notification_ns.route('/sms')
-class SMS(Resource):
-    @notification_ns.expect(sms_model)
-    @notification_ns.doc(description="Send SMS notification directly")
-    def post(self):
-        """Send SMS notification directly"""
-        data = request.json
-        result = send_sms(data.get('mobile'), data.get('message'))
-        if result:
-            return {"message": "SMS sent successfully", "result": result}, 200
-        return {"message": "Failed to send SMS"}, 500
+# @notification_ns.route('/sms')
+# class SMS(Resource):
+#     @notification_ns.expect(sms_model)
+#     @notification_ns.doc(description="Send SMS notification directly")
+#     def post(self):
+#         """Send SMS notification directly"""
+#         data = request.json
+#         result = send_sms(data.get('mobile'), data.get('message'))
+#         if result:
+#             return {"message": "SMS sent successfully", "result": result}, 200
+#         return {"message": "Failed to send SMS"}, 500
 
 @notification_ns.route('/email')
 class Email(Resource):

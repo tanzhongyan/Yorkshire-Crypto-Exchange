@@ -28,10 +28,6 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
 const navItems: NavItem[] = [
   {
     title: "Wallets",

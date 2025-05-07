@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setCookie, getCookie } from "@/lib/cookies";
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 export default function SignupPage() {
   const { login } = useAuth();

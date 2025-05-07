@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setCookie, getCookie } from "@/lib/cookies";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
 export default function SignupPage() {
   const { login } = useAuth();
@@ -70,7 +71,7 @@ export default function SignupPage() {
 
       // 3. Call the API endpoint
       const response = await fetch(
-        "http://localhost:8000/api/v1/identity/create-account",
+        `${API_GATEWAY_URL}/api/v1/identity/create-account`,
         {
           method: "POST",
           headers: {

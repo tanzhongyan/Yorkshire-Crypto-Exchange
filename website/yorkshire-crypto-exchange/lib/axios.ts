@@ -1,9 +1,10 @@
 // lib/axios.ts
 import axios from "axios";
 import { getCookie } from "@/lib/cookies";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
 const instance = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: API_GATEWAY_URL,
   withCredentials: true, // This enables cookies to be sent with requests
 });
 

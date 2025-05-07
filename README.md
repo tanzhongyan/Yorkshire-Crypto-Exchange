@@ -1,6 +1,20 @@
 # Yorkshire Crypto Exchange 🚀
 
-Yorkshire Crypto Exchange is a microservices-based cryptocurrency exchange platform designed for secure and efficient fiat-to-crypto transactions, wallet management, and trade execution. Built using Flask, Next.js, Node.js, Typescript, PostgreSQL, RabbitMQ, and Docker, it follows REST API best practices and utilizes message queues for asynchronous processing. This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability, modularity, and real-world financial transaction handling in a containerized environment.
+[Yorkshire Crypto Exchange](https://yorkshirecryptoexchange.com/) is a microservices-based cryptocurrency exchange platform designed for secure and efficient fiat-to-crypto transactions, wallet management, and trade execution. Built using Flask, Next.js, Node.js, Typescript, PostgreSQL, RabbitMQ, and Docker, it follows REST API best practices and utilizes message queues for asynchronous processing. This project is part of the Enterprise Solution Design (ESD) course, demonstrating scalability, modularity, and real-world financial transaction handling in a containerized environment.
+
+Visit our production website at [https://yorkshirecryptoexchange.com/](https://yorkshirecryptoexchange.com/).
+
+## Hosting details:
+
+- Provider: Contabo VPS 4C
+- vCPU: 4 cores
+- RAM: 4 GB
+- Storage: 200 GB SSD
+- Operating System: Ubuntu 24.04
+- Bandwidth: 32TB Outbound + Unlimited Inbound at 200 Mbit/s
+- SSL/TLS: Free from Certbot
+- Cost: $7.14/month
+- Domain: Cloudflare, $14.94 for one year
 
 ## 🛠 Tech Stack
 

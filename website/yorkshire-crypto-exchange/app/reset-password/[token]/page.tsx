@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 export default function ResetPasswordPage() {
   const router = useRouter();

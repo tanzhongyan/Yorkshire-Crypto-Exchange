@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

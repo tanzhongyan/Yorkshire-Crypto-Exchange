@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -45,7 +46,7 @@ export default function LoginPage() {
     try {
       // Call the login API endpoint
       const response = await fetch(
-        "http://localhost:8000/api/v1/user/authenticate/login",
+        `${API_GATEWAY_URL}/api/v1/user/authenticate/login`,
         {
           method: "POST",
           headers: {

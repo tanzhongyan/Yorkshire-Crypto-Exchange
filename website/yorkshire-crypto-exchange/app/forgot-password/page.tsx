@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -31,7 +32,7 @@ export default function ForgotPasswordPage() {
 
     try {
       await fetch(
-        "http://localhost:8000/api/v1/user/authenticate/reset-password-request",
+        `${API_GATEWAY_URL}/api/v1/user/authenticate/reset-password-request`,
         {
           method: "POST",
           headers: {

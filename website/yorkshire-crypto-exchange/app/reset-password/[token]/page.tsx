@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function ResetPasswordPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/v1/user/authenticate/reset-password",
+        `${API_GATEWAY_URL}/api/v1/user/authenticate/reset-password`,
         {
           method: "POST",
           headers: {

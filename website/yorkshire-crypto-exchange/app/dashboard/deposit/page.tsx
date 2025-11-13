@@ -247,6 +247,8 @@ export default function DepositPage() {
   };
 
   const handleConfirmPayment = async () => {
+    const parsedAmount = parseFloat(amount);
+
     setShowTestCardWarning(false);
     setIsProcessing(true);
 

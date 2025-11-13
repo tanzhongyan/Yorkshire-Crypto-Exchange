@@ -63,6 +63,7 @@ services:
       - kong-net
     expose:
       - "5000"
+    restart: on-failure
   
   crypto-service:
     container_name: crypto-service
@@ -91,6 +92,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   user-service:
     container_name: user-service
@@ -116,6 +118,7 @@ services:
       - kong-net
     expose:
       - "5000"
+    restart: on-failure
 
   identity-service:
     container_name: identity-service
@@ -133,6 +136,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   transaction-service:
     container_name: transaction-service
@@ -161,6 +165,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   orderbook-service:
     container_name: orderbook-service
@@ -186,6 +191,7 @@ services:
       - kong-net
     expose:
       - "5000"
+    restart: on-failure
 
   deposit-service:
     container_name: deposit-service
@@ -203,6 +209,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   stripe-cli:
     image: stripe/stripe-cli:latest
@@ -214,7 +221,8 @@ services:
     networks:
       - kong-net
     depends_on:
-      - deposit-service 
+      - deposit-service
+    restart: on-failure 
   
   ramp-service:
     container_name: ramp-service
@@ -231,6 +239,7 @@ services:
       - kong-net
     expose:
       - "5000"
+    restart: on-failure
 
   market-service:
     container_name: market-service
@@ -247,6 +256,7 @@ services:
       - kong-net
     expose:
       - "5000"
+    restart: on-failure
 
   rabbitmq:
     image: rabbitmq:management
@@ -313,6 +323,7 @@ services:
     networks:
       - kong-net
       - rabbit-net
+    restart: on-failure
   
   match-service:
     container_name: match-service
@@ -333,6 +344,7 @@ services:
       - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   complete-service:
     container_name: complete-service
@@ -353,6 +365,7 @@ services:
       - rabbit-net
     expose:
       - "5000"
+    restart: on-failure
 
   swagger-docs:
     container_name: swagger-docs
@@ -374,6 +387,7 @@ services:
       - market-service
       - initiate-service
       - complete-service
+    restart: on-failure
 
   # website:
   #   build:

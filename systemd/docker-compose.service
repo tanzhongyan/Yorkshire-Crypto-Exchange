@@ -1,0 +1,17 @@
+[Unit]
+Description=Yorkshire Crypto Exchange - Docker Compose Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Yorkshire-Crypto-Exchange
+ExecStart=/usr/bin/docker-compose up
+ExecStop=/usr/bin/docker-compose down
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Copy, Check, AlertCircle } from "lucide-react";
 
 import { getCookie } from "@/lib/cookies";
 import axios from "@/lib/axios";
@@ -117,8 +117,25 @@ export default function DepositPage() {
   const [showModal, setShowModal] = useState(false);
   const [pendingLinks, setPendingLinks] = useState<PendingLinks>({});
   const [dataLoading, setDataLoading] = useState(true);
+  const [showTestCardWarning, setShowTestCardWarning] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
+
+  // Calculate test card expiry date (5 years from now)
+  const getTestCardExpiry = () => {
+    const now = new Date();
+    const futureYear = now.getFullYear() + 5;
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${month}/${String(futureYear).slice(-2)}`;
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyFeedback(label);
+      setTimeout(() => setCopyFeedback(null), 2000);
+    });
+  };
 
   // Get the currency details for the selected currency
   const getCurrencyDetails = () => {
@@ -225,6 +242,14 @@ export default function DepositPage() {
       return;
     }
 
+    // Show test card warning dialog before processing
+    setShowTestCardWarning(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    const parsedAmount = parseFloat(amount);
+
+    setShowTestCardWarning(false);
     setIsProcessing(true);
 
     try {
@@ -283,6 +308,106 @@ export default function DepositPage() {
                 </p>
               )}
             </DialogHeader>
+          </DialogContent>
+        </Dialog>
+
+        {/* Test Card Warning Dialog */}
+        <Dialog open={showTestCardWarning} onOpenChange={setShowTestCardWarning}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Test Payment Card</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This is a development environment. Please use the following test credit card details for payments. No real money will be charged.
+              </p>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-2">Card Number</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-slate-900 font-mono flex-1">4242 4242 4242 4242</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard("4242424242424242", "Card number")}
+                      className="h-8 px-2"
+                      title="Copy card number"
+                    >
+                      {copyFeedback === "Card number" ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 mb-2">Expiry</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-slate-900 font-mono flex-1">{getTestCardExpiry()}</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(getTestCardExpiry(), "Expiry")}
+                        className="h-8 px-2"
+                        title="Copy expiry date"
+                      >
+                        {copyFeedback === "Expiry" ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 mb-2">CVV</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-slate-900 font-mono flex-1">123</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard("123", "CVV")}
+                        className="h-8 px-2"
+                        title="Copy CVV"
+                      >
+                        {copyFeedback === "CVV" ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-800">
+                  This is a testing environment. No real charges will be made to your account.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowTestCardWarning(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmPayment}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "Processing..." : "I Understand, Continue"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 

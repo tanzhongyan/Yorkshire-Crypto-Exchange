@@ -400,22 +400,6 @@ services:
       - complete-service
     restart: on-failure
 
-  website:
-    build:
-      context: ./website/yorkshire-crypto-exchange
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - fiat-service
-      - user-service
-      - crypto-service
-    networks:
-      - kong-net
-    restart: on-failure
-
   order-seeder:
     container_name: order-seeder
     build:
@@ -436,6 +420,36 @@ services:
       - initiate-service
       - market-service
     restart: on-failure
+
+  website:
+    container_name: website
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    ports:
+      - "${EXPOSE_PORTS:-127.0.0.1}:3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    networks:
+      - kong-net
+    depends_on:
+      - kong
+      - fiat-service
+      - crypto-service
+      - user-service
+      - transaction-service
+      - identity-service
+      - deposit-service
+      - ramp-service
+      - market-service
+      - orderbook-service
+      - initiate-service
+      - match-service
+      - complete-service
+      - swagger-docs
+    restart: on-failure
+    security_opt:
+      - no-new-privileges
 
 volumes:
   fiat_data:

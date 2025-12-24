@@ -10,3 +10,4 @@ PyJWT
 twilio
 flask-mail
 Dotenv
+gunicorn

@@ -1,2 +1,6 @@
 pika
 Requests
+Flask
+Flask-restx
+Flask-Cors
+gunicorn

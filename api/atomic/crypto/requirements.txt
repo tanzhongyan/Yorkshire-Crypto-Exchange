@@ -5,3 +5,4 @@ Flask-restx
 pika
 psycopg2-binary
 Flask-Cors
+gunicorn

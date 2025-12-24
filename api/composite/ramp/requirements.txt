@@ -3,4 +3,5 @@ Flask-restx
 pika
 Flask-Cors
 Requests
+gunicorn
 Dotenv

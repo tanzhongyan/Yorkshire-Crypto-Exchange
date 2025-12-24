@@ -62,68 +62,68 @@
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "btc",
-      "actualBalance": 1000,
-      "availableBalance": 1000
+      "actualBalance": 100000,
+      "availableBalance": 100000
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "eth",
-      "actualBalance": 1000,
-      "availableBalance": 1000
+      "actualBalance": 1000000,
+      "availableBalance": 1000000
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "xrp",
-      "actualBalance": 2000000.0,
-      "availableBalance": 2000000.0
+      "actualBalance": 500000000.0,
+      "availableBalance": 500000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "usdt",
-      "actualBalance": 1000000.0,
-      "availableBalance": 1000000.0
+      "actualBalance": 100000000.0,
+      "availableBalance": 100000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "bnb",
-      "actualBalance": 2000.0,
-      "availableBalance": 2000.0
+      "actualBalance": 500000.0,
+      "availableBalance": 500000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "ada",
-      "actualBalance": 2500000.0,
-      "availableBalance": 2500000.0
+      "actualBalance": 1000000000.0,
+      "availableBalance": 1000000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "sol",
-      "actualBalance": 7100.0,
-      "availableBalance": 7100.0
+      "actualBalance": 5000000.0,
+      "availableBalance": 5000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "doge",
-      "actualBalance": 12500000.0,
-      "availableBalance": 12500000.0
+      "actualBalance": 5000000000.0,
+      "availableBalance": 5000000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "dot",
-      "actualBalance": 125000.0,
-      "availableBalance": 125000.0
+      "actualBalance": 50000000.0,
+      "availableBalance": 50000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "matic",
-      "actualBalance": 1428500.0,
-      "availableBalance": 1428500.0
+      "actualBalance": 1000000000.0,
+      "availableBalance": 1000000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",
       "tokenId": "ltc",
-      "actualBalance": 11100.0,
-      "availableBalance": 11100.0
+      "actualBalance": 1000000.0,
+      "availableBalance": 1000000.0
     },
     {
       "userId": "a7c396e2-8370-4975-820e-c5ee8e3875c0",

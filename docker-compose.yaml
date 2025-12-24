@@ -24,6 +24,10 @@ services:
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_PREFIX: /usr/local/kong
+      # JWT configuration from .env
+      JWT_KEY: ${JWT_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     networks:
       - kong-net
     ports:
@@ -112,6 +116,9 @@ services:
       - DB_NAME=user_db
       - DB_USER=${DB_USER:-user}
       - DB_PASS=${DB_PASSWORD:-password}
+      - JWT_KEY=${JWT_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
     volumes:
       - user_data:/var/lib/user_service
     networks:
@@ -131,6 +138,10 @@ services:
       # - rabbitmq
       postgres:
         condition: service_healthy # wait until postgres healthy
+    environment:
+      - JWT_KEY=${JWT_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
     networks:
       - kong-net
       # - rabbit-net
@@ -389,16 +400,42 @@ services:
       - complete-service
     restart: on-failure
 
-  # website:
-  #   build:
-  #     context: ./website
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8080:80"
-  #   depends_on:
-  #     - fiat-service
-  #     - user-service
-  #     - crypto-service
+  website:
+    build:
+      context: ./website/yorkshire-crypto-exchange
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - fiat-service
+      - user-service
+      - crypto-service
+    networks:
+      - kong-net
+    restart: on-failure
+
+  order-seeder:
+    container_name: order-seeder
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile
+    environment:
+      # Direct service URLs - bypassing Kong for internal container communication
+      - USER_SERVICE_URL=http://user-service:5000
+      - INITIATE_SERVICE_URL=http://initiate-service:5000
+      - MARKET_SERVICE_URL=http://market-service:5000
+    networks:
+      - kong-net
+    depends_on:
+      - postgres
+      - user-service
+      - crypto-service
+      - transaction-service
+      - initiate-service
+      - market-service
+    restart: on-failure
 
 volumes:
   fiat_data:

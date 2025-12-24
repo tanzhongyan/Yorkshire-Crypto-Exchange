@@ -4,3 +4,4 @@ flask-restx
 requests
 pika
 dotenv
+gunicorn

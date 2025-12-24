@@ -1,0 +1,10 @@
+yorkshire-crypto-exchange/node_modules
+yorkshire-crypto-exchange/.next
+yorkshire-crypto-exchange/.git
+yorkshire-crypto-exchange/.env.local
+yorkshire-crypto-exchange/.env*.local
+yorkshire-crypto-exchange/npm-debug.log*
+yorkshire-crypto-exchange/yarn-debug.log*
+yorkshire-crypto-exchange/yarn-error.log*
+.git
+

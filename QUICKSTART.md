@@ -37,28 +37,31 @@ Ensure the following are installed:
 
    > 💡 *For Windows users*, run this using Git Bash or WSL.
 
-4. **Start Backend Services with Docker Compose**
+4. **Install Website Dependencies Locally**
+
+   Navigate to the website directory and install dependencies:
+
+   ```sh
+   cd website/yorkshire-crypto-exchange
+   npm install --legacy-peer-deps
+   cd ../..
+   ```
+
+   > 💡 This resolves dependency conflicts and creates `package-lock.json` that Docker will use.
+
+5. **Start All Services with Docker Compose**
 
    ```sh
    docker-compose up -d --build
    ```
 
-   > 📦 This command initializes the database, API microservices, and Swagger UI documentation.
-
-5. **Install Website Dependencies**
-
-   Navigate to the website directory:
-
-   ```sh
-   cd website/yorkshire-crypto-exchange
-   npm install
-   ```
-
-6. **Run the Website Frontend**
-
-   ```sh
-   npm run dev
-   ```
+   > 📦 This command initializes:
+   > - Database (PostgreSQL)
+   > - RabbitMQ message broker
+   > - All API microservices
+   > - Kong API Gateway
+   > - Swagger UI documentation
+   > - **Website frontend (Next.js)**
 
    > 🌐 The website will be accessible at: [http://localhost:3000](http://localhost:3000)
 
@@ -126,12 +129,21 @@ docker-compose up -d --build
 
 - **Website Not Starting:**
 
-   - Ensure `npm install` completed successfully.
-   - If module errors persist:
+   - Ensure you ran `npm install --legacy-peer-deps` locally first (step 4).
+   - Check container logs:
 
      ```sh
-     rm -rf node_modules
-     npm install
+     docker logs website
+     ```
+
+   - If module errors persist, reinstall locally:
+
+     ```sh
+     cd website/yorkshire-crypto-exchange
+     rm -rf node_modules package-lock.json
+     npm install --legacy-peer-deps
+     cd ../..
+     docker-compose build website
      ```
 
 ---

@@ -389,16 +389,33 @@ services:
       - complete-service
     restart: on-failure
 
-  # website:
-  #   build:
-  #     context: ./website
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8080:80"
-  #   depends_on:
-  #     - fiat-service
-  #     - user-service
-  #     - crypto-service
+  website:
+    container_name: website
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    ports:
+      - "${EXPOSE_PORTS:-127.0.0.1}:3000:3000"
+    networks:
+      - kong-net
+    depends_on:
+      - kong
+      - fiat-service
+      - crypto-service
+      - user-service
+      - transaction-service
+      - identity-service
+      - deposit-service
+      - ramp-service
+      - market-service
+      - orderbook-service
+      - initiate-service
+      - match-service
+      - complete-service
+      - swagger-docs
+    restart: on-failure
+    security_opt:
+      - no-new-privileges
 
 volumes:
   fiat_data:

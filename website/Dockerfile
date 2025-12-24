@@ -1,18 +1,27 @@
-# Use official Node.js image
+# Use simpler production build approach
 FROM node:23-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy dependencies
-COPY package.json ./
-RUN npm install
+# Copy package files (including lock file)
+COPY yorkshire-crypto-exchange/package.json ./
+COPY yorkshire-crypto-exchange/package-lock.json ./
 
-# Copy all files
-COPY . .
+# Install dependencies using locked versions
+RUN npm ci --legacy-peer-deps
 
-# Expose port 8080
-EXPOSE 8080
+# Copy application files
+COPY yorkshire-crypto-exchange/ .
 
-# Start Vue application
-CMD ["npm", "run", "serve"]
+# Build the application
+RUN npm run build
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+EXPOSE 3000
+
+# Start using Next's built-in server
+CMD ["npm", "start"]

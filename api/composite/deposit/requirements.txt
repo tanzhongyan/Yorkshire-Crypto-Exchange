@@ -5,3 +5,4 @@ Flask-Cors
 Requests
 Stripe
 Dotenv
+gunicorn

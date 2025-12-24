@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Ensure migrations run before starting the service
-CMD ["sh", "-c", "flask db upgrade && python app.py"]
+CMD ["sh", "-c", "flask db upgrade && python -c 'from app import app; app.app_context().push(); from app import seed_data; seed_data()' && gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 app:app"]

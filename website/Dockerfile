@@ -1,27 +1,42 @@
-# Use simpler production build approach
-FROM node:23-slim
+# Multi-stage build for Next.js production
+FROM node:23-slim AS base
 
+# Install dependencies only when needed
+FROM base AS deps
 WORKDIR /app
 
-# Copy package files (including lock file)
-COPY yorkshire-crypto-exchange/package.json ./
-COPY yorkshire-crypto-exchange/package-lock.json ./
+# Copy package files from subdirectory
+COPY yorkshire-crypto-exchange/package.json yorkshire-crypto-exchange/package-lock.json* ./
+RUN npm ci
 
-# Install dependencies using locked versions
-RUN npm ci --legacy-peer-deps
-
-# Copy application files
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY yorkshire-crypto-exchange/ .
 
-# Build the application
+# Build Next.js application
 RUN npm run build
 
-# Set environment
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
 
 EXPOSE 3000
 
-# Start using Next's built-in server
-CMD ["npm", "start"]
+ENV PORT=3000
+
+CMD ["node", "server.js"]

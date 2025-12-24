@@ -5,15 +5,15 @@ FROM node:23-slim AS base
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Copy package files from subdirectory
+COPY yorkshire-crypto-exchange/package.json yorkshire-crypto-exchange/package-lock.json* ./
 RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY yorkshire-crypto-exchange/ .
 
 # Build Next.js application
 RUN npm run build

@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Ensure migrations run before starting the service
-CMD ["python","app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "1", "app:app"]

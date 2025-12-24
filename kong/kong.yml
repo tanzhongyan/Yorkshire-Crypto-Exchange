@@ -44,7 +44,7 @@ consumers:
 jwt_secrets:
   - consumer: app_client
     key: "yce_client_prod"
-    secret: "421j31d12das9021djas0124l"
+    secret: "B1tX8pDiFH3KvUMuzIb4rmZaLEGhwAJQ5YnOkxyR"
     algorithm: "HS256"
 
 services:

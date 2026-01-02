@@ -1,0 +1,124 @@
+# Docker Compose Override for Ghost Infrastructure Integration
+# This file modifies Yorkshire-Crypto-Exchange's docker-compose.yaml for deployment behind root Caddy
+
+services:
+  # ====================
+  # API GATEWAY
+  # Remove external port exposure, use internal-only communication
+  # ====================
+
+  kong:
+    ports: []
+    expose:
+      - "8000"
+      - "8443"
+
+  # ====================
+  # MICROSERVICES - ATOMIC
+  # ====================
+
+  fiat-service:
+    ports: []
+    expose:
+      - "5000"
+
+  crypto-service:
+    ports: []
+    expose:
+      - "5000"
+
+  user-service:
+    ports: []
+    expose:
+      - "5000"
+
+  transaction-service:
+    ports: []
+    expose:
+      - "5000"
+
+  orderbook-service:
+    ports: []
+    expose:
+      - "5000"
+
+  # ====================
+  # MICROSERVICES - COMPOSITE
+  # ====================
+
+  identity-service:
+    ports: []
+    expose:
+      - "5000"
+
+  deposit-service:
+    ports: []
+    expose:
+      - "5000"
+
+  ramp-service:
+    ports: []
+    expose:
+      - "5000"
+
+  market-service:
+    ports: []
+    expose:
+      - "5000"
+
+  initiate-service:
+    ports: []
+    expose:
+      - "5000"
+
+  match-service:
+    ports: []
+    expose:
+      - "5000"
+
+  complete-service:
+    ports: []
+    expose:
+      - "5000"
+
+  # ====================
+  # INFRASTRUCTURE SERVICES
+  # ====================
+
+  postgres:
+    ports: []
+    expose:
+      - "5432"
+
+  rabbitmq:
+    ports: []
+    expose:
+      - "5672"
+      - "15672"
+
+  swagger-docs:
+    ports: []
+    expose:
+      - "5000"
+
+  # ====================
+  # FRONTEND WEBSITE
+  # Connect to ghost_network for root Caddy access
+  # ====================
+
+  website:
+    ports: []
+    expose:
+      - "3000"
+    networks:
+      - kong-net          # Keep internal network for backend communication
+      - ghost_network     # Add external network for root Caddy
+
+# ====================
+# NETWORKS
+# ====================
+
+networks:
+  # Connect to root Ghost network
+  ghost_network:
+    external: true

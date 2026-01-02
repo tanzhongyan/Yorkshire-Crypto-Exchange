@@ -50,7 +50,11 @@ app.register_blueprint(blueprint)
 TRANSACTION_SERVICE_URL = "http://transaction-service:5000/api/v1/transaction"
 FIAT_SERVICE_URL = "http://fiat-service:5000/api/v1/fiat"
 USER_SERVICE_URL = "http://user-service:5000/api/v1/user"
-FRONTEND_URL = os.getenv("WEBAPP_URL", "http://localhost:3000")
+
+# Frontend URL for Stripe redirects - MUST be set via environment variable
+FRONTEND_URL = os.getenv("WEBAPP_URL")
+if not FRONTEND_URL:
+    raise ValueError("WEBAPP_URL environment variable is required for Stripe redirects")
 
 # Define namespaces to group api calls together
 # Namespaces are essentially folders that group all related API calls

@@ -29,8 +29,10 @@ CORS(app)
 # Load environment variables
 load_dotenv()
 
-# Declare website location
-WEBAPP_URL = os.getenv("WEBAPP_URL", "http://localhost:3000")
+# Website URL for password reset emails - MUST be set via environment variable
+WEBAPP_URL = os.getenv("WEBAPP_URL")
+if not WEBAPP_URL:
+    raise ValueError("WEBAPP_URL environment variable is required for password reset emails")
 
 # In-memory storage for reset tokens (in production, use a database table)
 reset_tokens = {}

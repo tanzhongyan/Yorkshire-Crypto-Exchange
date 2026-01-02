@@ -1,7 +1,11 @@
 from flask import Flask, render_template, jsonify, request, render_template_string, redirect
 import requests
+import os
 
 app = Flask(__name__)
+
+# Enable/disable Swagger documentation via environment variable
+SWAGGER_ENABLED = os.getenv("SWAGGER_ENABLED", "false").lower() == "true"
 
 # Define your microservices with their URLs and descriptions
 atomic_services = {
@@ -66,11 +70,15 @@ composite_services = {
 
 @app.route('/')
 def index():
+    if not SWAGGER_ENABLED:
+        return "Swagger documentation is disabled in production", 404
     # Redirect straight to the merged documentation
     return redirect('/swagger-ui')
 
 @app.route('/swagger-ui')
 def swagger_ui():
+    if not SWAGGER_ENABLED:
+        return "Swagger documentation is disabled in production", 404
     swagger_template = """
     <!DOCTYPE html>
     <html lang="en">
@@ -376,6 +384,8 @@ def swagger_ui():
 
 @app.route('/combined-swagger.json')
 def combined_swagger():
+    if not SWAGGER_ENABLED:
+        return jsonify({"error": "Swagger documentation is disabled in production"}), 404
     # Base template for the combined swagger
     combined = {
         "openapi": "3.0.0",

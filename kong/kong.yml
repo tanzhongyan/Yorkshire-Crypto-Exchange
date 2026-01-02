@@ -6,6 +6,7 @@ plugins:
       origins:
         - http://localhost:3000
         - https://yorkshirecryptoexchange.com
+        - https://crypto.tanzhongyan.com
       methods:
         - GET
         - POST

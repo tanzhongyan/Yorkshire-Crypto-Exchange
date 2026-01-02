@@ -1,8 +1,10 @@
 networks:
   kong-net:
+    name: kong-net
     driver: bridge
     external: false
   rabbit-net:
+    name: rabbit-net
     driver: bridge
     external: false
 
@@ -39,7 +41,7 @@ services:
       - "8444"
     volumes:
       - ./kong/kong.yml:/kong/kong.yml:ro
-    restart: on-failure
+    restart: always
     security_opt:
       - no-new-privileges
   
@@ -67,7 +69,7 @@ services:
       - kong-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
   
   crypto-service:
     container_name: crypto-service
@@ -96,7 +98,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   user-service:
     container_name: user-service
@@ -125,7 +127,7 @@ services:
       - kong-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   identity-service:
     container_name: identity-service
@@ -147,7 +149,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   transaction-service:
     container_name: transaction-service
@@ -176,7 +178,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   orderbook-service:
     container_name: orderbook-service
@@ -202,7 +204,7 @@ services:
       - kong-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   deposit-service:
     container_name: deposit-service
@@ -220,7 +222,7 @@ services:
       # - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   stripe-cli:
     image: stripe/stripe-cli:latest
@@ -233,7 +235,7 @@ services:
       - kong-net
     depends_on:
       - deposit-service
-    restart: on-failure 
+    restart: always 
   
   ramp-service:
     container_name: ramp-service
@@ -250,7 +252,7 @@ services:
       - kong-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   market-service:
     container_name: market-service
@@ -267,7 +269,7 @@ services:
       - kong-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   rabbitmq:
     image: rabbitmq:management
@@ -313,7 +315,7 @@ services:
       interval: 5s
       retries: 5
       start_period: 10s
-    restart: on-failure
+    restart: always
     networks:
       - kong-net
 
@@ -334,7 +336,7 @@ services:
     networks:
       - kong-net
       - rabbit-net
-    restart: on-failure
+    restart: always
   
   match-service:
     container_name: match-service
@@ -355,7 +357,7 @@ services:
       - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   complete-service:
     container_name: complete-service
@@ -376,7 +378,7 @@ services:
       - rabbit-net
     expose:
       - "5000"
-    restart: on-failure
+    restart: always
 
   swagger-docs:
     container_name: swagger-docs
@@ -398,7 +400,7 @@ services:
       - market-service
       - initiate-service
       - complete-service
-    restart: on-failure
+    restart: always
 
   order-seeder:
     container_name: order-seeder
@@ -448,7 +450,7 @@ services:
       - match-service
       - complete-service
       - swagger-docs
-    restart: on-failure
+    restart: always
     security_opt:
       - no-new-privileges
 

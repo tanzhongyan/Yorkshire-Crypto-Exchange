@@ -12,7 +12,7 @@ networks:
 services:
   kong:
     image: kong:latest
-    container_name: kong
+    container_name: yorkshire-kong
     user: kong
     environment:
       KONG_DATABASE: "off"
@@ -33,7 +33,7 @@ services:
     networks:
       - kong-net
     ports:
-      - "8000:8000/tcp"
+      - "8003:8000/tcp"
       - "8443:8443/tcp"
       - "${EXPOSE_PORTS:-127.0.0.1}:8001:8001"   # Admin API (conditional)
       - "${EXPOSE_PORTS:-127.0.0.1}:8002:8002"   # Admin GUI (conditional)
@@ -46,7 +46,7 @@ services:
       - no-new-privileges
   
   fiat-service:
-    container_name: fiat-service
+    container_name: yorkshire-fiat-service
     build:
       context: ./api/atomic/fiat
       dockerfile: Dockerfile
@@ -72,7 +72,7 @@ services:
     restart: always
   
   crypto-service:
-    container_name: crypto-service
+    container_name: yorkshire-crypto-service
     build:
       context: ./api/atomic/crypto
       dockerfile: Dockerfile
@@ -101,7 +101,7 @@ services:
     restart: always
 
   user-service:
-    container_name: user-service
+    container_name: yorkshire-user-service
     build:
       context: ./api/atomic/user
       dockerfile: Dockerfile
@@ -130,7 +130,7 @@ services:
     restart: always
 
   identity-service:
-    container_name: identity-service
+    container_name: yorkshire-identity-service
     build:
       context: ./api/composite/identity
       dockerfile: Dockerfile
@@ -152,7 +152,7 @@ services:
     restart: always
 
   transaction-service:
-    container_name: transaction-service
+    container_name: yorkshire-transaction-service
     build:
       context: ./api/atomic/transaction
       dockerfile: Dockerfile
@@ -181,7 +181,7 @@ services:
     restart: always
 
   orderbook-service:
-    container_name: orderbook-service
+    container_name: yorkshire-orderbook-service
     build:
       context: ./api/atomic/orderbook
       dockerfile: Dockerfile
@@ -207,7 +207,7 @@ services:
     restart: always
 
   deposit-service:
-    container_name: deposit-service
+    container_name: yorkshire-deposit-service
     build:
       context: ./api/composite/deposit
       dockerfile: Dockerfile
@@ -226,7 +226,7 @@ services:
 
   stripe-cli:
     image: stripe/stripe-cli:latest
-    container_name: stripe-cli
+    container_name: yorkshire-stripe-cli
     command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to deposit-service:5000/api/v1/deposit/webhook
     environment:
       - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
@@ -238,7 +238,7 @@ services:
     restart: always 
   
   ramp-service:
-    container_name: ramp-service
+    container_name: yorkshire-ramp-service
     build:
       context: ./api/composite/ramp
       dockerfile: Dockerfile
@@ -255,7 +255,7 @@ services:
     restart: always
 
   market-service:
-    container_name: market-service
+    container_name: yorkshire-market-service
     build:
       context: ./api/composite/market
       dockerfile: Dockerfile
@@ -298,7 +298,7 @@ services:
 
   postgres:
     build: ./database
-    container_name: postgres
+    container_name: yorkshire-postgres
     environment:
       POSTGRES_USER: ${DB_USER:-user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
@@ -320,7 +320,7 @@ services:
       - kong-net
 
   initiate-service:
-    container_name: initiate-service
+    container_name: yorkshire-initiate-service
     build:
       context: ./api/composite/initiate
       dockerfile: Dockerfile
@@ -339,7 +339,7 @@ services:
     restart: always
   
   match-service:
-    container_name: match-service
+    container_name: yorkshire-match-service
     build:
       context: ./api/composite/match
       dockerfile: Dockerfile
@@ -360,7 +360,7 @@ services:
     restart: always
 
   complete-service:
-    container_name: complete-service
+    container_name: yorkshire-complete-service
     build:
       context: ./api/composite/complete
       dockerfile: Dockerfile
@@ -381,7 +381,7 @@ services:
     restart: always
 
   swagger-docs:
-    container_name: swagger-docs
+    container_name: yorkshire-swagger-docs
     build:
       context: ./swagger-docs
       dockerfile: Dockerfile
@@ -403,7 +403,7 @@ services:
     restart: always
 
   order-seeder:
-    container_name: order-seeder
+    container_name: yorkshire-order-seeder
     build:
       context: ./scripts
       dockerfile: Dockerfile
@@ -424,12 +424,12 @@ services:
     restart: on-failure
 
   website:
-    container_name: website
+    container_name: yorkshire-website
     build:
       context: ./website
       dockerfile: Dockerfile
     ports:
-      - "${EXPOSE_PORTS:-127.0.0.1}:3000:3000"
+      - "3001:3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - WEBAPP_URL=${WEBAPP_URL:-http://localhost:3000}

@@ -12,6 +12,9 @@ services:
     expose:
       - "8000"
       - "8443"
+    networks:
+      - kong-net
+      - ghost_network
 
   # ====================
   # MICROSERVICES - ATOMIC

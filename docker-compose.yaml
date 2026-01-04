@@ -34,9 +34,9 @@ services:
       - kong-net
     ports:
       - "8003:8000/tcp"
-      - "8443:8443/tcp"
-      - "${EXPOSE_PORTS:-127.0.0.1}:8001:8001"   # Admin API (conditional)
-      - "${EXPOSE_PORTS:-127.0.0.1}:8002:8002"   # Admin GUI (conditional)
+      - "8444:8443/tcp"    # Changed from 8443 to 8444 to avoid conflict
+      - "${EXPOSE_PORTS:-127.0.0.1}:8004:8001"   # Admin API (conditional, changed from 8001 to avoid conflict)
+      - "${EXPOSE_PORTS:-127.0.0.1}:8005:8002"   # Admin GUI (conditional, changed from 8002 to avoid conflict)
     expose:
       - "8444"
     volumes:
@@ -386,7 +386,7 @@ services:
       context: ./swagger-docs
       dockerfile: Dockerfile
     ports:
-      - "${EXPOSE_PORTS:-127.0.0.1}:3001:5000"
+      - "${EXPOSE_PORTS:-127.0.0.1}:3007:5000"
     networks:
       - kong-net
     depends_on:
@@ -428,8 +428,8 @@ services:
     build:
       context: ./website
       dockerfile: Dockerfile
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - WEBAPP_URL=${WEBAPP_URL:-http://localhost:3000}

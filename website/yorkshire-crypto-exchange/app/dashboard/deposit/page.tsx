@@ -26,6 +26,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -300,13 +301,13 @@ export default function DepositPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {statusMessage === "success" ? "Payment Successful" : null}
+                {statusMessage === "success" ? "Payment Successful" : "Payment Status"}
               </DialogTitle>
-              {statusMessage === "success" && (
-                <p className="text-sm text-muted-foreground">
-                  Your funds will be available shortly.
-                </p>
-              )}
+              <DialogDescription>
+                {statusMessage === "success" 
+                  ? "Your funds will be available shortly." 
+                  : "Processing your payment."}
+              </DialogDescription>
             </DialogHeader>
           </DialogContent>
         </Dialog>
@@ -316,6 +317,9 @@ export default function DepositPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Test Payment Card</DialogTitle>
+              <DialogDescription>
+                Use these test card details for payments in the development environment.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">

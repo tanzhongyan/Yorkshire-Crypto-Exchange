@@ -54,6 +54,8 @@ services:
       - name: user-login-route
         paths:
           - /api/v1/user/authenticate/login
+        methods:
+          - POST
         strip_path: false
         plugins:
           - name: jwt
@@ -63,6 +65,8 @@ services:
       - name: reset-password-request-route
         paths:
           - /api/v1/user/authenticate/reset-password-request
+        methods:
+          - POST
         strip_path: false
         plugins:
           - name: jwt
@@ -72,6 +76,8 @@ services:
       - name: reset-password-route
         paths:
           - /api/v1/user/authenticate/reset-password
+        methods:
+          - POST
         strip_path: false
         plugins:
           - name: jwt

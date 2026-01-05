@@ -16,7 +16,16 @@ API_VERSION = 'v1'
 API_ROOT = f'/api/{API_VERSION}/fiat'
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS with restricted origins for production security
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["https://crypto.tanzhongyan.com", "https://yorkshirecryptoexchange.com"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+        "max_age": 3600
+    }
+})
 
 # Detect if running inside Docker
 RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER", "false").lower() == "true"

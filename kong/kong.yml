@@ -51,39 +51,6 @@ services:
   - name: user-service
     url: http://user-service:5000
     routes:
-      - name: user-login-route
-        paths:
-          - /api/v1/user/authenticate/login
-        methods:
-          - POST
-        strip_path: false
-        plugins:
-          - name: jwt
-            config:
-              anonymous: anonymous_consumer
-
-      - name: reset-password-request-route
-        paths:
-          - /api/v1/user/authenticate/reset-password-request
-        methods:
-          - POST
-        strip_path: false
-        plugins:
-          - name: jwt
-            config:
-              anonymous: anonymous_consumer
-
-      - name: reset-password-route
-        paths:
-          - /api/v1/user/authenticate/reset-password
-        methods:
-          - POST
-        strip_path: false
-        plugins:
-          - name: jwt
-            config:
-              anonymous: anonymous_consumer
-
       - name: user-route
         paths:
           - /api/v1/user
@@ -96,6 +63,8 @@ services:
         strip_path: false
         plugins:
           - name: jwt
+            config:
+              anonymous: anonymous_consumer
 
   - name: fiat-service
     url: http://fiat-service:5000

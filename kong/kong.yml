@@ -48,8 +48,9 @@ jwt_secrets:
     algorithm: "HS256"
 
 services:
+  # Using full container names (yorkshire-*) to avoid DNS conflicts with other projects on ghost_network
   - name: user-service
-    url: http://user-service:5000
+    url: http://yorkshire-user-service:5000
     routes:
       - name: user-route
         paths:
@@ -67,7 +68,7 @@ services:
               anonymous: anonymous_consumer
 
   - name: fiat-service
-    url: http://fiat-service:5000
+    url: http://yorkshire-fiat-service:5000
     routes:
       - name: fiat-route
         paths:
@@ -77,7 +78,7 @@ services:
           - name: jwt
 
   - name: crypto-service
-    url: http://crypto-service:5000
+    url: http://yorkshire-crypto-service:5000
     routes:
       - name: crypto-route
         paths:
@@ -87,7 +88,7 @@ services:
           - name: jwt
         
   - name: transaction-service
-    url: http://transaction-service:5000
+    url: http://yorkshire-transaction-service:5000
     routes:
       - name: transaction-route
         paths:
@@ -97,7 +98,7 @@ services:
           - name: jwt
 
   - name: identity-service
-    url: http://identity-service:5000
+    url: http://yorkshire-identity-service:5000
     routes:
       - name: identity-create-account
         paths:
@@ -115,7 +116,7 @@ services:
           - name: jwt
 
   - name: deposit-service
-    url: http://deposit-service:5000
+    url: http://yorkshire-deposit-service:5000
     routes:
       - name: deposit-route
         paths:
@@ -125,7 +126,7 @@ services:
           - name: jwt
 
   - name: ramp-service
-    url: http://ramp-service:5000
+    url: http://yorkshire-ramp-service:5000
     routes:
       - name: ramp-route
         paths:
@@ -135,7 +136,7 @@ services:
           - name: jwt
 
   - name: initiate-service
-    url: http://initiate-service:5000
+    url: http://yorkshire-initiate-service:5000
     routes:
       - name: initiate-route
         paths:
@@ -145,7 +146,7 @@ services:
           - name: jwt
 
   - name: complete-service
-    url: http://complete-service:5000
+    url: http://yorkshire-complete-service:5000
     routes:
       - name: complete-route
         paths:
@@ -155,7 +156,7 @@ services:
           - name: jwt
 
   - name: market-service
-    url: http://market-service:5000
+    url: http://yorkshire-market-service:5000
     routes:
       - name: market-route
         paths:
@@ -171,7 +172,7 @@ services:
           - name: jwt
 
   - name: orderbook-service
-    url: http://orderbook-service:5000
+    url: http://yorkshire-orderbook-service:5000
     routes:
       - name: orderbook-route
         paths:

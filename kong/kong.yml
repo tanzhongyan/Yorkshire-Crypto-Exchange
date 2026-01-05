@@ -4,11 +4,8 @@ plugins:
   - name: cors
     config:
       origins:
-        - http://localhost:3000
-        - http://crypto.localhost
-        - https://crypto.localhost
-        - https://yorkshirecryptoexchange.com
         - https://crypto.tanzhongyan.com
+        - https://yorkshirecryptoexchange.com
       methods:
         - GET
         - POST

@@ -87,6 +87,12 @@ services:
       - name: user-route
         paths:
           - /api/v1/user
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
         strip_path: false
         plugins:
           - name: jwt
